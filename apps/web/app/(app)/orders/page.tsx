@@ -14,12 +14,22 @@ interface OrderRow {
   code: string;
   externalCode: string | null;
   channel: { code: string; name: string };
-  customer: { id: string; code: string | null; name: string | null; phone: string | null } | null;
+  customer: {
+    id: string;
+    code: string | null;
+    name: string | null;
+    phone: string | null;
+    addressLine: string | null;
+  } | null;
   status: string;
   shippingStatus: string | null;
   carrier: string | null;
   trackingNo: string | null;
   shipByAt: string | null;
+  shipAddress: string | null;
+  shipProvince: string | null;
+  note: string | null;
+  updatedAt: string;
   total: number;
   orderedAt: string;
   items: { sku: string; name: string; qty: number }[];
@@ -91,6 +101,73 @@ const STATUS: Record<string, { label: string; tone: 'neutral' | 'brand' | 'succe
   returned: { label: 'Trả hàng', tone: 'danger' },
 };
 
+const fmtTime = (s: string) =>
+  new Date(s).toLocaleString('vi-VN', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  });
+
+const CHANNEL_ICON: Record<string, { letter: string; cls: string }> = {
+  shopee: { letter: 'S', cls: 'bg-orange-500 text-white' },
+  tiktok: { letter: 'T', cls: 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' },
+  store: { letter: 'Đ', cls: 'bg-brand-600 text-white' },
+};
+
+function ChannelIcon({ channel }: { channel: OrderRow['channel'] }) {
+  const i = CHANNEL_ICON[channel.code] ?? {
+    letter: channel.name.slice(0, 1),
+    cls: 'bg-slate-400 text-white',
+  };
+  return (
+    <span
+      title={channel.name}
+      className={`grid size-5 shrink-0 place-items-center rounded text-[11px] font-bold ${i.cls}`}
+    >
+      {i.letter}
+    </span>
+  );
+}
+
+/** Order code: internal code as a label (PC + number), the marketplace order number as the main text. Click copies it. */
+function OrderCode({ o }: { o: OrderRow }) {
+  const [copied, setCopied] = useState(false);
+  const main = o.externalCode ?? o.code;
+  const m = /^([A-Za-z_]+?)(\d+)$/.exec(o.code);
+  return (
+    <div className="flex items-center gap-2">
+      <ChannelIcon channel={o.channel} />
+      <div className="min-w-0">
+        <button
+          title={copied ? 'Đã sao chép' : 'Bấm để sao chép mã đơn'}
+          onClick={(e) => {
+            e.stopPropagation();
+            void navigator.clipboard?.writeText(main).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            });
+          }}
+          className="font-mono text-xs font-medium hover:text-brand-600"
+        >
+          {copied ? 'Đã sao chép ✓' : main}
+        </button>
+        {o.externalCode && (
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+            {m ? (
+              <>
+                <span className="rounded bg-slate-100 px-1 font-semibold dark:bg-slate-800">{m[1]}</span>
+                {m[2]}
+              </>
+            ) : (
+              o.code
+            )}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CustomerLink({ customer }: { customer: NonNullable<OrderRow['customer']> }) {
   const { open } = useDetail();
   return (
@@ -101,84 +178,47 @@ function CustomerLink({ customer }: { customer: NonNullable<OrderRow['customer']
       }}
       className="text-left text-brand-700 hover:underline dark:text-brand-50"
     >
-      <span className="block">{customer.name ?? customer.code}</span>
-      {customer.phone && <span className="block text-xs text-slate-500">{customer.phone}</span>}
+      {customer.name ?? customer.code}
     </button>
   );
 }
 
+const dash = <span className="text-slate-400">–</span>;
+
 const columns: Column<OrderRow>[] = [
-  {
-    key: 'code',
-    header: 'Mã đơn',
-    render: (o) => (
-      <div>
-        <p className="font-mono text-xs font-medium">{o.code}</p>
-        {o.trackingNo && <p className="font-mono text-xs text-slate-500">{o.trackingNo}</p>}
-      </div>
-    ),
-  },
-  {
-    key: 'time',
-    header: 'Thời gian',
-    className: 'hidden whitespace-nowrap tabular-nums text-slate-600 md:table-cell dark:text-slate-400',
-    render: (o) =>
-      new Date(o.orderedAt).toLocaleString('vi-VN', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-        timeZone: 'Asia/Ho_Chi_Minh',
-      }),
-  },
-  {
-    key: 'customer',
-    header: 'Khách hàng',
-    className: 'hidden whitespace-nowrap md:table-cell',
-    render: (o) =>
-      o.customer ? <CustomerLink customer={o.customer} /> : <span className="text-slate-400">–</span>,
-  },
-  {
-    key: 'carrier',
-    header: 'Vận chuyển',
-    className: 'hidden whitespace-nowrap lg:table-cell',
-    render: (o) =>
-      o.carrier ? (
-        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
-          {o.carrier}
-        </span>
-      ) : (
-        <span className="text-slate-400">–</span>
-      ),
-  },
+  { key: 'code', header: 'Mã đơn', render: (o) => <OrderCode o={o} /> },
   {
     key: 'shipBy',
     header: 'Hạn bàn giao',
-    className: 'hidden whitespace-nowrap xl:table-cell',
+    className: 'whitespace-nowrap',
     render: (o) => {
-      if (!o.shipByAt) return <span className="text-slate-400">–</span>;
+      if (!o.shipByAt) return dash;
       const late = new Date(o.shipByAt) < new Date() && ['new', 'confirmed', 'packing'].includes(o.status);
-      return (
-        <span className={late ? 'font-medium text-rose-600' : ''}>
-          {new Date(o.shipByAt).toLocaleString('vi-VN', {
-            dateStyle: 'short',
-            timeStyle: 'short',
-            timeZone: 'Asia/Ho_Chi_Minh',
-          })}
-        </span>
-      );
+      return <span className={late ? 'font-medium text-rose-600' : ''}>{fmtTime(o.shipByAt)}</span>;
     },
   },
   {
-    key: 'channel',
-    header: 'Kênh',
-    className: 'hidden whitespace-nowrap lg:table-cell',
-    render: (o) => o.channel.name,
+    key: 'carrier',
+    header: 'ĐVVC',
+    className: 'whitespace-nowrap',
+    render: (o) =>
+      o.carrier ? (
+        <div>
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
+            {o.carrier}
+          </span>
+          {o.trackingNo && <p className="mt-0.5 font-mono text-xs text-slate-500">{o.trackingNo}</p>}
+        </div>
+      ) : (
+        dash
+      ),
   },
   {
     key: 'items',
-    header: 'Hàng',
-    className: 'min-w-48',
+    header: 'Sản phẩm',
+    className: 'min-w-56',
     render: (o) => (
-      <div className="max-w-md">
+      <div className="max-w-sm">
         {o.items.slice(0, 2).map((i, n) => (
           <p key={`${i.sku}-${n}`} className="line-clamp-1">
             <span className="tabular-nums text-slate-500">{i.qty}×</span> {i.name}
@@ -189,11 +229,51 @@ const columns: Column<OrderRow>[] = [
     ),
   },
   {
+    key: 'customer',
+    header: 'Khách hàng',
+    className: 'whitespace-nowrap',
+    render: (o) => (o.customer ? <CustomerLink customer={o.customer} /> : dash),
+  },
+  {
+    key: 'phone',
+    header: 'SĐT',
+    className: 'whitespace-nowrap tabular-nums',
+    render: (o) => o.customer?.phone ?? dash,
+  },
+  {
+    key: 'address',
+    header: 'Địa chỉ',
+    className: 'min-w-48',
+    render: (o) => {
+      const a = o.shipAddress ?? o.shipProvince ?? o.customer?.addressLine;
+      return a ? <p className="line-clamp-2 max-w-xs text-slate-600 dark:text-slate-400">{a}</p> : dash;
+    },
+  },
+  {
+    key: 'note',
+    header: 'Ghi chú',
+    className: 'min-w-32',
+    render: (o) =>
+      o.note ? <p className="line-clamp-2 max-w-xs text-slate-600 dark:text-slate-400">{o.note}</p> : dash,
+  },
+  {
     key: 'total',
-    header: 'Tổng',
+    header: 'Tổng tiền',
     align: 'right',
     className: 'whitespace-nowrap tabular-nums',
     render: (o) => formatVnd(o.total),
+  },
+  {
+    key: 'created',
+    header: 'Thời gian tạo',
+    className: 'whitespace-nowrap tabular-nums text-slate-600 dark:text-slate-400',
+    render: (o) => fmtTime(o.orderedAt),
+  },
+  {
+    key: 'updated',
+    header: 'Cập nhật',
+    className: 'whitespace-nowrap tabular-nums text-slate-600 dark:text-slate-400',
+    render: (o) => fmtTime(o.updatedAt),
   },
   {
     key: 'status',
@@ -207,7 +287,7 @@ const columns: Column<OrderRow>[] = [
 ];
 
 function OrdersList() {
-  const { open } = useDetail();
+  const { open, selected } = useDetail();
   const [qs, setQs] = useQueryState({
     q: '',
     channel: '',
@@ -331,6 +411,7 @@ function OrdersList() {
         rows={res?.data ?? []}
         rowKey={(o) => o.id}
         onRowClick={(o) => open('order', o.code)}
+        isSelected={(o) => selected.order === o.code}
         page={Number(qs.page)}
         pageSize={50}
         total={res?.total}

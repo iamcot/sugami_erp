@@ -118,6 +118,7 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
   const cost = order.lines.reduce((a, l) => a + (l.costSnapshot ?? 0) * l.qty, 0);
   const knownCost = order.lines.every((l) => l.costSnapshot !== null && l.variantId !== null);
   const afterDiscount = order.subtotal - order.discount;
+  const isMarketplace = ['shopee', 'tiktok'].includes(order.channel.code);
   const toCollect = order.codAmount || Math.max(0, order.total - order.paidAmount);
 
   return (
@@ -201,7 +202,15 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
             </Section>
             <Section title="Thanh toán">
               <Row label="Khách đã trả" value={formatVnd(order.paidAmount)} />
-              <Row label="Còn cần thu (COD)" value={formatVnd(toCollect)} strong />
+              {isMarketplace ? (
+                <p className="mt-2 text-xs text-slate-500">
+                  Đơn sàn: tiền do {order.channel.name} thu và chuyển về sau đối soát, không phải COD. Số
+                  &quot;đã trả&quot; và &quot;cần thu&quot; từ KiotViet với đơn sàn thường không phản ánh
+                  thanh toán thật.
+                </p>
+              ) : (
+                <Row label="Còn cần thu (COD)" value={formatVnd(toCollect)} strong />
+              )}
               {order.platformFee > 0 && (
                 <>
                   <div className="my-1 border-t border-slate-200 dark:border-slate-800" />

@@ -3,7 +3,7 @@
 import { ArrowLeft, ExternalLink, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { CustomerDetail } from '@/components/customer-detail';
 import { OrderDetail } from '@/components/order-detail';
 
@@ -11,9 +11,11 @@ export type DetailType = 'order' | 'customer';
 
 interface DetailApi {
   open: (type: DetailType, code: string) => void;
+  /** Last opened code per type; stays after the drawer closes so lists can keep the row highlighted. */
+  selected: Partial<Record<DetailType, string>>;
 }
 
-const Ctx = createContext<DetailApi>({ open: () => undefined });
+const Ctx = createContext<DetailApi>({ open: () => undefined, selected: {} });
 
 /** Open an order or customer in the drawer from anywhere in the app. */
 export const useDetail = () => useContext(Ctx);
@@ -37,6 +39,29 @@ export function DetailProvider({ children }: { children: ReactNode }) {
     })
     .filter((d) => (d.type === 'order' || d.type === 'customer') && d.code);
   const top = stack[stack.length - 1];
+
+  const [selected, setSelected] = useState<DetailApi['selected']>({});
+  // Keep showing the last detail while the drawer slides out.
+  const [shown, setShown] = useState<typeof top>(undefined);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (top) {
+      setSelected((s) => (s[top.type] === top.code ? s : { ...s, [top.type]: top.code }));
+      setShown(top);
+      // Two frames so the closed position is painted first and the slide-in animates.
+      let f2 = 0;
+      const f1 = requestAnimationFrame(() => {
+        f2 = requestAnimationFrame(() => setVisible(true));
+      });
+      return () => {
+        cancelAnimationFrame(f1);
+        cancelAnimationFrame(f2);
+      };
+    }
+    setVisible(false);
+    const t = setTimeout(() => setShown(undefined), 300);
+    return () => clearTimeout(t);
+  }, [top?.type, top?.code]);
 
   const hrefWith = useCallback(
     (next: URLSearchParams) => {
@@ -68,20 +93,22 @@ export function DetailProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [top, close]);
 
-  const api = useMemo(() => ({ open }), [open]);
+  const api = useMemo(() => ({ open, selected }), [open, selected]);
 
   return (
     <Ctx.Provider value={api}>
       {children}
-      {top && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+      {shown && (
+        <div className={`fixed inset-0 z-50 flex justify-end ${visible ? '' : 'pointer-events-none'}`}>
           <button
             aria-label="Đóng"
-            className="absolute inset-0 bg-slate-900/40"
+            className={`absolute inset-0 bg-slate-900/40 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
             onClick={close}
             tabIndex={-1}
           />
-          <aside className="relative flex h-full w-full flex-col bg-slate-50 shadow-xl sm:w-[min(94vw,860px)] dark:bg-slate-950">
+          <aside
+            className={`relative flex h-full w-full flex-col bg-slate-50 shadow-xl transition-transform duration-300 ease-out sm:w-3/4 dark:bg-slate-950 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+          >
             <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
               {stack.length > 1 ? (
                 <button
@@ -92,12 +119,12 @@ export function DetailProvider({ children }: { children: ReactNode }) {
                 </button>
               ) : (
                 <span className="px-2 text-sm text-slate-500">
-                  {top.type === 'order' ? 'Đơn hàng' : 'Khách hàng'}
+                  {shown.type === 'order' ? 'Đơn hàng' : 'Khách hàng'}
                 </span>
               )}
               <div className="ml-auto flex items-center gap-1">
                 <Link
-                  href={`/${top.type === 'order' ? 'orders' : 'customers'}/${encodeURIComponent(top.code)}`}
+                  href={`/${shown.type === 'order' ? 'orders' : 'customers'}/${encodeURIComponent(shown.code)}`}
                   className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <ExternalLink className="size-4" /> Mở trang riêng
@@ -112,10 +139,10 @@ export function DetailProvider({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              {top.type === 'order' ? (
-                <OrderDetail key={top.code} code={top.code} embedded />
+              {shown.type === 'order' ? (
+                <OrderDetail key={shown.code} code={shown.code} embedded />
               ) : (
-                <CustomerDetail key={top.code} code={top.code} embedded />
+                <CustomerDetail key={shown.code} code={shown.code} embedded />
               )}
             </div>
           </aside>

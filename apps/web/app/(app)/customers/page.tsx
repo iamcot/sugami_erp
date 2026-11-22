@@ -99,7 +99,7 @@ const columns: Column<CustomerRow>[] = [
 ];
 
 function CustomersList() {
-  const { open } = useDetail();
+  const { open, selected } = useDetail();
   const [qs, setQs] = useQueryState({ q: '', group: '', sort: 'recent', page: '1' });
   const [search, setSearch] = useState(qs.q);
   const [res, setRes] = useState<ListResponse | null>(null);
@@ -184,6 +184,7 @@ function CustomersList() {
         rows={res?.data ?? []}
         rowKey={(c) => c.id}
         onRowClick={(c) => open('customer', c.code ?? c.id)}
+        isSelected={(c) => selected.customer === (c.code ?? c.id)}
         page={Number(qs.page)}
         pageSize={50}
         total={res?.total}

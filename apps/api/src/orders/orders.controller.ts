@@ -71,7 +71,9 @@ export class OrdersController {
         take: q.pageSize,
         include: {
           channel: { select: { code: true, name: true } },
-          customer: { select: { id: true, kiotvietCode: true, name: true, phone: true } },
+          customer: {
+            select: { id: true, kiotvietCode: true, name: true, phone: true, addressLine: true },
+          },
           lines: { select: { sku: true, name: true, qty: true }, orderBy: { sort: 'asc' } },
         },
       }),
@@ -94,6 +96,7 @@ export class OrdersController {
               code: o.customer.kiotvietCode,
               name: o.customer.name,
               phone: o.customer.phone,
+              addressLine: o.customer.addressLine,
             }
           : null,
         status: o.status,
@@ -101,6 +104,10 @@ export class OrdersController {
         carrier: o.carrier,
         trackingNo: o.trackingNo,
         shipByAt: o.shipByAt?.toISOString() ?? null,
+        shipAddress: o.shipAddress,
+        shipProvince: o.shipProvince,
+        note: o.internalNote,
+        updatedAt: o.updatedAt.toISOString(),
         total: Number(o.total),
         orderedAt: o.orderedAt.toISOString(),
         items: o.lines.map((l) => ({ sku: l.sku, name: l.name, qty: Number(l.qty) })),

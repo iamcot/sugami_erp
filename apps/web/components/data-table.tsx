@@ -29,6 +29,7 @@ export function DataTable<T>({
   rowKey,
   rowHref,
   onRowClick,
+  isSelected,
   sort,
   onSort,
   page,
@@ -44,6 +45,8 @@ export function DataTable<T>({
   rowHref?: (row: T) => string;
   /** Click anywhere on a row (e.g. open a detail drawer). */
   onRowClick?: (row: T) => void;
+  /** Row highlighted as the one last opened. */
+  isSelected?: (row: T) => boolean;
   sort?: SortState;
   onSort?: (s: SortState) => void;
   page?: number;
@@ -119,7 +122,10 @@ export function DataTable<T>({
                 <tr
                   key={rowKey(r)}
                   className={cn(
-                    'group hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                    'group',
+                    isSelected?.(r)
+                      ? 'bg-brand-50 dark:bg-brand-700/20'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50',
                     onRowClick && 'cursor-pointer',
                   )}
                   onClick={onRowClick ? () => onRowClick(r) : undefined}
@@ -132,7 +138,10 @@ export function DataTable<T>({
                         alignClass(c.align),
                         c.className,
                         c.sticky &&
-                          'sticky right-0 bg-white shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-slate-50 dark:bg-slate-900 dark:group-hover:bg-slate-800',
+                          (isSelected?.(r)
+                            ? 'bg-brand-50 dark:bg-brand-700/20'
+                            : 'bg-white group-hover:bg-slate-50 dark:bg-slate-900 dark:group-hover:bg-slate-800') +
+                            ' sticky right-0 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]',
                       )}
                     >
                       {href && i === 0 ? (
