@@ -1,7 +1,7 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { ImageOff, RefreshCw, Search } from 'lucide-react';
+import { ImageOff, Plus, RefreshCw, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
@@ -312,6 +312,11 @@ function ProductsList() {
         description={counts.all !== undefined ? `${counts.all.toLocaleString('vi-VN')} sản phẩm` : undefined}
         actions={
           <>
+            <Link href="/products/new">
+              <Button>
+                <Plus className="size-4" /> Thêm sản phẩm
+              </Button>
+            </Link>
             <Button variant="secondary" disabled={syncing} onClick={sync}>
               <RefreshCw className={`size-4 ${syncing ? 'animate-spin' : ''}`} /> Đồng bộ từ Pancake
             </Button>

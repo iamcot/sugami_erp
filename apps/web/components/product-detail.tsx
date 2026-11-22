@@ -5,6 +5,7 @@ import { formatVnd } from '@sugami/shared';
 import { CloudUpload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
+import { AddVariantForm, ProductEditPanel, VariantEditRow } from '@/components/product-edit';
 import { ProductContent } from '@/components/product-content';
 import { PancakePush } from '@/components/pancake-push';
 import { useDetail } from '@/components/detail-drawer';
@@ -30,7 +31,7 @@ interface Product {
   name: string;
   status: 'active' | 'draft' | 'archived';
   description: string | null;
-  category: { name: string } | null;
+  category: { id?: string; name: string } | null;
   brand: { name: string } | null;
   options: string[];
   listings: {
@@ -125,6 +126,14 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pancakeOpen, setPancakeOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editSku, setEditSku] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
+  const reload = () => {
+    setEditing(false);
+    setEditSku(null);
+    setVersion((v) => v + 1);
+  };
 
   useEffect(() => {
     api<{ product: Product }>(`/products/${encodeURIComponent(decodeURIComponent(code))}`)
@@ -134,7 +143,7 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
         setHistory(h.data);
       })
       .catch((e: Error) => setError(e.message));
-  }, [code]);
+  }, [code, version]);
 
   if (error) return <p className="text-rose-600">{error}</p>;
   if (!product) return <p className="text-slate-500">Đang tải…</p>;
@@ -151,6 +160,9 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
         description={[product.code, product.category?.name, product.brand?.name].filter(Boolean).join(' · ')}
         actions={
           <>
+            <Button variant="secondary" onClick={() => setEditing((e) => !e)}>
+              Sửa
+            </Button>
             <Button variant="secondary" onClick={() => setPancakeOpen((o) => !o)}>
               <CloudUpload className="size-4" /> Pancake
             </Button>
@@ -160,6 +172,7 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
           </>
         }
       />
+      {editing && <ProductEditPanel product={product} onSaved={reload} onClose={() => setEditing(false)} />}
       {pancakeOpen && <PancakePush code={product.code} onClose={() => setPancakeOpen(false)} />}
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -212,56 +225,80 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
                 <th className="px-4 py-2 text-right font-medium">Giá vốn</th>
                 <th className="px-4 py-2 text-right font-medium">Tồn</th>
                 <th className="px-4 py-2 font-medium">Theo kho</th>
+                <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {product.variants.map((v) => (
-                <tr key={v.id} className={v.status === 'inactive' ? 'opacity-50' : ''}>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-2">
-                      {v.imageUrls[0] && (
-                        <img
-                          src={v.imageUrls[0]}
-                          alt=""
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          className="size-9 shrink-0 rounded border border-slate-200 object-cover dark:border-slate-800"
-                        />
+              {product.variants.map((v) =>
+                editSku === v.sku ? (
+                  <VariantEditRow
+                    key={v.id}
+                    variant={v}
+                    colSpan={8}
+                    onSaved={reload}
+                    onClose={() => setEditSku(null)}
+                  />
+                ) : (
+                  <tr key={v.id} className={v.status === 'inactive' ? 'opacity-50' : ''}>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        {v.imageUrls[0] && (
+                          <img
+                            src={v.imageUrls[0]}
+                            alt=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            className="size-9 shrink-0 rounded border border-slate-200 object-cover dark:border-slate-800"
+                          />
+                        )}
+                        <span>
+                          {v.optionValues.length ? (
+                            v.optionValues.join(' / ')
+                          ) : (
+                            <span className="text-slate-400">Mặc định</span>
+                          )}
+                          {v.status === 'inactive' && (
+                            <span className="ml-1 text-xs text-slate-500">(ngừng)</span>
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 font-mono text-xs">{v.sku}</td>
+                    <td className="px-4 py-2 font-mono text-xs text-slate-500">{v.barcode ?? '–'}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{formatVnd(v.price)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-500">
+                      {formatVnd(v.costAvg)}
+                    </td>
+                    <td
+                      className={`px-4 py-2 text-right tabular-nums ${v.onHand < 0 ? 'font-medium text-rose-600' : ''}`}
+                    >
+                      {v.onHand.toLocaleString('vi-VN')}
+                      {v.minStock > 0 && v.onHand <= v.minStock && (
+                        <span className="ml-1 text-xs text-amber-600">sắp hết</span>
                       )}
-                      <span>
-                        {v.optionValues.length ? (
-                          v.optionValues.join(' / ')
-                        ) : (
-                          <span className="text-slate-400">Mặc định</span>
-                        )}
-                        {v.status === 'inactive' && (
-                          <span className="ml-1 text-xs text-slate-500">(ngừng)</span>
-                        )}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 font-mono text-xs">{v.sku}</td>
-                  <td className="px-4 py-2 font-mono text-xs text-slate-500">{v.barcode ?? '–'}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatVnd(v.price)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-slate-500">{formatVnd(v.costAvg)}</td>
-                  <td
-                    className={`px-4 py-2 text-right tabular-nums ${v.onHand < 0 ? 'font-medium text-rose-600' : ''}`}
-                  >
-                    {v.onHand.toLocaleString('vi-VN')}
-                    {v.minStock > 0 && v.onHand <= v.minStock && (
-                      <span className="ml-1 text-xs text-amber-600">sắp hết</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-xs text-slate-500">
-                    {v.stock.length
-                      ? v.stock.map((s) => `${s.warehouse}: ${s.onHand.toLocaleString('vi-VN')}`).join(' · ')
-                      : '–'}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-2 text-xs text-slate-500">
+                      {v.stock.length
+                        ? v.stock
+                            .map((s) => `${s.warehouse}: ${s.onHand.toLocaleString('vi-VN')}`)
+                            .join(' · ')
+                        : '–'}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <button
+                        className="text-xs font-medium text-brand-600 hover:underline"
+                        onClick={() => setEditSku(v.sku)}
+                      >
+                        Sửa
+                      </button>
+                    </td>
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
         </div>
+        <AddVariantForm code={product.code} options={product.options} onSaved={reload} />
       </Card>
 
       {product.listings.length > 0 && (
