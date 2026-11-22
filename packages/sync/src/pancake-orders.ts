@@ -47,6 +47,8 @@ export interface OrderSyncSummary {
   unknownSkus: string[];
   /** Order lines with no SKU: the listing is not linked to a Pancake product, so no stock is deducted. */
   unlinkedLines: number;
+  /** Orders Pancake created earlier that were duplicates of a KiotViet invoice: removed (stock given back). */
+  duplicatesMerged: number;
   /** Marketplace codes learned from orders that exist in KiotViet too (code → Sugami variant). */
   skuMap: { learned: number; conflicts: number; ambiguous: number };
   newOrders: NewOrder[];
@@ -81,6 +83,7 @@ export async function syncPancakeOrders(
     customers: { created: 0, linked: 0 },
     unknownSkus: [],
     unlinkedLines: 0,
+    duplicatesMerged: 0,
     skuMap: { learned: 0, conflicts: 0, ambiguous: 0 },
     newOrders: [],
     errors: [],
@@ -256,6 +259,7 @@ export async function syncPancakeOrders(
       shippingFee: big(o.shippingFee ?? 0),
       carrier: o.carrier?.slice(0, 255) ?? null,
       trackingNo: o.trackingNo?.slice(0, 255) ?? null,
+      externalCode: o.marketplaceCode ?? null,
       shipByAt: o.shipByAt ?? null,
       shipAddress: o.shipAddress?.slice(0, 500) ?? null,
       shipPhone: o.shipPhone?.slice(0, 32) ?? null,
@@ -286,7 +290,6 @@ export async function syncPancakeOrders(
           data: {
             code: o.code,
             channelId: chId,
-            externalCode: o.marketplaceCode ?? null,
             customerId: buyerId,
             warehouseId: opts.warehouseId,
             orderedAt: o.orderedAt,
@@ -330,6 +333,35 @@ export async function syncPancakeOrders(
 
     // Order already known. One imported from KiotViet keeps KiotViet's data; only a cancellation is applied.
     const fromKiotViet = prev.kiotvietInvoiceCode !== null;
+    // An order Pancake created before the KiotViet invoice was imported (their numbers did not match yet)
+    // is a duplicate of that invoice: give its stock back and drop it; the KiotViet order stays.
+    const twin = fromKiotViet ? byCode.get(o.code) : undefined;
+    if (twin && twin.id !== prev.id && twin.kiotvietInvoiceCode === null) {
+      summary.duplicatesMerged++;
+      if (!opts.dryRun) {
+        await withLedgerTx(db, async (tx) => {
+          if (twin.stockAppliedAt !== null) {
+            const moved = await tx.stockMovement.findMany({
+              where: { refType: 'order', refId: twin.id, type: 'sale_out' },
+              select: { variantId: true, qtyDelta: true },
+            });
+            await applyMovements(
+              tx,
+              moved.map((m) => ({
+                warehouseId: opts.warehouseId,
+                variantId: m.variantId,
+                qtyDelta: m.qtyDelta.neg(),
+                type: 'return_in' as const,
+                refType: 'order',
+                refId: twin.id,
+                note: `Gộp đơn trùng ${o.code} với ${prev.code}`,
+              })),
+            );
+          }
+          await tx.order.delete({ where: { id: twin.id } });
+        });
+      }
+    }
     // The same order on both sides tells which Sugami variant a marketplace code stands for.
     const unlinked = o.lines
       .filter((l) => !l.externalVariantId)
@@ -419,6 +451,7 @@ export async function syncPancakeOrders(
       prev.carrier !== fields.carrier ||
       prev.trackingNo !== fields.trackingNo ||
       prev.shipByAt?.getTime() !== fields.shipByAt?.getTime() ||
+      (!fromKiotViet && prev.externalCode !== fields.externalCode) ||
       prev.shipAddress !== fields.shipAddress ||
       prev.shipPhone !== fields.shipPhone ||
       prev.shipProvince !== fields.shipProvince ||
@@ -536,6 +569,7 @@ function mergeSummaries(a: OrderSyncSummary, b: OrderSyncSummary): OrderSyncSumm
     },
     unknownSkus: [...new Set([...a.unknownSkus, ...b.unknownSkus])].sort(),
     unlinkedLines: a.unlinkedLines + b.unlinkedLines,
+    duplicatesMerged: a.duplicatesMerged + b.duplicatesMerged,
     skuMap: {
       learned: a.skuMap.learned + b.skuMap.learned,
       conflicts: a.skuMap.conflicts + b.skuMap.conflicts,

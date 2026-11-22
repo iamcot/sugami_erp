@@ -213,6 +213,20 @@ describe('mapping', () => {
     expect(parseDeadline('garbage')).toBeUndefined();
   });
 
+  it('uses the display id as the marketplace order number when the invoice list has none', () => {
+    const base = { invoice_info_list: [], is_from_ecommerce: true };
+    expect(
+      toExternalOrder(Order.parse(order({ ...base, display_id: '2611220ND1CP8V' }))).marketplaceCode,
+    ).toBe('2611220ND1CP8V');
+    expect(
+      toExternalOrder(Order.parse(order({ ...base, display_id: 1418 }))).marketplaceCode,
+    ).toBeUndefined();
+    expect(
+      toExternalOrder(Order.parse(order({ ...base, is_from_ecommerce: false, display_id: 'AB12CD34EF' })))
+        .marketplaceCode,
+    ).toBeUndefined();
+  });
+
   it('reads the shipping carrier and tracking number from the partner', () => {
     const o = toExternalOrder(
       Order.parse(order({ partner: { partner_name: ' SPX ', extend_code: 'SPXVN0123456789' } })),

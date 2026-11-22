@@ -96,3 +96,8 @@ pnpm pancake:probe
 - Dòng đơn Pancake chưa liên kết sản phẩm chỉ có tên bắt đầu bằng mã của sàn (`207086204498 - …`). Khi cùng một đơn có ở KiotViet (dòng đã biết mã hàng) và ở Pancake, Sugami ghép hai phía: một dòng mỗi bên thì chắc chắn; nhiều dòng thì chỉ ghép khi số lượng là duy nhất, còn lại tính là "chưa chắc".
 - Lưu ở `external_refs` (provider `pancake_sku`, entity `variant`). Đơn mới có mã đó được gán đúng mã hàng (trừ tồn đúng SKU); ảnh sản phẩm từ tin đăng cũng dùng bảng này.
 - Mã đã map sang biến thể khác thì giữ mã đầu tiên và tính là "mâu thuẫn".
+
+## Mã đơn sàn trên đơn Pancake
+
+- Đơn Shopee/TikTok trong Pancake có `display_id` chính là mã đơn sàn (ví dụ `2611220ND1CP8V`, mã Pancake `PC2611220ND1CP8V`); `invoice_info_list[].order_sn` thường trống. Sugami dùng `order_sn` nếu có, không thì dùng `display_id` của đơn từ sàn (chuỗi có chữ hoặc từ 12 ký tự; đơn tạo trong Pancake có số nhỏ nên bị loại).
+- Nhờ vậy đơn Pancake nối được với hóa đơn KiotViet (`HDSPE_…`) cùng mã đơn sàn. Đơn Pancake đã tạo trước đó thành bản trùng sẽ được gộp: bản Pancake bị xóa, tồn đã trừ được hoàn lại, bản KiotViet được giữ và bổ sung ĐVVC, địa chỉ, phí sàn.

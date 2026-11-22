@@ -165,6 +165,19 @@ export function feeDetailOf(o: Order): Record<string, number> | undefined {
   return Object.keys(out).length ? out : undefined;
 }
 
+/**
+ * Marketplace order number. Pancake's invoice list carries it when filled; for marketplace orders the
+ * Pancake display id is the marketplace number itself ("2611220ND1CP8V"), while orders made in Pancake
+ * have small numeric ids, so a marketplace order falls back to the display id when it looks like one.
+ */
+export function marketplaceCodeOf(o: Order): string | undefined {
+  const sn = o.invoice_info_list?.find((i) => i.order_sn)?.order_sn?.trim();
+  if (sn) return sn;
+  if (!o.is_from_ecommerce || o.display_id === null || o.display_id === undefined) return undefined;
+  const id = String(o.display_id).trim();
+  return /\D/.test(id) || id.length >= 12 ? id : undefined;
+}
+
 /** Pancake order → channel-neutral order. The buyer is only the nickname (and phone when unmasked); the shipping address is kept as text for the order. */
 export function toExternalOrder(o: Order): ExternalOrder {
   const status = ORDER_STATUS[o.status];
@@ -172,7 +185,7 @@ export function toExternalOrder(o: Order): ExternalOrder {
   return {
     externalId: String(o.id),
     code: `PC${o.display_id ?? o.id}`,
-    marketplaceCode: o.invoice_info_list?.find((i) => i.order_sn)?.order_sn ?? undefined,
+    marketplaceCode: marketplaceCodeOf(o),
     saleChannel: channelOfOrder(o),
     status,
     currency: o.order_currency ?? undefined,

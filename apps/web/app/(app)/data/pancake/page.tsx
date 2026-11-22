@@ -20,6 +20,7 @@ interface Summary {
   stock: { applied: number; beforeSnapshot: number; reversed: number };
   unknownSkus: string[];
   unlinkedLines: number;
+  duplicatesMerged: number;
   skuMap: { learned: number; conflicts: number; ambiguous: number };
   newOrders: { code: string; channel: string; total: number }[];
   errors: { code: string; message: string }[];
@@ -199,6 +200,11 @@ export default function PancakePage() {
               label="Dòng hàng chưa liên kết"
               value={fmt(res.unlinkedLines)}
               hint="Tin đăng chưa nối sản phẩm Pancake, không trừ tồn"
+            />
+            <Stat
+              label="Đơn trùng đã gộp"
+              value={fmt(res.duplicatesMerged)}
+              hint="Đơn Pancake tạo trước khi nhập hóa đơn KiotViet, bỏ bản trùng và hoàn tồn"
             />
             <Stat
               label="Mã sàn ↔ mã Sugami"
