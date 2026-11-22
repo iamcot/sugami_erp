@@ -48,9 +48,16 @@ export function channelOfOrder(o: Order): string {
   return 'store';
 }
 
-/** SKU of a variation: its display code (KiotViet code after import), else barcode, else Pancake id. */
-export const variationSku = (v: { display_id?: string | null; barcode?: string | null; id?: string }) =>
-  v.display_id || v.barcode || v.id || '';
+/**
+ * SKU of a variation: seller code (`custom_id`, set when Sugami pushes a product), else display code
+ * (KiotViet code after import), else barcode, else Pancake id.
+ */
+export const variationSku = (v: {
+  custom_id?: string | null;
+  display_id?: string | null;
+  barcode?: string | null;
+  id?: string;
+}) => v.custom_id || v.display_id || v.barcode || v.id || '';
 
 export function toExternalVariant(v: Variation): ExternalVariant {
   const stock: Record<string, number> = {};
@@ -110,12 +117,15 @@ export function toExternalOrder(o: Order): ExternalOrder {
     marketplaceCode: o.invoice_info_list?.find((i) => i.order_sn)?.order_sn ?? undefined,
     saleChannel: channelOfOrder(o),
     status,
+    currency: o.order_currency ?? undefined,
     orderedAt: parsePancakeTime(o.inserted_at),
     total: o.total_price ?? 0,
     shippingFee: o.shipping_fee ?? undefined,
     platformFee: o.fee_marketplace ?? undefined,
     lines: o.items.map((i) => ({
+      externalVariantId: i.variation_id ?? undefined,
       sku: variationSku({
+        custom_id: i.variation_info?.custom_id,
         display_id: i.variation_info?.display_id,
         barcode: i.variation_info?.barcode,
         id: i.variation_id ?? undefined,

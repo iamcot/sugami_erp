@@ -9,7 +9,8 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { PancakeClient, PancakeError, type PushProductInput } from '@sugami/channels-pancake';
+import { PancakeAdapter, PancakeClient, PancakeError, type PushProductInput } from '@sugami/channels-pancake';
+import { runPancakeOrderSync } from '@sugami/sync';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
@@ -20,6 +21,12 @@ const Body_ = z.object({
   /** Preview only (default). Nothing is written to Pancake unless this is false. */
   dryRun: z.boolean().default(true),
   warehouseId: z.string().trim().min(1).max(64).optional(),
+});
+
+const SyncBody = z.object({
+  dryRun: z.boolean().default(true),
+  /** Only used when the sync has never run: how far back to look. */
+  sinceDays: z.number().int().min(1).max(60).default(14),
 });
 
 /** Manual, one-product-at-a-time writes to Pancake for the trial. */
@@ -97,6 +104,24 @@ export class PancakeController {
     const { dryRun, warehouseId } = parseInput(Body_, raw ?? {});
     return this.guard(async () =>
       syncProductStock(this.client(), await this.load(code), { dryRun, warehouseId }),
+    );
+  }
+
+  /**
+   * Run one Pancake order sync now (the worker does the same every 5 minutes). Preview by default:
+   * shows which orders would be created and how much stock they would take, writing nothing.
+   */
+  @Post('sync-orders')
+  @HttpCode(200)
+  @RequirePermissions('orders.write', 'inventory.write')
+  syncOrders(@Body() raw: unknown) {
+    const { dryRun, sinceDays } = parseInput(SyncBody, raw ?? {});
+    return this.guard(() =>
+      runPancakeOrderSync(this.prisma.client, new PancakeAdapter(this.client()), {
+        warehouseCode: process.env.PANCAKE_SYNC_WAREHOUSE || 'KHO-CHINH',
+        dryRun,
+        sinceDays,
+      }),
     );
   }
 }

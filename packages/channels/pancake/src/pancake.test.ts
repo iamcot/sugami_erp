@@ -165,8 +165,8 @@ describe('mapping', () => {
       platformFee: 25000,
     });
     expect(o.lines).toEqual([
-      { sku: 'SP000001', name: 'Xe đua mini - Đỏ', quantity: 2, unitPrice: 140000 },
-      { sku: 'SP000002', name: 'Búp bê', quantity: 1, unitPrice: 90000 },
+      { externalVariantId: 'v-1', sku: 'SP000001', name: 'Xe đua mini - Đỏ', quantity: 2, unitPrice: 140000 },
+      { externalVariantId: 'v-2', sku: 'SP000002', name: 'Búp bê', quantity: 1, unitPrice: 90000 },
     ]);
     expect(JSON.stringify(o)).not.toContain('0900000000');
   });

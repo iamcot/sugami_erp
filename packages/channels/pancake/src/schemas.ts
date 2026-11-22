@@ -41,7 +41,9 @@ export const OrderItem = z.looseObject({
   discount_each_product: int,
   is_discount_percent: z.boolean().nullish(),
   is_bonus_product: z.boolean().nullish(),
-  variation_info: z.looseObject({ name: str, display_id: str, barcode: str, retail_price: int }).nullish(),
+  variation_info: z
+    .looseObject({ name: str, display_id: str, custom_id: str, barcode: str, retail_price: int })
+    .nullish(),
 });
 
 export const Order = z.looseObject({

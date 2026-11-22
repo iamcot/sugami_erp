@@ -713,3 +713,12 @@ model PushSubscription {
   @@index([userId])
   @@map("push_subscriptions")
 }
+
+/// Where a background sync stopped, e.g. key "pancake:orders" = last time all changes were pulled.
+model SyncCursor {
+  key       String   @id @db.VarChar(64)
+  cursor    DateTime
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("sync_cursors")
+}

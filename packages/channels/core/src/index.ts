@@ -42,6 +42,8 @@ export interface ExternalProduct {
 }
 
 export interface ExternalOrderLine {
+  /** Id of the variation on the source system, to resolve the SKU when the order carries none. */
+  externalVariantId?: string;
   sku: string;
   name: string;
   quantity: number;
@@ -56,6 +58,8 @@ export interface ExternalOrder {
   marketplaceCode?: string;
   saleChannel?: string;
   status: string;
+  /** ISO currency of the amounts; undefined when the source does not say. */
+  currency?: string;
   orderedAt: Date;
   total: number;
   shippingFee?: number;
