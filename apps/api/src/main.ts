@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module.js';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   // Behind Cloudflare Tunnel / Next.js rewrites: trust the first proxy for req.ip.
   app.set('trust proxy', 1);
   app.use(cookieParser());

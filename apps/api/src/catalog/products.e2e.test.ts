@@ -162,4 +162,27 @@ describe.skipIf(!process.env.DATABASE_URL)('product + order lists (MySQL)', () =
       lines: [{ qty: 1, price: 200000 }],
     });
   });
+
+  it('lists inventory per SKU and warehouse with views and totals', async () => {
+    const res = await get(`/api/inventory?q=${run}&sort=stock&dir=desc`);
+    expect(res.body.data.map((r: { sku: string; onHand: number }) => [r.sku, r.onHand])).toEqual([
+      [`${run}A1`, 5],
+      [`${run}B1`, 0],
+      [`${run}A2`, -2],
+    ]);
+    expect(res.body.data[0].byWarehouse).toEqual({ [`PL-${run}`]: 5 });
+    expect(res.body.totals).toMatchObject({ units: 5, negative: 1, out: 2 });
+    const neg = await get(`/api/inventory?q=${run}&view=negative`);
+    expect(neg.body.data.map((r: { sku: string }) => r.sku)).toEqual([`${run}A2`]);
+    await http().get('/api/inventory?view=bad').set('Cookie', cookie).expect(400);
+  });
+
+  it('builds the dashboard from orders and stock', async () => {
+    const res = await get('/api/dashboard');
+    expect(res.body.today.orders).toBeGreaterThanOrEqual(1);
+    expect(res.body.today.revenue).toBeGreaterThanOrEqual(200000);
+    expect(res.body.series).toHaveLength(14);
+    expect(res.body.series.at(-1).byChannel.shopee).toBeGreaterThanOrEqual(200000);
+    expect(res.body.todo.negativeSkus).toBeGreaterThanOrEqual(1);
+  });
 });

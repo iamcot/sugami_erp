@@ -651,3 +651,25 @@ model OrderLine {
   @@index([variantId])
   @@map("order_lines")
 }
+
+// ---------------------------------------------------------------------------
+// Sync
+// ---------------------------------------------------------------------------
+
+/// Inbox for incoming webhooks: stored first, answered 200, processed later by the worker.
+model WebhookEvent {
+  id          String    @id @default(uuid(7)) @db.Char(36)
+  /// "pancake", "shopee", "tiktok".
+  provider    String    @db.VarChar(32)
+  eventType   String    @map("event_type") @db.VarChar(64)
+  /// Provider delivery id, or a SHA-256 of the body when the provider sends none (dedupes retries).
+  deliveryId  String    @map("delivery_id") @db.VarChar(128)
+  body        Json
+  receivedAt  DateTime  @default(now()) @map("received_at")
+  processedAt DateTime? @map("processed_at")
+  error       String?   @db.Text
+
+  @@unique([provider, deliveryId])
+  @@index([processedAt, receivedAt])
+  @@map("webhook_events")
+}

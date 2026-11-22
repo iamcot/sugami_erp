@@ -3,7 +3,7 @@
  * Shopee, ...) through this interface; channel specifics live in packages/channels/<name>.
  */
 
-export type ChannelCode = 'kiotviet' | 'tiktok' | 'shopee' | 'lazada' | 'manual';
+export type ChannelCode = 'kiotviet' | 'pancake' | 'tiktok' | 'shopee' | 'lazada' | 'manual';
 
 export interface ChannelCapabilities {
   pullProducts: boolean;
@@ -95,3 +95,35 @@ export interface ChannelAdapter {
   verifyWebhook?(req: RawRequest): boolean;
   parseWebhook?(req: RawRequest): ChannelEvent[];
 }
+
+/** Token bucket shared by channel clients: capacity = burst, refills to requestsPerHour over an hour. */
+export class RateLimiter {
+  private tokens: number;
+  private last: number;
+  private readonly perMs: number;
+
+  constructor(
+    requestsPerHour: number,
+    private readonly burst: number,
+    private readonly now: () => number,
+    private readonly sleep: (ms: number) => Promise<void>,
+  ) {
+    this.tokens = burst;
+    this.perMs = requestsPerHour / 3_600_000;
+    this.last = now();
+  }
+
+  async take(): Promise<void> {
+    for (;;) {
+      const t = this.now();
+      this.tokens = Math.min(this.burst, this.tokens + (t - this.last) * this.perMs);
+      this.last = t;
+      if (this.tokens >= 1) {
+        this.tokens -= 1;
+        return;
+      }
+      await this.sleep(Math.ceil((1 - this.tokens) / this.perMs));
+    }
+  }
+}
+

@@ -44,6 +44,9 @@ importers:
       '@sugami/channels-kiotviet':
         specifier: workspace:*
         version: link:../../packages/channels/kiotviet
+      '@sugami/channels-pancake':
+        specifier: workspace:*
+        version: link:../../packages/channels/pancake
       '@sugami/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -169,6 +172,22 @@ importers:
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@types/node@22.20.5)(vite@8.3.8(@types/node@22.20.5)(jiti@2.7.0))
+
+  packages/channels/pancake:
+    dependencies:
+      '@sugami/channels-core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^4.0.0
+        version: 4.6.7
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

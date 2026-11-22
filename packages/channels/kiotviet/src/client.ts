@@ -5,6 +5,10 @@
  * GET limit is ~5,000 requests/hour per store, so calls go through a token bucket.
  */
 
+import { RateLimiter } from '@sugami/channels-core';
+
+export { RateLimiter };
+
 export const KIOTVIET_TOKEN_URL = 'https://id.kiotviet.vn/connect/token';
 export const KIOTVIET_API_BASE = 'https://public.kiotapi.com';
 
@@ -47,37 +51,6 @@ export interface KiotVietPage<T> {
 }
 
 export type Query = Record<string, string | number | boolean | undefined>;
-
-/** Simple token bucket: capacity = burst, refills to requestsPerHour over an hour. */
-export class RateLimiter {
-  private tokens: number;
-  private last: number;
-  private readonly perMs: number;
-
-  constructor(
-    requestsPerHour: number,
-    private readonly burst: number,
-    private readonly now: () => number,
-    private readonly sleep: (ms: number) => Promise<void>,
-  ) {
-    this.tokens = burst;
-    this.perMs = requestsPerHour / 3_600_000;
-    this.last = now();
-  }
-
-  async take(): Promise<void> {
-    for (;;) {
-      const t = this.now();
-      this.tokens = Math.min(this.burst, this.tokens + (t - this.last) * this.perMs);
-      this.last = t;
-      if (this.tokens >= 1) {
-        this.tokens -= 1;
-        return;
-      }
-      await this.sleep(Math.ceil((1 - this.tokens) / this.perMs));
-    }
-  }
-}
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 

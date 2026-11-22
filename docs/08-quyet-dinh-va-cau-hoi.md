@@ -25,10 +25,11 @@
 | D8 | Web app + PWA cho kho, chưa làm app native | Đủ cho quy mô hiện tại |
 | D9 | Không nâng gói KiotViet. Trao đổi với KiotViet bằng **file Excel** cho tới khi kết nối thẳng Shopee/TikTok; nộp hồ sơ app sàn ngay (chủ shop chọn 22/11/2026) | Không tăng chi phí; đơn ít nên thao tác tay vài phút/tuần |
 | D10 | Giữ nguyên **mã hàng KiotViet làm SKU** (kể cả mã không theo mẫu `SP…`); sản phẩm = nhóm mã theo cột `Mã HH Liên quan` | Đơn và tồn hai bên khớp nhau theo mã, không phải đổi mã trên sàn |
+| D11 | **Dùng thử Pancake POS** (200k/tháng, thử 15 ngày, đối tác TikTok) làm lớp trung gian thay KiotViet: Sugami nối Pancake qua Open API + webhook; trong lúc thử KiotViet vẫn là bên duy nhất đẩy tồn | Bỏ xuất/nhập Excel bằng tay; không phải chờ Shopee/TikTok duyệt app |
 
 ## 8.3 Câu hỏi còn mở
 
-0. **Pancake POS làm lớp trung gian thay KiotViet?** (2026-11-22) Pancake có Open API + webhook (đơn, sản phẩm, tồn), là đối tác TikTok, giá 200k/tháng, dùng thử 15 ngày. Chưa kiểm chứng: Pancake có tự đẩy tồn lên Shopee/TikTok khi tồn đổi qua API không. Cần thử với 1 SKU trước khi quyết.
+0. **Pancake POS**: còn cần kiểm chứng các mục trong [pancake.md](pancake.md#chưa-kiểm-chứng-cần-dữ-liệu-thật) trong 15 ngày dùng thử.
 1. Đơn vị trung gian **chỉ có file Excel** (đã xác nhận). Còn cần: họ tính phí theo kg, theo m³, hay lấy số lớn hơn? Có phí mua hộ (% giá trị) không? Gửi 1–2 file mẫu cho task P2-07.
 2. Bạn đặt hàng trực tiếp trên Taobao/1688 rồi gửi về kho trung gian, hay đưa link để họ mua hộ?
 3. Ngoài Shopee và TikTok Shop, hiện có bán qua Facebook/Zalo hay cửa hàng không?
