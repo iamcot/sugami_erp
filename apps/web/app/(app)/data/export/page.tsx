@@ -45,7 +45,7 @@ export default function ExportPage() {
 
   return (
     <>
-      <PageHeader title="KiotViet" description="Trao đổi dữ liệu với KiotViet bằng file Excel" />
+      <PageHeader title="Đồng bộ dữ liệu" description="Trao đổi dữ liệu với KiotViet bằng file Excel" />
       <KiotVietTabs />
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
 

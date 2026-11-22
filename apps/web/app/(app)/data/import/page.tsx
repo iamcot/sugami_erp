@@ -148,7 +148,7 @@ export default function ImportPage() {
   return (
     <>
       <PageHeader
-        title="KiotViet"
+        title="Đồng bộ dữ liệu"
         description="Chạy lại cùng file nhiều lần không bị nhân đôi. Luôn xem trước rồi mới nhập."
       />
       <KiotVietTabs />

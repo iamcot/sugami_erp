@@ -2,14 +2,12 @@
 
 import { cn } from '@sugami/ui';
 import {
-  FileSpreadsheet,
+  RefreshCw,
   ClipboardList,
-  Images,
   LayoutDashboard,
   Package,
   Receipt,
   PenLine,
-  RefreshCw,
   Search,
   Settings,
   ShoppingBag,
@@ -27,22 +25,23 @@ import { UserMenu } from './user-menu';
 
 const nav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
-  { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/pos', label: 'Bán hàng', icon: Receipt },
   { href: '/orders', label: 'Đơn hàng', icon: ShoppingBag },
+  { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/customers', label: 'Khách hàng', icon: Users },
   { href: '#sourcing', label: 'Nguồn hàng', icon: Truck },
-  { href: '/media', label: 'Media', icon: Images },
-  { href: '#content', label: 'Content', icon: PenLine },
+  // Media is folded into Content for now (same page until Content has its own).
+  { href: '/media', label: 'Content', icon: PenLine },
   { href: '#reports', label: 'Báo cáo', icon: BarChart3 },
-  { href: '/data/import', label: 'KiotViet', icon: FileSpreadsheet },
+  { href: '/data/import', label: 'Đồng bộ', icon: RefreshCw },
 ];
 
 const mobileNav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
+  { href: '/pos', label: 'Bán hàng', icon: Receipt },
   { href: '/orders', label: 'Đơn', icon: ClipboardList },
   { href: '/products', label: 'Sản phẩm', icon: Package },
-  { href: '/media', label: 'Media', icon: Images },
+  { href: '/customers', label: 'Khách', icon: Users },
 ];
 
 function isActive(pathname: string, href: string) {

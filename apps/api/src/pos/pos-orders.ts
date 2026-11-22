@@ -3,6 +3,14 @@ import { toSearchKey } from '@sugami/shared';
 import { fulfillmentOf, holdsStock, posActions, SHIPPING_TEXT } from './pos-flow.js';
 import type { PosPayload } from './pos-schema.js';
 
+/** Hand-over deadline of a POS order: midnight (24h) at the end of the day after it was created, Vietnam time. */
+export function handoverDeadline(createdAt: Date): Date {
+  const VN = 7 * 3_600_000;
+  const DAY = 86_400_000;
+  const startOfDayVn = Math.floor((createdAt.getTime() + VN) / DAY) * DAY - VN;
+  return new Date(startOfDayVn + 2 * DAY);
+}
+
 export class PosError extends Error {
   constructor(
     message: string,
@@ -177,6 +185,7 @@ export async function createPosOrder(
             codAmount: big(t.cod),
             shippingFee: big(retail ? 0 : p.shippingFee),
             orderedAt: at,
+            shipByAt: handoverDeadline(at),
             paymentMethod: t.paid > 0 ? p.paymentMethod : null,
             completedAt: retail ? at : null,
             source: 'pos',

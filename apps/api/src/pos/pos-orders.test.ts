@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { posTotals } from './pos-orders.js';
+import { handoverDeadline, posTotals } from './pos-orders.js';
 import { PosPayload } from './pos-schema.js';
 
 const payload = (p: Partial<PosPayload>) =>
@@ -29,5 +29,17 @@ describe('posTotals', () => {
   });
   it('caps what is paid at the total', () => {
     expect(posTotals(payload({ paid: 9_000_000 }), 'retail').paid).toBe(250000);
+  });
+});
+
+describe('handoverDeadline', () => {
+  it('is midnight at the end of the day after creation, Vietnam time', () => {
+    // 23/11/2026 00:12 +07 -> 25/11/2026 00:00 +07
+    expect(handoverDeadline(new Date('2026-11-23T00:12:00+07:00')).toISOString()).toBe(
+      new Date('2026-11-25T00:00:00+07:00').toISOString(),
+    );
+    expect(handoverDeadline(new Date('2026-11-23T23:59:00+07:00')).toISOString()).toBe(
+      new Date('2026-11-25T00:00:00+07:00').toISOString(),
+    );
   });
 });

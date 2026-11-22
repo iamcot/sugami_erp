@@ -74,7 +74,7 @@ export default function PancakePage() {
   return (
     <>
       <PageHeader
-        title="KiotViet"
+        title="Đồng bộ dữ liệu"
         description="Đồng bộ đơn từ Pancake (Shopee VN, TikTok). Worker tự chạy mỗi 5 phút; trang này để xem trước hoặc chạy ngay."
       />
       <KiotVietTabs />
