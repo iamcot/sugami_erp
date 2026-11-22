@@ -83,9 +83,6 @@ export class PancakeClient {
 
   /** Write call. Pancake has no idempotency keys: callers check before they create. */
   async post<T>(path: string, body: unknown, query: Query = {}): Promise<T> {
-    // Safety switch for a dev machine that runs on a copy of production data: reads only.
-    if (process.env.PANCAKE_READONLY === 'on')
-      throw new PancakeError(`Pancake POST ${path} bị chặn: PANCAKE_READONLY=on (máy này chỉ đọc)`, 0);
     return this.request<T>('POST', path, query, body);
   }
 

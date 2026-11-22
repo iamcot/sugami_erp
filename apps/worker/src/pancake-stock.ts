@@ -4,7 +4,6 @@ import { runStockPush } from '@sugami/sync';
 
 /** One pass of the automatic stock push (does nothing while it is paused in settings or orders are behind). */
 export async function pancakeStockPass(db: PrismaClient, log: (msg: string) => void = console.log) {
-  if (process.env.PANCAKE_READONLY === 'on') return; // dev machine: never write to Pancake
   const code = process.env.PANCAKE_SYNC_WAREHOUSE || 'KHO-CHINH';
   const sugami = await db.warehouse.findUnique({ where: { code }, select: { id: true } });
   if (!sugami) return;
