@@ -20,7 +20,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Đang làm
 
-- Tiếp theo (không cần chủ shop): P0-10 prototype UI, P0-12 hướng dẫn Cloudflare Tunnel, P0-13 compose production + sao lưu.
+- P0-10 chờ duyệt giao diện.
+- ⛔ KiotViet chỉ mở Public API ở gói Cao cấp (shop đang dùng gói Chuyên nghiệp): chờ chủ shop chọn hướng thay thế (khuyến nghị: kết nối thẳng Shopee/TikTok + trao đổi Excel với KiotViet tạm thời).
 
 ## Bị chặn / chờ chủ shop
 
@@ -36,6 +37,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - 2026-11-22: Server là iMac của shop, Docker Compose, Cloudflare Tunnel. Tên miền **sugami.vn**: `erp.sugami.vn` (giao diện), `hooks.sugami.vn` (webhook).
 - 2026-11-22: MySQL 8.4 cài **native** trên iMac, không chạy trong Docker; container kết nối qua `host.docker.internal`.
 - 2026-11-22: Bỏ MinIO. Ảnh/video lưu trên **AWS S3 có sẵn của shop** (driver `s3`, prefix `sugami/`); driver `local` chỉ dùng cho dev/offline.
+- 2026-11-22: Gói KiotViet Chuyên nghiệp của shop **không có Public API** (chỉ gói Cao cấp). P0-06 probe giữ lại phòng khi nâng gói.
 - 2026-11-22: Đơn vị trung gian không có API, chỉ có file Excel → import Excel (P2-07).
 - 2026-11-22: Stack thực tế: Node 22, pnpm 10, TypeScript 6, Next.js 16, NestJS 12, Prisma 7 (MariaDB adapter), BullMQ 6 + ioredis, Tailwind 4, Vitest 5.
 - 2026-11-22: Claude viết toàn bộ code, commit thẳng lên `main` (không PR); mỗi task cập nhật file này trong commit cuối.
@@ -50,6 +52,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P0-04 Prisma 7 + MySQL: users/roles/audit_logs, collation 0900_ai_ci, seed | 2c78005 |
 | 2026-11-22 | P0-03 CI GitHub Actions (MySQL + Redis services) | 2a53d81 |
 | 2026-11-22 | Ảnh lưu trên AWS S3 có sẵn của shop | 3d62b98 |
+| 2026-11-22 | P0-10 prototype giao diện 5 màn hình (dữ liệu mẫu) | 84065e7 |
 | 2026-11-22 | P0-06 client KiotViet + script probe chỉ đọc (chưa chạy với store thật) | e3c0d6e |
 
 ## P0 — Chuẩn bị & xác minh
@@ -65,7 +68,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P0-07 | Báo cáo xác minh KiotViet `docs/kiotviet-verification.md` | ⬜ | | |
 | P0-08 | Đăng ký app Shopee Open Platform và TikTok Shop Partner Center | 👤 ⬜ | | |
 | P0-09 | Rà soát SKU | ⬜ | | |
-| P0-10 | Prototype UI 5 màn hình | ⬜ | | |
+| P0-10 | Prototype UI 5 màn hình | 🟡 | 84065e7 | Chờ chủ shop duyệt giao diện |
 | P0-11 | Chuẩn bị iMac | 👤 ⬜ | | |
 | P0-12 | Cloudflare Tunnel | ⬜ | | |
 | P0-13 | Compose production + script sao lưu đêm | ⬜ | | |
