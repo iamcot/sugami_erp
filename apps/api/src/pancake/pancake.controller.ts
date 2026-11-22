@@ -182,28 +182,49 @@ export class PancakeController {
     };
   }
 
-  /** Find Sugami variants to link a marketplace code to (by SKU, barcode or name). */
+  /**
+   * Find Sugami variants to link a marketplace code to. Matches an exact barcode, a SKU fragment, or every
+   * word of the name (any order, accents ignored). Long marketplace titles that match nothing are retried
+   * with fewer leading words, so pasting a whole title still suggests the likely product.
+   */
   @Get('variant-search')
   @RequirePermissions('catalog.read')
   async variantSearch(@Query('q') raw?: string) {
-    const q = (raw ?? '').trim().slice(0, 64);
+    const q = (raw ?? '').trim().slice(0, 200);
     if (q.length < 2) return { data: [] };
-    const rows = await this.prisma.client.variant.findMany({
-      where: {
-        product: { status: { not: 'archived' } },
-        OR: [{ sku: { contains: q } }, { barcode: q }, { product: { searchKey: { contains: toSearchKey(q) } } }],
-      },
-      take: 20,
-      orderBy: { sku: 'asc' },
-      select: {
-        id: true,
-        sku: true,
-        barcode: true,
-        price: true,
-        optionValues: true,
-        product: { select: { name: true } },
-      },
-    });
+    const db = this.prisma.client;
+    const words = toSearchKey(q)
+      .split(/\s+/)
+      .filter((w) => w.length >= 2)
+      .slice(0, 8);
+    const select = {
+      id: true,
+      sku: true,
+      barcode: true,
+      price: true,
+      optionValues: true,
+      product: { select: { name: true } },
+    } as const;
+    const find = (tokens: string[]) =>
+      db.variant.findMany({
+        where: {
+          product: { status: { not: 'archived' } },
+          OR: [
+            { barcode: q },
+            { sku: { contains: q } },
+            {
+              AND: tokens.map((t) => ({
+                OR: [{ product: { searchKey: { contains: t } } }, { sku: { contains: t } }],
+              })),
+            },
+          ],
+        },
+        take: 20,
+        orderBy: { sku: 'asc' },
+        select,
+      });
+    let rows = words.length ? await find(words) : [];
+    for (const n of [4, 3, 2]) if (!rows.length && words.length > n) rows = await find(words.slice(0, n));
     return {
       data: rows.map((v) => ({
         id: v.id,

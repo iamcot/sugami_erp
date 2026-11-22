@@ -39,31 +39,44 @@ function Row({ g, onDone }: { g: Group; onDone: (msg: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const search = async (text: string) => {
-    setQ(text);
+  const find = async (text: string) => {
     if (text.trim().length < 2) return setHits([]);
     try {
-      const r = await call<{ data: VariantHit[] }>(`/api/pancake/variant-search?q=${encodeURIComponent(text)}`);
+      const r = await call<{ data: VariantHit[] }>(
+        `/api/pancake/variant-search?q=${encodeURIComponent(text)}`,
+      );
       setHits(r.data);
     } catch (e) {
       setError((e as Error).message);
     }
   };
+  const search = (text: string) => {
+    setQ(text);
+    void find(text);
+  };
+  // suggestions from the marketplace title, shown before anything is typed
+  useEffect(() => {
+    void find(g.name);
+  }, [g.name]);
   const link = async (v: VariantHit) => {
     setBusy(true);
     setError(null);
     try {
-      const r = await call<{ lines: number; orders: number; stockApplied: number; stockBeforeSnapshot: number }>(
-        '/api/pancake/link-line',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: g.key, variantId: v.id }),
-        },
-      );
+      const r = await call<{
+        lines: number;
+        orders: number;
+        stockApplied: number;
+        stockBeforeSnapshot: number;
+      }>('/api/pancake/link-line', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: g.key, variantId: v.id }),
+      });
       onDone(
         `${g.key} → ${v.sku}: ${fmt(r.lines)} dòng / ${fmt(r.orders)} đơn, trừ tồn ${fmt(r.stockApplied)} dòng` +
-          (r.stockBeforeSnapshot ? `, ${fmt(r.stockBeforeSnapshot)} dòng bán trước mốc tồn nên không trừ` : ''),
+          (r.stockBeforeSnapshot
+            ? `, ${fmt(r.stockBeforeSnapshot)} dòng bán trước mốc tồn nên không trừ`
+            : ''),
       );
     } catch (e) {
       setError((e as Error).message);
@@ -84,16 +97,22 @@ function Row({ g, onDone }: { g: Group; onDone: (msg: string) => void }) {
       <input
         value={q}
         onChange={(e) => search(e.target.value)}
-        placeholder="Tìm mã hàng Sugami (mã, mã vạch hoặc tên) để ghép"
+        placeholder="Tìm theo tên, mã hàng hoặc mã vạch (gợi ý bên dưới theo tên sàn)"
         className="mt-2 w-full max-w-md rounded-md border border-slate-300 bg-transparent px-2 py-1 text-sm dark:border-slate-700"
       />
+      {hits.length > 0 && !q.trim() && (
+        <p className="mt-1 text-xs text-slate-500">Gợi ý theo tên trên sàn:</p>
+      )}
       {hits.length > 0 && (
         <ul className="mt-1 max-w-xl divide-y divide-slate-100 rounded-md border border-slate-200 text-sm dark:divide-slate-800 dark:border-slate-800">
           {hits.map((v) => (
             <li key={v.id} className="flex items-center justify-between gap-2 px-2 py-1.5">
               <span>
                 <span className="font-mono text-xs">{v.sku}</span> {v.productName}
-                <span className="text-xs text-slate-500"> {optionText(v.optionValues)} · {fmt(v.price)} đ</span>
+                <span className="text-xs text-slate-500">
+                  {' '}
+                  {optionText(v.optionValues)} · {fmt(v.price)} đ
+                </span>
               </span>
               <Button variant="secondary" disabled={busy} onClick={() => link(v)}>
                 <Link2 className="size-3.5" /> Ghép
@@ -138,7 +157,9 @@ export function PancakeUnlinked() {
           Đã ghép {d}
         </p>
       ))}
-      {groups && groups.length === 0 && <p className="mt-3 text-sm text-slate-500">Không còn dòng nào chưa liên kết.</p>}
+      {groups && groups.length === 0 && (
+        <p className="mt-3 text-sm text-slate-500">Không còn dòng nào chưa liên kết.</p>
+      )}
       {groups && groups.length > 0 && (
         <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
           {groups.map((g) => (
