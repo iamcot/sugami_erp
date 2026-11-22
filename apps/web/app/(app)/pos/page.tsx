@@ -233,7 +233,7 @@ function CustomerModal({
             {c?.name ?? (id ? 'Khách hàng' : 'Khách hàng mới')}{' '}
             <span className="text-sm font-normal text-slate-500">{c?.code}</span>
           </h2>
-          <button aria-label="Đóng" onClick={onClose}>
+          <button aria-label="Đóng" tabIndex={-1} onClick={onClose}>
             <X className="size-5" />
           </button>
         </div>
@@ -365,10 +365,12 @@ function Money({
   value,
   onChange,
   className,
+  autoFocus,
 }: {
   value: number;
   onChange: (n: number) => void;
   className?: string;
+  autoFocus?: boolean;
 }) {
   return (
     <input
@@ -378,6 +380,7 @@ function Money({
       placeholder="0"
       onChange={(e) => onChange(num(e.target.value))}
       onFocus={(e) => e.target.select()}
+      autoFocus={autoFocus}
     />
   );
 }
@@ -390,6 +393,8 @@ export default function PosPage() {
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<VariantInfo[]>([]);
   const [cq, setCq] = useState('');
+  const [hi, setHi] = useState(0);
+  const [ci, setCi] = useState(0);
   const [chits, setChits] = useState<CustomerHit[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -459,6 +464,13 @@ export default function PosPage() {
     if (recentOpen) void loadRecent().catch(() => undefined);
   }, [recentOpen, loadRecent]);
 
+  useEffect(() => {
+    if (!confirming) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setConfirming(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [confirming]);
+
   const flush = useCallback(async (id: string) => {
     const d = draftsRef.current.find((x) => x.id === id);
     if (!d) return;
@@ -497,6 +509,9 @@ export default function PosPage() {
     }, 250);
     return () => clearTimeout(t);
   }, [cq]);
+
+  useEffect(() => setHi(0), [hits]);
+  useEffect(() => setCi(0), [chits, cq]);
 
   const addVariant = (v: VariantInfo) => {
     if (!draft) return;
@@ -653,10 +668,20 @@ export default function PosPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key !== 'Enter') return;
-                const exact = hits.find((h) => h.sku === q.trim() || h.barcode === q.trim());
-                const pick = exact ?? (hits.length === 1 ? hits[0] : undefined);
-                if (pick) addVariant(pick);
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setHi((h) => Math.min(h + 1, hits.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setHi((h) => Math.max(h - 1, 0));
+                } else if (e.key === 'Escape') {
+                  setQ('');
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const exact = hits.find((h) => h.sku === q.trim() || h.barcode === q.trim());
+                  const pick = exact ?? hits[hi];
+                  if (pick) addVariant(pick);
+                }
               }}
               placeholder="Tìm hàng (F3): mã, mã vạch, tên"
               className="min-w-0 flex-1 bg-transparent outline-none"
@@ -664,10 +689,17 @@ export default function PosPage() {
           </label>
           {q.trim().length > 0 && hits.length > 0 && (
             <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-[70vh] overflow-auto rounded-md border border-slate-200 bg-white text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900">
-              {hits.map((v) => (
-                <li key={v.id}>
+              {hits.map((v, i) => (
+                <li
+                  key={v.id}
+                  ref={(el) => {
+                    if (el && i === hi) el.scrollIntoView({ block: 'nearest' });
+                  }}
+                >
                   <button
-                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
+                    tabIndex={-1}
+                    className={`flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 ${i === hi ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+                    onMouseEnter={() => setHi(i)}
                     onClick={() => addVariant(v)}
                   >
                     <Thumb src={v.image} className="size-12" />
@@ -704,7 +736,7 @@ export default function PosPage() {
               >
                 {d.mode === 'delivery' && <Truck className="size-3.5" />} {d.label}
               </button>
-              <button aria-label="Đóng" onClick={() => void closeDraft(d.id)}>
+              <button aria-label="Đóng" tabIndex={-1} onClick={() => void closeDraft(d.id)}>
                 <X className="size-3.5" />
               </button>
             </div>
@@ -719,6 +751,7 @@ export default function PosPage() {
               </button>
               <button
                 aria-label="Đóng"
+                tabIndex={-1}
                 onClick={() => {
                   setOrderTabs((t) => t.filter((c) => c !== code));
                   if (orderTab === code) setOrderTab(null);
@@ -779,6 +812,7 @@ export default function PosPage() {
                         <span className="flex items-center gap-1">
                           <button
                             aria-label="Giảm"
+                            tabIndex={-1}
                             className="rounded-full border border-slate-300 p-1 dark:border-slate-700"
                             onClick={() =>
                               patch({
@@ -809,6 +843,7 @@ export default function PosPage() {
                           />
                           <button
                             aria-label="Tăng"
+                            tabIndex={-1}
                             className="rounded-full border border-slate-300 p-1 dark:border-slate-700"
                             onClick={() =>
                               patch({
@@ -838,6 +873,7 @@ export default function PosPage() {
                         </span>
                         <button
                           aria-label="Xóa dòng"
+                          tabIndex={-1}
                           onClick={() => patch({ lines: p.lines.filter((x) => x.variantId !== l.variantId) })}
                         >
                           <Trash2 className="size-4 text-slate-400 hover:text-rose-500" />
@@ -898,7 +934,11 @@ export default function PosPage() {
                     onChange={(e) => setWhen(when.date, e.target.value)}
                   />
                   {p.orderedAt && (
-                    <button className="text-xs text-brand-700" onClick={() => patch({ orderedAt: null })}>
+                    <button
+                      className="text-xs text-brand-700"
+                      tabIndex={-1}
+                      onClick={() => patch({ orderedAt: null })}
+                    >
                       Bây giờ
                     </button>
                   )}
@@ -912,22 +952,32 @@ export default function PosPage() {
                       placeholder="Tìm khách hàng (tên, SĐT)"
                       value={cq}
                       onChange={(e) => setCq(e.target.value)}
+                      onKeyDown={(e) => {
+                        const n = chits.length + 1; // existing customers, then "create new"
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setCi((c) => Math.min(c + 1, n - 1));
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setCi((c) => Math.max(c - 1, 0));
+                        } else if (e.key === 'Escape') {
+                          setCq('');
+                        } else if (e.key === 'Enter' && cq.trim().length >= 2) {
+                          e.preventDefault();
+                          if (ci < chits.length) void pickCustomer(chits[ci]!);
+                          else newCustomer(cq.trim());
+                        }
+                      }}
                     />
                   </label>
                   {cq.trim().length >= 2 && (
                     <ul className="absolute left-0 right-0 z-10 mt-1 rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                      <li>
-                        <button
-                          className="w-full px-3 py-2 text-left font-medium text-brand-700 hover:bg-slate-100 dark:hover:bg-slate-800"
-                          onClick={() => newCustomer(cq.trim())}
-                        >
-                          + Tạo khách mới “{cq.trim()}”
-                        </button>
-                      </li>
-                      {chits.map((c) => (
+                      {chits.map((c, i) => (
                         <li key={c.id}>
                           <button
-                            className="flex w-full justify-between px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
+                            tabIndex={-1}
+                            className={`flex w-full justify-between px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 ${i === ci ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+                            onMouseEnter={() => setCi(i)}
                             onClick={() => void pickCustomer(c)}
                           >
                             <span>{c.name ?? '(không tên)'}</span>
@@ -935,6 +985,16 @@ export default function PosPage() {
                           </button>
                         </li>
                       ))}
+                      <li>
+                        <button
+                          tabIndex={-1}
+                          className={`w-full px-3 py-2 text-left font-medium text-brand-700 hover:bg-slate-100 dark:hover:bg-slate-800 ${ci === chits.length ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+                          onMouseEnter={() => setCi(chits.length)}
+                          onClick={() => newCustomer(cq.trim())}
+                        >
+                          + Tạo khách mới “{cq.trim()}”
+                        </button>
+                      </li>
                     </ul>
                   )}
                 </div>
@@ -961,6 +1021,7 @@ export default function PosPage() {
                     </span>
                     <button
                       aria-label="Bỏ khách"
+                      tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation();
                         patch({ customer: null });
@@ -997,7 +1058,7 @@ export default function PosPage() {
                         )}
                       </span>
                     </button>
-                    <button aria-label="Bỏ khách" onClick={() => patch({ customer: null })}>
+                    <button aria-label="Bỏ khách" tabIndex={-1} onClick={() => patch({ customer: null })}>
                       <X className="size-4" />
                     </button>
                   </div>
@@ -1107,7 +1168,7 @@ export default function PosPage() {
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-3 py-3 dark:border-slate-800">
           <h2 className="font-medium">Đơn bán gần đây</h2>
-          <button aria-label="Đóng" onClick={() => setRecentOpen(false)}>
+          <button aria-label="Đóng" tabIndex={-1} onClick={() => setRecentOpen(false)}>
             <X className="size-4" />
           </button>
         </div>
@@ -1175,7 +1236,7 @@ export default function PosPage() {
                   value={when.time}
                   onChange={(e) => setWhen(when.date, e.target.value)}
                 />
-                <button aria-label="Đóng" onClick={() => setConfirming(false)}>
+                <button aria-label="Đóng" tabIndex={-1} onClick={() => setConfirming(false)}>
                   <X className="size-5" />
                 </button>
               </span>
@@ -1207,7 +1268,7 @@ export default function PosPage() {
               <div className="flex items-center justify-between font-semibold">
                 <span>Khách thanh toán</span>
                 <span className="w-36">
-                  <Money value={paid} onChange={(n) => setPaidInput(n)} />
+                  <Money value={paid} onChange={(n) => setPaidInput(n)} autoFocus />
                 </span>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -1228,6 +1289,7 @@ export default function PosPage() {
                   {quickAmounts(total).map((n) => (
                     <button
                       key={n}
+                      tabIndex={-1}
                       className="rounded-full border border-slate-300 bg-white px-4 py-1.5 tabular-nums hover:border-brand-600 dark:border-slate-600 dark:bg-slate-900"
                       onClick={() => setPaidInput(n)}
                     >

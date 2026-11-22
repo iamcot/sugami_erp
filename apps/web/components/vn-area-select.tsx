@@ -45,7 +45,9 @@ function Combo({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
+  const [hi, setHi] = useState(0);
   const box = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
@@ -58,9 +60,17 @@ function Combo({
     const k = fold(q);
     return (k ? options.filter((o) => fold(o).includes(k)) : options).slice(0, 80);
   }, [options, q]);
+  useEffect(() => setHi(0), [q, open]);
+  const choose = (o: string) => {
+    onPick(o);
+    setOpen(false);
+    // keep the keyboard flow: focus returns to the field so Tab moves on
+    setTimeout(() => trigger.current?.focus(), 0);
+  };
   return (
     <div ref={box} className="relative">
       <button
+        ref={trigger}
         type="button"
         disabled={disabled}
         onClick={() => {
@@ -78,20 +88,39 @@ function Combo({
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setHi((h) => Math.min(h + 1, shown.length - 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setHi((h) => Math.max(h - 1, 0));
+              } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (shown[hi]) choose(shown[hi]);
+              } else if (e.key === 'Escape') {
+                e.stopPropagation();
+                setOpen(false);
+              }
+            }}
             placeholder="Gõ để tìm…"
             className="w-full border-b border-slate-200 bg-transparent px-3 py-2 text-sm outline-none dark:border-slate-700"
           />
           <ul className="max-h-56 overflow-auto text-sm">
             {shown.length === 0 && <li className="px-3 py-2 text-slate-500">Không có kết quả</li>}
-            {shown.map((o) => (
-              <li key={o}>
+            {shown.map((o, i) => (
+              <li
+                key={o}
+                ref={(el) => {
+                  if (el && i === hi) el.scrollIntoView({ block: 'nearest' });
+                }}
+              >
                 <button
                   type="button"
-                  className="w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
-                  onClick={() => {
-                    onPick(o);
-                    setOpen(false);
-                  }}
+                  tabIndex={-1}
+                  className={`w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800 ${i === hi ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+                  onMouseEnter={() => setHi(i)}
+                  onClick={() => choose(o)}
                 >
                   {o}
                 </button>

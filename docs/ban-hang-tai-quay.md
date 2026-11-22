@@ -20,3 +20,7 @@ Cài đặt → Mẫu biên lai (quyền `settings.write`, chủ shop có sẵn)
 ## Địa chỉ hành chính
 
 Chọn Tỉnh/Thành phố và Phường/Xã (tìm không dấu) dùng danh sách mới sau sáp nhập 2025: 34 tỉnh/thành, 3.321 phường/xã, không còn cấp quận/huyện. Dữ liệu ở `apps/web/public/data/vn-units.json`, lấy từ gói npm `vietnam-address-database` (MIT, theo Nghị quyết 202/2025/QH15), tải một lần khi mở popup/biểu mẫu. Khách cũ từ KiotViet có "Khu vực" kiểu cũ ("Hà Nội - Quận Cầu Giấy"): hiển thị nguyên giá trị; chọn lại để chuyển sang địa chỉ mới. Popup khách hàng lưu `region` (tỉnh/thành) và `ward` (phường/xã).
+
+## Phím tắt
+
+Ô tìm hàng và ô tìm khách: ↓/↑ chọn dòng, Enter thêm/chọn, Esc xóa ô tìm (F3 quay lại ô tìm hàng). Ô chọn Tỉnh/Phường cũng dùng ↓/↑/Enter/Esc. Tab đi qua các ô nhập theo thứ tự màn hình, bỏ qua các nút nhỏ (±, xóa dòng, đóng) và dừng ở nút THANH TOÁN; trong ngăn xác nhận con trỏ vào ô "Khách thanh toán", Tab tiếp đến nút XÁC NHẬN, Esc đóng ngăn.
