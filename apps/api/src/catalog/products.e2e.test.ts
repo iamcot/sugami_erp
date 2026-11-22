@@ -174,6 +174,8 @@ describe.skipIf(!process.env.DATABASE_URL)('product + order lists (MySQL)', () =
     expect(res.body.totals).toMatchObject({ units: 5, negative: 1, out: 2 });
     const neg = await get(`/api/inventory?q=${run}&view=negative`);
     expect(neg.body.data.map((r: { sku: string }) => r.sku)).toEqual([`${run}A2`]);
+    expect(neg.body.total).toBe(1);
+    expect(neg.body.totals).toMatchObject({ skus: 3, units: 5 });
     await http().get('/api/inventory?view=bad').set('Cookie', cookie).expect(400);
   });
 

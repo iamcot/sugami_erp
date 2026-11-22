@@ -26,7 +26,7 @@ import { UserMenu } from './user-menu';
 const nav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/products', label: 'Sản phẩm', icon: Package },
-  { href: '/inventory/receive', label: 'Kho', icon: Boxes },
+  { href: '/inventory', label: 'Kho', icon: Boxes },
   { href: '/orders', label: 'Đơn hàng', icon: ShoppingBag },
   { href: '#sourcing', label: 'Nguồn hàng', icon: Truck },
   { href: '/media', label: 'Media', icon: Images },
