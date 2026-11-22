@@ -1,11 +1,11 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { ImageOff, Search } from 'lucide-react';
+import { ImageOff, RefreshCw, Search } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
-import { Badge, PageHeader } from '@/components/ui';
+import { Badge, Button, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useQueryState } from '@/lib/use-query-state';
 
@@ -108,6 +108,28 @@ function ListingsList() {
   const [res, setRes] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+
+  const sync = async () => {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const r = await api<{ listings: number; created: number; updated: number; unmatched: number }>(
+        '/pancake/sync-listings',
+        { method: 'POST', json: { dryRun: false } },
+      );
+      setSyncMsg(
+        `Đã đồng bộ ${r.listings} tin (${r.created} mới, ${r.updated} cập nhật), ${r.unmatched} biến thể chưa nối.`,
+      );
+      setReload((n) => n + 1);
+    } catch (e) {
+      setSyncMsg((e as Error).message);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -130,7 +152,7 @@ function ListingsList() {
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [qs.q, qs.shop, qs.link, qs.page]);
+  }, [qs.q, qs.shop, qs.link, qs.page, reload]);
 
   return (
     <>
@@ -141,7 +163,13 @@ function ListingsList() {
             ? `${res.total.toLocaleString('vi-VN')} tin đăng (đồng bộ từ Pancake ở mục Nhập KiotViet → Đơn từ Pancake)`
             : undefined
         }
+        actions={
+          <Button variant="secondary" disabled={syncing} onClick={sync}>
+            <RefreshCw className={`size-4 ${syncing ? 'animate-spin' : ''}`} /> Đồng bộ từ Pancake
+          </Button>
+        }
       />
+      {syncMsg && <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">{syncMsg}</p>}
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
           {LINKS.map(([v, label]) => (
