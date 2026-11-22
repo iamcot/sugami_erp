@@ -3,9 +3,11 @@
 import { formatVnd } from '@sugami/shared';
 import { useEffect, useState } from 'react';
 import { useDetail } from '@/components/detail-drawer';
-import { Badge, Card, PageHeader } from '@/components/ui';
+import { Printer } from 'lucide-react';
+import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
+import { printReceipt, type ReceiptTemplate } from '@/lib/receipt';
 
 interface Line {
   id: string;
@@ -65,6 +67,7 @@ const SOURCE: Record<string, string> = {
   pancake: 'Pancake',
   kiotviet_excel: 'File KiotViet',
   manual: 'Nhập tay',
+  pos: 'Bán tại quầy',
 };
 
 const FEE_LABEL: Record<string, string> = {
@@ -106,7 +109,30 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
       .catch((e: Error) => setError(e.message));
   }, [code]);
 
-  if (error) return <p className="text-sm text-rose-600">{error}</p>;
+  const setStatus = async (status: string) => {
+    if (!order) return;
+    setError(null);
+    try {
+      await api(`/pos/orders/${encodeURIComponent(order.code)}/status`, { method: 'POST', json: { status } });
+      const r = await api<{ order: Order }>(`/orders/${encodeURIComponent(order.code)}`);
+      setOrder(r.order);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  const print = async () => {
+    if (!order) return;
+    const t = await api<{ data: ReceiptTemplate[] }>('/receipt-templates');
+    const tpl = t.data.find((x) => x.isDefault) ?? t.data[0];
+    if (tpl)
+      printReceipt(tpl, {
+        ...order,
+        customerName: order.customer?.name,
+        customerPhone: order.customer?.phone,
+      });
+  };
+
+  if (error && !order) return <p className="text-sm text-rose-600">{error}</p>;
   if (!order) return <p className="text-sm text-slate-500">Đang tải…</p>;
 
   const st = STATUS[order.status] ?? { label: order.status, tone: 'neutral' as const };
@@ -123,8 +149,32 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
         description={[order.channel.name, dt(order.orderedAt), SOURCE[order.source] ?? order.source]
           .filter(Boolean)
           .join(' · ')}
-        actions={<Badge tone={st.tone}>{st.label}</Badge>}
+        actions={
+          <div className="flex items-center gap-2">
+            {order.source === 'pos' && (
+              <>
+                <select
+                  className="rounded-md border border-slate-300 bg-transparent px-2 py-1 text-sm dark:border-slate-700"
+                  value={order.status}
+                  onChange={(e) => void setStatus(e.target.value)}
+                  aria-label="Đổi trạng thái"
+                >
+                  {Object.entries(STATUS).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+                <Button variant="secondary" onClick={() => void print()}>
+                  <Printer className="size-4" /> In biên lai
+                </Button>
+              </>
+            )}
+            <Badge tone={st.tone}>{st.label}</Badge>
+          </div>
+        }
       />
+      {error && <p className="mb-2 text-sm text-rose-600">{error}</p>}
 
       <div className={embedded ? 'grid gap-4' : 'grid gap-4 lg:grid-cols-3'}>
         <div className={embedded ? 'space-y-4' : 'space-y-4 lg:col-span-2'}>

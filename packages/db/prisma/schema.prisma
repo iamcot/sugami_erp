@@ -782,3 +782,32 @@ model SyncCursor {
 
   @@map("sync_cursors")
 }
+
+/// A sale being rung up at the counter, kept on the server so several can be open at once and survive a reload.
+model PosDraft {
+  id        String   @id @default(uuid(7)) @db.Char(36)
+  label     String   @db.VarChar(64)
+  /// retail (take away) or delivery (ship to the buyer).
+  mode      String   @db.VarChar(16)
+  payload   Json
+  createdBy String?  @map("created_by") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([updatedAt])
+  @@map("pos_drafts")
+}
+
+/// Layout of a printed receipt: an ordered list of blocks (text, order info, lines, totals, divider).
+model ReceiptTemplate {
+  id         String   @id @default(uuid(7)) @db.Char(36)
+  name       String   @db.VarChar(100)
+  /// Paper width in mm (58 or 80 for bill printers).
+  paperWidth Int      @default(80) @map("paper_width")
+  blocks     Json
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("receipt_templates")
+}

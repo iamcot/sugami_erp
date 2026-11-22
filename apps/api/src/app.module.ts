@@ -5,6 +5,7 @@ import { CatalogModule } from './catalog/catalog.module.js';
 import { CustomersModule } from './customers/customers.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { OrdersModule } from './orders/orders.module.js';
+import { PosModule } from './pos/pos.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { InventoryModule } from './inventory/inventory.module.js';
 import { StockDocumentsModule } from './stock-documents/stock-documents.module.js';
@@ -26,6 +27,7 @@ import { UsersController } from './users/users.controller.js';
     ImportsModule,
     CatalogModule,
     OrdersModule,
+    PosModule,
     CustomersModule,
     ListingsModule,
     InventoryModule,
