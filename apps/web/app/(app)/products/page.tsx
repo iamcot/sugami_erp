@@ -205,7 +205,14 @@ const makeColumns = (
 
 function ProductsList() {
   const { open, selected } = useDetail();
-  const [qs, setQs] = useQueryState({ q: '', view: 'all', sort: 'updated', dir: 'desc', page: '1' });
+  const [qs, setQs] = useQueryState({
+    q: '',
+    view: 'all',
+    link: 'all',
+    sort: 'updated',
+    dir: 'desc',
+    page: '1',
+  });
   const [search, setSearch] = useState(qs.q);
   const [res, setRes] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -278,7 +285,7 @@ function ProductsList() {
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [qs.q, qs.view, qs.sort, qs.dir, qs.page, version]);
+  }, [qs.q, qs.view, qs.link, qs.sort, qs.dir, qs.page, version]);
 
   const counts = res?.counts ?? {};
   return (
@@ -347,6 +354,15 @@ function ProductsList() {
             </button>
           ))}
         </div>
+        <select
+          value={qs.link}
+          onChange={(e) => setQs({ link: e.target.value, page: '1' })}
+          className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
+        >
+          <option value="all">Mọi liên kết</option>
+          <option value="no_pancake">Chưa kết nối Pancake</option>
+          <option value="on_market">Đã kết nối sàn TMĐT</option>
+        </select>
         <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm md:ml-auto md:max-w-xs dark:border-slate-800 dark:bg-slate-900">
           <Search className="size-4 shrink-0 text-slate-400" />
           <input

@@ -13,6 +13,8 @@ const ListQuery = z.object({
   categoryId: z.string().trim().max(36).optional(),
   /** all | active | draft | archived | out (≤ 0) | negative (< 0) | low (≤ min stock) */
   view: z.enum(['all', 'active', 'draft', 'archived', 'out', 'negative', 'low']).default('all'),
+  /** no_pancake = some variant is not on Pancake; on_market = some variant is linked to a Shopee/TikTok listing. */
+  link: z.enum(['all', 'no_pancake', 'on_market']).default('all'),
   sort: z.enum(['name', 'code', 'stock', 'price', 'updated']).default('updated'),
   dir: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().int().min(1).default(1),
@@ -81,6 +83,13 @@ export class ProductsController {
     }
     if (q.categoryId) {
       where.push(Prisma.sql`(p.category_id = ${q.categoryId} OR c.parent_id = ${q.categoryId})`);
+    }
+    if (q.link === 'no_pancake') {
+      where.push(Prisma.sql`EXISTS (SELECT 1 FROM variants v3 WHERE v3.product_id = p.id AND NOT EXISTS (
+        SELECT 1 FROM external_refs e WHERE e.entity_id = v3.id AND e.provider = 'pancake' AND e.entity_type = 'variant'))`);
+    } else if (q.link === 'on_market') {
+      where.push(Prisma.sql`EXISTS (SELECT 1 FROM channel_listing_variants cv JOIN variants v3 ON v3.id = cv.variant_id
+        WHERE v3.product_id = p.id)`);
     }
     if (q.view === 'active' || q.view === 'draft' || q.view === 'archived') {
       where.push(Prisma.sql`p.status = ${q.view}`);
