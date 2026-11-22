@@ -11,3 +11,4 @@ coverage
 packages/db/src/generated
 next-env.d.ts
 data
+kiotviet-probe-report.json

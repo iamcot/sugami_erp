@@ -45,3 +45,25 @@ Máy không có MySQL native (ví dụ máy dev khác, CI) có thể chạy MySQ
 ## 4. Khi các app chạy trong Docker (production, P0-13)
 
 Container không gọi được `localhost` của iMac. Dùng `host.docker.internal` trong `DATABASE_URL`, ví dụ `mysql://sugami:<mật khẩu>@host.docker.internal:3306/sugami`. User `sugami@'%'` trong `mysql-init.sql` cho phép kết nối này; MySQL chỉ nên lắng nghe trong mạng nội bộ (không mở cổng 3306 ra internet).
+
+## 5. Kiểm tra KiotViet API (P0-06)
+
+Script chỉ **đọc**, không ghi gì vào KiotViet.
+
+1. Lấy Client ID và Client Secret trong KiotViet: **Thiết lập cửa hàng → Thiết lập kết nối API**.
+2. Điền vào `.env` (tên gian hàng là phần trước `.kiotviet.vn` trong địa chỉ đăng nhập):
+
+   ```
+   KIOTVIET_CLIENT_ID=...
+   KIOTVIET_CLIENT_SECRET=...
+   KIOTVIET_RETAILER=...
+   ```
+
+3. Chạy:
+
+   ```bash
+   pnpm install
+   pnpm kiotviet:probe
+   ```
+
+4. Script in trạng thái từng API và ghi file `kiotviet-probe-report.json` ở thư mục gốc repo. File không chứa token/secret, thông tin khách hàng (tên, SĐT, địa chỉ) đã bị che. Gửi file này trong chat để làm P0-07. File nằm trong `.gitignore`, không bị commit.
