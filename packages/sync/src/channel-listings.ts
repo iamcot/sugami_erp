@@ -140,14 +140,21 @@ export async function syncChannelListings(
         if (s && summary.unmatchedSkus.length < 20) summary.unmatchedSkus.push(s);
       }
       if (!listingId) continue;
+      // Pancake says "linked" but gave nothing Sugami can resolve: keep the row marked "unresolved" so it can
+      // be confirmed by hand once; a hand-made confirmation survives later syncs while Pancake keeps the link.
+      const prev = await db.channelListingVariant.findUnique({
+        where: { listingId_externalId: { listingId, externalId: v.externalId } },
+        select: { variantId: true, linkedBy: true },
+      });
+      const keepManual = !m && Boolean(linkVal) && prev?.linkedBy === 'manual';
       const vdata = {
         name: v.name?.slice(0, 512) ?? null,
         sku: clean(v.sku)?.slice(0, 128) ?? null,
         price: v.price == null ? null : BigInt(Math.round(v.price)),
         quantity: v.quantity ?? null,
         images: v.images as Prisma.InputJsonValue,
-        variantId: m?.id ?? null,
-        linkedBy: m?.by ?? null,
+        variantId: keepManual ? prev!.variantId : (m?.id ?? null),
+        linkedBy: keepManual ? 'manual' : m ? m.by : linkVal ? 'unresolved' : null,
       };
       await db.channelListingVariant.upsert({
         where: { listingId_externalId: { listingId, externalId: v.externalId } },

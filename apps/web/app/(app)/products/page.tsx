@@ -344,6 +344,7 @@ function ProductsList() {
           platform={listingsFor.platform}
           productCode={listingsFor.code}
           title={listingsFor.name}
+          onChanged={() => setVersion((n) => n + 1)}
           onClose={() => setListingsFor(null)}
         />
       )}

@@ -54,6 +54,7 @@ export function ListingsDrawer({
   platform: initialPlatform = '',
   productCode,
   title,
+  onChanged,
 }: {
   onClose: () => void;
   version: number;
@@ -61,6 +62,8 @@ export function ListingsDrawer({
   /** Only the listings linked to this Sugami product. */
   productCode?: string;
   title?: string;
+  /** A link was confirmed: the list behind the drawer should reload. */
+  onChanged?: () => void;
 }) {
   const [platform, setPlatform] = useState<string>(initialPlatform);
   const [link, setLink] = useState('');
@@ -73,6 +76,7 @@ export function ListingsDrawer({
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, Detail>>({});
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -101,7 +105,16 @@ export function ListingsDrawer({
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [q, platform, link, page, version, productCode]);
+  }, [q, platform, link, page, version, productCode, reload]);
+
+  const refresh = (id: string) =>
+    api<{ listing: Detail }>(`/listings/${encodeURIComponent(id)}`)
+      .then((r) => {
+        setDetails((d) => ({ ...d, [id]: r.listing }));
+        setReload((n) => n + 1);
+        onChanged?.();
+      })
+      .catch((e: Error) => setError(e.message));
 
   const toggle = (id: string) => {
     setOpen((o) => (o === id ? null : id));
@@ -250,6 +263,8 @@ export function ListingsDrawer({
                                   {v.linkedBy && ` · ${LINKED_BY[v.linkedBy] ?? v.linkedBy}`}
                                 </span>
                               </span>
+                            ) : v.linkedBy === 'unresolved' ? (
+                              <Confirm variationId={v.id} onDone={() => refresh(l.id)} />
                             ) : (
                               <Badge tone="warn">Chưa nối trên Pancake</Badge>
                             )}
@@ -282,6 +297,76 @@ export function ListingsDrawer({
           </span>
         </div>
       </aside>
+    </div>
+  );
+}
+
+/** Pancake says this option is linked but not to which product: pick the Sugami SKU once. */
+function Confirm({ variationId, onDone }: { variationId: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const [items, setItems] = useState<
+    { id: string; sku: string; productName: string; optionValues?: string[] }[]
+  >([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || q.trim().length < 2) return;
+    const t = setTimeout(() => {
+      api<{ data: { id: string; sku: string; productName: string; optionValues?: string[] }[] }>(
+        `/pancake/variant-search?q=${encodeURIComponent(q.trim())}`,
+      )
+        .then((r) => setItems(r.data))
+        .catch((e: Error) => setError(e.message));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q, open]);
+
+  const pick = async (variantId: string) => {
+    try {
+      await api('/listings/confirm', { method: 'POST', json: { variationId, variantId } });
+      onDone();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  if (!open)
+    return (
+      <span className="shrink-0 text-right text-xs">
+        <Badge tone="warn">Pancake đã nối, chưa rõ sản phẩm</Badge>
+        <button className="mt-0.5 block text-brand-700 hover:underline" onClick={() => setOpen(true)}>
+          Chọn SKU Sugami
+        </button>
+      </span>
+    );
+  return (
+    <div className="w-64 shrink-0 text-xs">
+      <input
+        autoFocus
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Tìm tên hoặc mã hàng Sugami"
+        className="h-8 w-full rounded-md border border-slate-200 bg-transparent px-2 outline-none dark:border-slate-700"
+      />
+      {error && <p className="mt-1 text-rose-600">{error}</p>}
+      <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+        {items.map((i) => (
+          <li key={i.id}>
+            <button
+              className="block w-full px-2 py-1 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
+              onClick={() => pick(i.id)}
+            >
+              <span className="line-clamp-1">{i.productName}</span>
+              <span className="font-mono text-slate-500">
+                {i.sku}
+                {i.optionValues?.length ? ` · ${i.optionValues.join(' / ')}` : ''}
+              </span>
+            </button>
+          </li>
+        ))}
+        {items.length === 0 && <li className="px-2 py-1 text-slate-500">Gõ ít nhất 2 ký tự.</li>}
+      </ul>
     </div>
   );
 }

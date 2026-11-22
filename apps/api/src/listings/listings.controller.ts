@@ -1,4 +1,14 @@
-import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  NotFoundException,
+  Param,
+  Post,
+  Query,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { Prisma } from '@sugami/db';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
@@ -19,6 +29,12 @@ const ListQuery = z.object({
 
 /** Pancake marketplace_id → platform shown in the UI. */
 export const PLATFORM_OF: Record<string, 'shopee' | 'tiktok'> = { '-3': 'shopee', '-9': 'tiktok' };
+
+const ConfirmBody = z.object({
+  variationId: z.string().trim().min(1).max(36),
+  /** null removes the confirmation. */
+  variantId: z.string().trim().min(1).max(36).nullable(),
+});
 
 const n = (v: bigint | null) => (v === null ? null : Number(v));
 
@@ -110,6 +126,33 @@ export class ListingsController {
       shops: shops.map((s) => ({ shop: s.shopKey, listings: s._count })),
       linkedBy: Object.fromEntries(counts.map((c) => [c.linkedBy ?? 'none', c._count])),
     };
+  }
+
+  /**
+   * Pancake reports a link but its API does not say to which product (e.g. a listing without options only
+   * carries "1"). Confirm the Sugami variant by hand; later syncs keep it while Pancake keeps the link.
+   */
+  @Post('confirm')
+  @HttpCode(200)
+  @RequirePermissions('catalog.write')
+  async confirm(@Body() raw: unknown) {
+    const body = parseInput(ConfirmBody, raw);
+    const db = this.prisma.client;
+    const lv = await db.channelListingVariant.findUnique({ where: { id: body.variationId } });
+    if (!lv) throw new NotFoundException('Không tìm thấy biến thể trên sàn');
+    if (lv.linkedBy !== 'unresolved' && lv.linkedBy !== 'manual')
+      throw new UnprocessableEntityException('Chỉ xác nhận được khi Pancake đã nối nhưng chưa rõ sản phẩm');
+    if (body.variantId) {
+      const v = await db.variant.findUnique({ where: { id: body.variantId }, select: { id: true } });
+      if (!v) throw new NotFoundException('Không tìm thấy mã hàng');
+    }
+    await db.channelListingVariant.update({
+      where: { id: lv.id },
+      data: body.variantId
+        ? { variantId: body.variantId, linkedBy: 'manual' }
+        : { variantId: null, linkedBy: 'unresolved' },
+    });
+    return { ok: true };
   }
 
   @Get(':id')

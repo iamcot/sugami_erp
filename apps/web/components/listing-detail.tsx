@@ -40,7 +40,7 @@ export const LINKED_BY: Record<string, string> = {
   sku: 'Trùng mã hàng',
   barcode: 'Trùng mã vạch',
   orders: 'Học từ đơn',
-  manual: 'Nối tay',
+  manual: 'Xác nhận tay',
 };
 
 /** One marketplace listing with its options and the Sugami variant each is matched to. */
