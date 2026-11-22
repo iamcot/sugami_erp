@@ -119,5 +119,10 @@ for await (const o of client.paginate<Record<string, unknown>>('/orders', {
     `Cấu trúc đơn mẫu ${shown} (${items.length} dòng hàng, ${unlinked} dòng không có variation_id/product_id):`,
   );
   console.log(JSON.stringify(shape(o), null, 1));
+  // Product-level text only (no customer data): to find where the variant option name lives.
+  for (const i of items.slice(0, 5)) {
+    const vi = (i.variation_info ?? {}) as Record<string, unknown>;
+    console.log('  dòng:', JSON.stringify({ name: vi.name, detail: vi.detail, fields: vi.fields, note_product: i.note_product }));
+  }
 }
 if (shown === 0) console.log('Chưa có đơn nào để xem cấu trúc.');
