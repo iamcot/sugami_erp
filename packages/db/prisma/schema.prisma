@@ -683,6 +683,8 @@ model Order {
   otherIncome         BigInt      @default(0) @map("other_income")
   total               BigInt      @default(0)
   paidAmount          BigInt      @default(0) @map("paid_amount")
+  /// Counter sales: cash, transfer, card or wallet.
+  paymentMethod       String?     @map("payment_method") @db.VarChar(16)
   codAmount           BigInt      @default(0) @map("cod_amount")
   /// Fee paid to the carrier ("Phí trả ĐTGH").
   shippingFee         BigInt      @default(0) @map("shipping_fee")

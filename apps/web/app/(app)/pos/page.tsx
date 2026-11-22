@@ -1,8 +1,9 @@
 'use client';
 
-import { Minus, Plus, Printer, Search, Trash2, Truck, Store, X } from 'lucide-react';
+import { ImageIcon, ListOrdered, Minus, Plus, Printer, Search, Store, Trash2, Truck, User, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/ui';
+import { Badge, Button } from '@/components/ui';
+import { formatRelativeDateTime } from '@/lib/datetime';
 import { api } from '@/lib/api';
 import { printReceipt, type ReceiptOrder, type ReceiptTemplate } from '@/lib/receipt';
 
@@ -18,6 +19,8 @@ interface Payload {
   shippingFee: number;
   trackingNo: string;
   note: string;
+  orderedAt: string | null;
+  paymentMethod: 'cash' | 'transfer' | 'card' | 'wallet';
 }
 type Mode = 'retail' | 'delivery';
 interface Draft {
@@ -40,7 +43,126 @@ interface CustomerHit {
   id: string;
   name: string | null;
   phone: string | null;
-  addressLine?: string | null;
+}
+interface CustomerFull {
+  id: string;
+  code: string | null;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  addressLine: string | null;
+  region: string | null;
+  ward: string | null;
+  kvDebt: number;
+}
+interface RecentOrder {
+  code: string;
+  status: string;
+  total: number;
+  orderedAt: string;
+  customer: { name: string | null } | null;
+}
+const METHODS = [
+  ['cash', 'Tiền mặt'],
+  ['transfer', 'Chuyển khoản'],
+  ['card', 'Thẻ'],
+  ['wallet', 'Ví'],
+] as const;
+const STATUS_LABEL: Record<string, string> = {
+  new: 'Mới',
+  confirmed: 'Đã xác nhận',
+  packing: 'Đang đóng gói',
+  shipped: 'Đang giao',
+  delivered: 'Đã giao',
+  completed: 'Hoàn thành',
+  cancelled: 'Đã hủy',
+  returned: 'Trả hàng',
+};
+const pad = (n: number) => String(n).padStart(2, '0');
+const toLocal = (iso: string | null) => {
+  const d = iso ? new Date(iso) : new Date();
+  return { date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+};
+const fromLocal = (date: string, time: string) => new Date(`${date}T${time}`).toISOString();
+const ceilTo = (n: number, step: number) => Math.ceil(n / step) * step;
+const quickAmounts = (total: number) =>
+  [...new Set([total, ceilTo(total, 10000), ceilTo(total, 10000) + 10000, ceilTo(total, 50000), ceilTo(total, 100000), ceilTo(total, 100000) + 100000])]
+    .filter((n) => n >= total && n > 0)
+    .sort((a, b) => a - b)
+    .slice(0, 6);
+
+function Thumb({ src, className = 'size-12' }: { src: string | null | undefined; className?: string }) {
+  return src ? (
+    <img src={src} alt="" loading="lazy" className={`${className} shrink-0 rounded-md bg-slate-100 object-cover`} />
+  ) : (
+    <span className={`${className} grid shrink-0 place-items-center rounded-md bg-slate-100 text-slate-400 dark:bg-slate-800`}>
+      <ImageIcon className="size-5" />
+    </span>
+  );
+}
+
+/** Popup with the customer's details; saving edits the customer record. */
+function CustomerModal({ id, onClose, onSaved }: { id: string; onClose: () => void; onSaved: (c: CustomerFull) => void }) {
+  const [c, setC] = useState<CustomerFull | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [stats, setStats] = useState<{ orders: number; spent: number } | null>(null);
+  useEffect(() => {
+    api<{ customer: CustomerFull; stats: { orders: number; spent: number } }>(`/customers/${id}`)
+      .then((r) => {
+        setC(r.customer);
+        setStats(r.stats);
+      })
+      .catch((e: Error) => setErr(e.message));
+  }, [id]);
+  const save = async () => {
+    if (!c) return;
+    try {
+      await api(`/customers/${id}`, {
+        method: 'PATCH',
+        json: { name: c.name, phone: c.phone, email: c.email, addressLine: c.addressLine },
+      });
+      onSaved(c);
+      onClose();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  };
+  const set = (k: keyof CustomerFull, v: string) => setC((cur) => (cur ? { ...cur, [k]: v } : cur));
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between">
+          <h2 className="text-lg font-semibold">
+            {c?.name ?? 'Khách hàng'} <span className="text-sm font-normal text-slate-500">{c?.code}</span>
+          </h2>
+          <button aria-label="Đóng" onClick={onClose}>
+            <X className="size-5" />
+          </button>
+        </div>
+        {stats && c && (
+          <p className="mt-2 text-sm text-slate-600">
+            Nợ: <b>{fmt(c.kvDebt)}</b> | Số lần mua: <b>{fmt(stats.orders)}</b> | Tổng bán: <b>{fmt(stats.spent)}</b>
+          </p>
+        )}
+        {err && <p className="mt-2 text-sm text-rose-600">{err}</p>}
+        {c && (
+          <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+            <label className="text-xs text-slate-500">Mã khách hàng<input className={line} value={c.code ?? ''} disabled /></label>
+            <label className="text-xs text-slate-500">Email<input className={line} value={c.email ?? ''} onChange={(e) => set('email', e.target.value)} /></label>
+            <label className="text-xs text-slate-500">Tên khách hàng<input className={line} value={c.name ?? ''} onChange={(e) => set('name', e.target.value)} /></label>
+            <label className="text-xs text-slate-500">Điện thoại<input className={line} value={c.phone ?? ''} onChange={(e) => set('phone', e.target.value)} /></label>
+            <label className="text-xs text-slate-500 sm:col-span-2">Địa chỉ<input className={line} value={c.addressLine ?? ''} onChange={(e) => set('addressLine', e.target.value)} /></label>
+            <label className="text-xs text-slate-500">Khu vực<input className={line} value={c.region ?? ''} disabled /></label>
+            <label className="text-xs text-slate-500">Phường/Xã<input className={line} value={c.ward ?? ''} disabled /></label>
+          </div>
+        )}
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Bỏ qua</Button>
+          <Button onClick={() => void save()}>Lưu</Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const emptyPayload = (): Payload => ({
@@ -55,6 +177,8 @@ const emptyPayload = (): Payload => ({
   shippingFee: 0,
   trackingNo: '',
   note: '',
+  orderedAt: null,
+  paymentMethod: 'cash',
 });
 const fmt = (n: number) => n.toLocaleString('vi-VN');
 const optionText = (v: unknown) =>
@@ -80,14 +204,20 @@ export default function PosPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [info, setInfo] = useState<Record<string, VariantInfo>>({});
+  const [cinfo, setCinfo] = useState<Record<string, CustomerFull>>({});
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<VariantInfo[]>([]);
   const [cq, setCq] = useState('');
   const [chits, setChits] = useState<CustomerHit[]>([]);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [printOn, setPrintOn] = useState(true);
+  const [msg, setMsg] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [paidInput, setPaidInput] = useState(0);
+  const [done, setDone] = useState<{ code: string; order: ReceiptOrder } | null>(null);
+  const [customerOpen, setCustomerOpen] = useState<string | null>(null);
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [recent, setRecent] = useState<RecentOrder[]>([]);
   const draftsRef = useRef<Draft[]>([]);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const searchRef = useRef<HTMLInputElement>(null);
@@ -97,6 +227,15 @@ export default function PosPage() {
     if (!ids.length) return;
     const r = await api<{ data: VariantInfo[] }>('/pos/variants', { method: 'POST', json: { ids } });
     setInfo((cur) => ({ ...cur, ...Object.fromEntries(r.data.map((v) => [v.id, v])) }));
+  }, []);
+  const loadCustomer = useCallback(async (id: string) => {
+    const r = await api<{ customer: CustomerFull }>(`/customers/${id}`);
+    setCinfo((cur) => ({ ...cur, [id]: r.customer }));
+    return r.customer;
+  }, []);
+  const loadRecent = useCallback(async () => {
+    const r = await api<{ data: RecentOrder[] }>('/orders?source=pos&pageSize=40');
+    setRecent(r.data);
   }, []);
 
   const newDraft = useCallback(async (mode: Mode = 'retail') => {
@@ -113,10 +252,12 @@ export default function PosPage() {
         setDrafts(r.data);
         setActive(r.data[0]!.id);
         await learn([...new Set(r.data.flatMap((d) => d.payload.lines.map((l) => l.variantId)))]);
+        for (const id of new Set(r.data.map((d) => d.payload.customer?.id).filter((x): x is string => !!x)))
+          void loadCustomer(id).catch(() => undefined);
       } else await newDraft();
       setLoaded(true);
-    })().catch((e: Error) => setMsg({ ok: false, text: e.message }));
-  }, [learn, newDraft]);
+    })().catch((e: Error) => setMsg(e.message));
+  }, [learn, newDraft, loadCustomer]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -128,6 +269,9 @@ export default function PosPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  useEffect(() => {
+    if (recentOpen) void loadRecent().catch(() => undefined);
+  }, [recentOpen, loadRecent]);
 
   const flush = useCallback(async (id: string) => {
     const d = draftsRef.current.find((x) => x.id === id);
@@ -148,7 +292,6 @@ export default function PosPage() {
   const draft = drafts.find((d) => d.id === active) ?? null;
   const patch = (p: Partial<Payload>) => draft && edit(draft.id, (d) => ({ ...d, payload: { ...d.payload, ...p } }));
 
-  // product search
   useEffect(() => {
     const t = setTimeout(() => {
       api<{ data: VariantInfo[] }>(`/pos/search?q=${encodeURIComponent(q)}`)
@@ -180,13 +323,44 @@ export default function PosPage() {
     searchRef.current?.focus();
   };
 
+  const receiverOf = (c: CustomerFull) => ({
+    name: c.name ?? '',
+    phone: c.phone ?? '',
+    address: c.addressLine ?? '',
+    area: c.region ?? '',
+    ward: c.ward ?? '',
+  });
+  const pickCustomer = async (hit: CustomerHit) => {
+    if (!draft) return;
+    setCq('');
+    setChits([]);
+    const full = await loadCustomer(hit.id);
+    // A delivery order takes the customer's address as the receiver; a counter sale only shows the card.
+    patch({
+      customer: { id: full.id, name: full.name, phone: full.phone },
+      ...(draft.mode === 'delivery' ? { receiver: receiverOf(full) } : {}),
+    });
+  };
+  const setMode = (m: Mode) => {
+    if (!draft) return;
+    const c = draft.payload.customer?.id ? cinfo[draft.payload.customer.id] : undefined;
+    const r = draft.payload.receiver;
+    const empty = !r.name && !r.phone && !r.address;
+    edit(draft.id, (d) => ({
+      ...d,
+      mode: m,
+      payload: m === 'delivery' && c && empty ? { ...d.payload, receiver: receiverOf(c) } : d.payload,
+    }));
+  };
+
   const p = draft?.payload;
   const subtotal = p ? p.lines.reduce((a, l) => a + l.price * l.qty, 0) : 0;
   const total = p ? Math.max(0, subtotal - p.discount + p.otherIncome) : 0;
   const retail = draft?.mode === 'retail';
-  const paidNow = !p ? 0 : retail && p.paid === 0 ? total : Math.min(p.paid, total);
-  const cod = !retail && p?.cod ? total - paidNow : 0;
   const outOfStock = p?.lines.filter((l) => (info[l.variantId]?.onHand ?? 0) < l.qty).length ?? 0;
+  const when = toLocal(p?.orderedAt ?? null);
+  const setWhen = (date: string, time: string) => date && time && patch({ orderedAt: fromLocal(date, time) });
+  const customer = p?.customer?.id ? cinfo[p.customer.id] : undefined;
 
   const closeDraft = async (id: string) => {
     await api(`/pos/drafts/${id}`, { method: 'DELETE' }).catch(() => undefined);
@@ -196,53 +370,72 @@ export default function PosPage() {
     else if (active === id) setActive(rest[0]!.id);
   };
 
-  const checkout = async () => {
+  const openConfirm = () => {
+    if (!p) return;
+    setMsg(null);
+    setPaidInput(retail ? total : p.paid);
+    setConfirming(true);
+  };
+  // the drawer's paid amount follows the total until the seller types one
+  const paid = Math.min(paidInput, total);
+  const cod = !retail && p?.cod ? total - paid : 0;
+
+  const confirm = async () => {
     if (!draft || !p) return;
     setBusy(true);
     setMsg(null);
     try {
-      const payload: Payload = { ...p, paid: paidNow };
+      const payload: Payload = { ...p, paid, orderedAt: p.orderedAt ?? new Date().toISOString() };
       const r = await api<{ code: string }>(`/pos/drafts/${draft.id}/checkout`, {
         method: 'POST',
         json: { mode: draft.mode, payload },
       });
-      setMsg({ ok: true, text: `Đã tạo đơn ${r.code}` });
-      if (printOn) {
-        const [o, t] = await Promise.all([
-          api<{
-            order: Omit<ReceiptOrder, 'customerName' | 'customerPhone'> & {
-              customer: { name: string | null; phone: string | null } | null;
-            };
-          }>(`/orders/${r.code}`),
-          api<{ data: ReceiptTemplate[] }>('/receipt-templates'),
-        ]);
-        const tpl = t.data.find((x) => x.isDefault) ?? t.data[0];
-        if (tpl)
-          printReceipt(tpl, {
-            ...o.order,
-            customerName: o.order.customer?.name ?? payload.receiver.name,
-            customerPhone: o.order.customer?.phone ?? payload.receiver.phone,
-          });
-      }
+      const o = await api<{
+        order: Omit<ReceiptOrder, 'customerName' | 'customerPhone'> & { customer: { name: string | null; phone: string | null } | null };
+      }>(`/orders/${r.code}`);
+      setDone({
+        code: r.code,
+        order: {
+          ...o.order,
+          customerName: o.order.customer?.name ?? payload.receiver.name,
+          customerPhone: o.order.customer?.phone ?? payload.receiver.phone,
+        },
+      });
+      setConfirming(false);
       const rest = drafts.filter((d) => d.id !== draft.id);
       setDrafts(rest);
       if (!rest.length) await newDraft();
       else setActive(rest[0]!.id);
+      void loadRecent().catch(() => undefined);
     } catch (e) {
-      setMsg({ ok: false, text: (e as Error).message });
+      setMsg((e as Error).message);
     } finally {
       setBusy(false);
     }
   };
+  const print = async () => {
+    if (!done) return;
+    const t = await api<{ data: ReceiptTemplate[] }>('/receipt-templates');
+    const tpl = t.data.find((x) => x.isDefault) ?? t.data[0];
+    if (tpl) printReceipt(tpl, done.order);
+  };
 
-  if (!loaded || !draft || !p) return <p className="text-sm text-slate-500">{msg?.text ?? 'Đang tải…'}</p>;
+  if (!loaded || !draft || !p) return <p className="text-sm text-slate-500">{msg ?? 'Đang tải…'}</p>;
 
   return (
-    <div className="-mx-4 -mt-6 flex min-h-[calc(100vh-3.5rem)] flex-col lg:-mx-8">
-      {/* top bar: product search + open drafts */}
-      <div className="flex flex-wrap items-center gap-2 bg-brand-600 px-3 py-2">
-        <div className="relative w-full max-w-md">
-          <label className="flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm dark:bg-slate-900">
+    <div className="relative -mx-4 -mb-24 -mt-6 flex h-[calc(100dvh-7rem)] flex-col overflow-hidden lg:-mx-8 lg:-mb-10 lg:h-[calc(100dvh-3.5rem)]">
+      {/* top bar: recent orders, product search, open drafts */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 bg-brand-600 px-3 py-2">
+        <div className="relative flex w-full max-w-lg items-center gap-2">
+          <button
+            aria-label="Đơn gần đây"
+            title="Đơn đã tạo gần đây"
+            className="rounded-md bg-brand-700 p-2 text-white hover:bg-brand-800"
+            onClick={() => setRecentOpen((o) => !o)}
+          >
+            <ListOrdered className="size-5" />
+          </button>
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-white px-3 py-2 text-sm dark:bg-slate-900">
             <Search className="size-4 text-slate-400" />
             <input
               ref={searchRef}
@@ -259,19 +452,24 @@ export default function PosPage() {
             />
           </label>
           {q.trim().length > 0 && hits.length > 0 && (
-            <ul className="absolute left-0 right-0 z-20 mt-1 max-h-96 overflow-auto rounded-md border border-slate-200 bg-white text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900">
+            <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-[70vh] overflow-auto rounded-md border border-slate-200 bg-white text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900">
               {hits.map((v) => (
                 <li key={v.id}>
                   <button
                     className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
                     onClick={() => addVariant(v)}
                   >
-                    <span className="font-mono text-xs text-slate-500">{v.sku}</span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {v.productName} <span className="text-slate-500">{optionText(v.optionValues)}</span>
+                    <Thumb src={v.image} className="size-12" />
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2">
+                        {v.productName} <span className="text-slate-500">{optionText(v.optionValues)}</span>
+                      </span>
+                      <span className="font-mono text-xs text-slate-500">{v.sku}</span>
                     </span>
-                    <span className={`text-xs ${v.onHand > 0 ? 'text-slate-500' : 'text-rose-600'}`}>Tồn {fmt(v.onHand)}</span>
-                    <span className="tabular-nums">{fmt(v.price)}</span>
+                    <span className="text-right">
+                      <span className="block tabular-nums">{fmt(v.price)}</span>
+                      <span className={`text-xs ${v.onHand > 0 ? 'text-slate-500' : 'text-rose-600'}`}>Tồn {fmt(v.onHand)}</span>
+                    </span>
                   </button>
                 </li>
               ))}
@@ -292,20 +490,16 @@ export default function PosPage() {
               </button>
             </div>
           ))}
-          <button
-            className="rounded-md p-1.5 text-white hover:bg-brand-700"
-            aria-label="Thêm hóa đơn"
-            onClick={() => void newDraft(draft.mode)}
-          >
+          <button className="rounded-md p-1.5 text-white hover:bg-brand-700" aria-label="Thêm hóa đơn" onClick={() => void newDraft(draft.mode)}>
             <Plus className="size-5" />
           </button>
         </div>
       </div>
 
-      <div className="grid flex-1 gap-3 bg-slate-100 p-3 lg:grid-cols-[1fr_minmax(360px,420px)] dark:bg-slate-950">
-        {/* lines */}
-        <div className="flex min-h-[320px] flex-col rounded-lg bg-white dark:bg-slate-900">
-          <ul className="flex-1 divide-y divide-slate-100 overflow-auto dark:divide-slate-800">
+      <div className="grid min-h-0 flex-1 gap-3 bg-slate-100 p-3 lg:grid-cols-[1fr_minmax(360px,420px)] dark:bg-slate-950">
+        {/* lines: only the list scrolls */}
+        <div className="flex min-h-0 flex-col rounded-lg bg-white dark:bg-slate-900">
+          <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-auto dark:divide-slate-800">
             {p.lines.length === 0 && <li className="p-6 text-center text-sm text-slate-500">Chưa có sản phẩm. Tìm hàng hoặc quét mã vạch.</li>}
             {p.lines.map((l, i) => {
               const v = info[l.variantId];
@@ -313,13 +507,14 @@ export default function PosPage() {
               return (
                 <li key={l.variantId} className="px-3 py-2">
                   <div className="flex items-center gap-3 text-sm">
-                    <span className="w-6 text-slate-400">{i + 1}</span>
-                    <span className="w-24 shrink-0 font-mono text-xs">{v?.sku ?? '…'}</span>
+                    <span className="w-5 text-slate-400">{i + 1}</span>
+                    <Thumb src={v?.image} className="size-12" />
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2">
                         {v?.productName} <span className="text-slate-500">{optionText(v?.optionValues)}</span>
                       </span>
-                      {low && <span className="text-xs text-rose-600">Tồn: {fmt(v.onHand)} (không đủ)</span>}
+                      <span className="font-mono text-xs text-slate-500">{v?.sku ?? '…'}</span>
+                      {low && <span className="ml-2 text-xs text-rose-600">Tồn: {fmt(v.onHand)} (không đủ)</span>}
                     </span>
                     <span className="flex items-center gap-1">
                       <button
@@ -353,10 +548,7 @@ export default function PosPage() {
                       </button>
                     </span>
                     <span className="w-28">
-                      <Money
-                        value={l.price}
-                        onChange={(n) => patch({ lines: p.lines.map((x) => (x.variantId === l.variantId ? { ...x, price: n } : x)) })}
-                      />
+                      <Money value={l.price} onChange={(n) => patch({ lines: p.lines.map((x) => (x.variantId === l.variantId ? { ...x, price: n } : x)) })} />
                     </span>
                     <span className="w-28 text-right font-medium tabular-nums">{fmt(l.price * l.qty)}</span>
                     <button aria-label="Xóa dòng" onClick={() => patch({ lines: p.lines.filter((x) => x.variantId !== l.variantId) })}>
@@ -367,9 +559,9 @@ export default function PosPage() {
               );
             })}
           </ul>
-          <div className="grid gap-1 border-t border-slate-200 p-3 text-sm sm:grid-cols-[1fr_auto] dark:border-slate-800">
+          <div className="grid shrink-0 gap-3 border-t border-slate-200 p-3 text-sm sm:grid-cols-[1fr_auto] dark:border-slate-800">
             <textarea
-              className="rounded-md border border-slate-200 bg-transparent p-2 text-sm dark:border-slate-700"
+              className="resize-none rounded-md border border-slate-200 bg-transparent p-2 text-sm dark:border-slate-700"
               rows={3}
               placeholder="Ghi chú đơn hàng"
               value={p.note}
@@ -384,109 +576,105 @@ export default function PosPage() {
           </div>
         </div>
 
-        {/* customer, delivery, pay */}
-        <div className="flex flex-col rounded-lg bg-white p-3 text-sm dark:bg-slate-900">
-          <div className="relative">
-            <label className="flex items-center gap-2 border-b border-slate-300 pb-1.5 dark:border-slate-700">
-              <Search className="size-4 text-slate-400" />
-              <input
-                className="min-w-0 flex-1 bg-transparent outline-none"
-                placeholder={p.customer?.id || p.customer?.name ? `${p.customer.name ?? ''} ${p.customer.phone ?? ''}` : 'Tìm khách hàng (tên, SĐT)'}
-                value={cq}
-                onChange={(e) => setCq(e.target.value)}
-              />
-              {(p.customer?.id || p.customer?.name) && (
+        {/* right column: only this scrolls */}
+        <div className="flex min-h-0 flex-col rounded-lg bg-white text-sm dark:bg-slate-900">
+          <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
+            <div className="flex items-center justify-end gap-2 text-slate-500">
+              <input type="date" className="border-b border-slate-300 bg-transparent text-sm outline-none dark:border-slate-700" value={when.date} max={toLocal(null).date} onChange={(e) => setWhen(e.target.value, when.time)} />
+              <input type="time" className="border-b border-slate-300 bg-transparent text-sm outline-none dark:border-slate-700" value={when.time} onChange={(e) => setWhen(when.date, e.target.value)} />
+              {p.orderedAt && (
+                <button className="text-xs text-brand-700" onClick={() => patch({ orderedAt: null })}>
+                  Bây giờ
+                </button>
+              )}
+            </div>
+
+            <div className="relative">
+              <label className="flex items-center gap-2 border-b border-slate-300 pb-1.5 dark:border-slate-700">
+                <Search className="size-4 text-slate-400" />
+                <input
+                  className="min-w-0 flex-1 bg-transparent outline-none"
+                  placeholder="Tìm khách hàng (tên, SĐT)"
+                  value={cq}
+                  onChange={(e) => setCq(e.target.value)}
+                />
+              </label>
+              {chits.length > 0 && (
+                <ul className="absolute left-0 right-0 z-10 mt-1 rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                  {chits.map((c) => (
+                    <li key={c.id}>
+                      <button className="flex w-full justify-between px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => void pickCustomer(c)}>
+                        <span>{c.name ?? '(không tên)'}</span>
+                        <span className="text-slate-500">{c.phone}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {p.customer?.id && (
+              <div className="flex items-start gap-2 rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+                <button className="flex min-w-0 flex-1 items-start gap-3 text-left" onClick={() => setCustomerOpen(p.customer!.id!)}>
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800">
+                    <User className="size-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-brand-700">
+                      {customer?.name ?? p.customer.name ?? '(không tên)'} {customer?.code && <span className="text-xs font-normal text-slate-500">{customer.code}</span>}
+                    </span>
+                    <span className="block text-xs text-slate-500">{customer?.phone ?? p.customer.phone ?? 'Chưa có số điện thoại'}</span>
+                    {customer?.addressLine && <span className="block truncate text-xs text-slate-500">{customer.addressLine}</span>}
+                  </span>
+                </button>
                 <button aria-label="Bỏ khách" onClick={() => patch({ customer: null })}>
                   <X className="size-4" />
                 </button>
-              )}
-            </label>
-            {chits.length > 0 && (
-              <ul className="absolute left-0 right-0 z-10 mt-1 rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                {chits.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      className="flex w-full justify-between px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
-                      onClick={() => {
-                        patch({
-                          customer: { id: c.id, name: c.name, phone: c.phone },
-                          receiver: !retail
-                            ? { ...p.receiver, name: c.name ?? '', phone: c.phone ?? '', address: c.addressLine ?? p.receiver.address }
-                            : p.receiver,
-                        });
-                        setCq('');
-                        setChits([]);
-                      }}
-                    >
-                      <span>{c.name ?? '(không tên)'}</span>
-                      <span className="text-slate-500">{c.phone}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              </div>
             )}
-          </div>
 
-          {!retail && (
-            <div className="mt-3 space-y-1">
-              <div className="grid grid-cols-2 gap-3">
-                <input className={line} placeholder="Tên người nhận" value={p.receiver.name} onChange={(e) => patch({ receiver: { ...p.receiver, name: e.target.value } })} />
-                <input className={line} placeholder="Số điện thoại" value={p.receiver.phone} onChange={(e) => patch({ receiver: { ...p.receiver, phone: e.target.value } })} />
-              </div>
-              <input className={line} placeholder="Địa chỉ chi tiết (số nhà, ngõ, đường)" value={p.receiver.address} onChange={(e) => patch({ receiver: { ...p.receiver, address: e.target.value } })} />
-              <div className="grid grid-cols-2 gap-3">
-                <input className={line} placeholder="Khu vực (tỉnh/quận)" value={p.receiver.area} onChange={(e) => patch({ receiver: { ...p.receiver, area: e.target.value } })} />
-                <input className={line} placeholder="Phường/Xã" value={p.receiver.ward} onChange={(e) => patch({ receiver: { ...p.receiver, ward: e.target.value } })} />
-              </div>
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <label className="text-xs text-slate-500">
-                  Đối tác giao hàng
-                  <input className={line} value={p.carrier} placeholder="SHOPEE, GHN, tự giao…" onChange={(e) => patch({ carrier: e.target.value })} />
-                </label>
-                <label className="text-xs text-slate-500">
-                  Phí trả ĐTGH
-                  <Money value={p.shippingFee} onChange={(n) => patch({ shippingFee: n })} />
-                </label>
-                <label className="col-span-2 text-xs text-slate-500">
-                  Mã vận đơn
-                  <input className={line} value={p.trackingNo} onChange={(e) => patch({ trackingNo: e.target.value })} />
-                </label>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-auto space-y-2 pt-4">
-            <div className="flex items-center justify-between gap-4">
-              <span>Khách thanh toán</span>
-              <span className="w-36">
-                <Money value={retail && p.paid === 0 ? total : p.paid} onChange={(n) => patch({ paid: n })} />
-              </span>
-            </div>
             {!retail && (
-              <label className="flex items-center justify-between gap-4">
-                <span>Thu hộ tiền (COD)</span>
-                <span className="flex items-center gap-3">
+              <div className="space-y-1">
+                <div className="grid grid-cols-2 gap-3">
+                  <input className={line} placeholder="Tên người nhận" value={p.receiver.name} onChange={(e) => patch({ receiver: { ...p.receiver, name: e.target.value } })} />
+                  <input className={line} placeholder="Số điện thoại" value={p.receiver.phone} onChange={(e) => patch({ receiver: { ...p.receiver, phone: e.target.value } })} />
+                </div>
+                <input className={line} placeholder="Địa chỉ chi tiết (số nhà, ngõ, đường)" value={p.receiver.address} onChange={(e) => patch({ receiver: { ...p.receiver, address: e.target.value } })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <input className={line} placeholder="Khu vực (tỉnh/quận)" value={p.receiver.area} onChange={(e) => patch({ receiver: { ...p.receiver, area: e.target.value } })} />
+                  <input className={line} placeholder="Phường/Xã" value={p.receiver.ward} onChange={(e) => patch({ receiver: { ...p.receiver, ward: e.target.value } })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <label className="text-xs text-slate-500">
+                    Đối tác giao hàng
+                    <input className={line} value={p.carrier} placeholder="SHOPEE, GHN, tự giao…" onChange={(e) => patch({ carrier: e.target.value })} />
+                  </label>
+                  <label className="text-xs text-slate-500">
+                    Phí trả ĐTGH
+                    <Money value={p.shippingFee} onChange={(n) => patch({ shippingFee: n })} />
+                  </label>
+                  <label className="col-span-2 text-xs text-slate-500">
+                    Mã vận đơn
+                    <input className={line} value={p.trackingNo} onChange={(e) => patch({ trackingNo: e.target.value })} />
+                  </label>
+                </div>
+                <label className="flex items-center justify-between gap-4 pt-2">
+                  <span>Thu hộ tiền (COD)</span>
                   <input type="checkbox" checked={p.cod} onChange={(e) => patch({ cod: e.target.checked })} />
-                  <span className="text-lg font-semibold tabular-nums">{fmt(cod)}</span>
-                </span>
-              </label>
+                </label>
+              </div>
             )}
-            {outOfStock > 0 && (
-              <p className="text-xs text-amber-600">{outOfStock} sản phẩm vượt tồn hiện có, vẫn cho bán (tồn sẽ âm).</p>
-            )}
-            {msg && <p className={`text-sm ${msg.ok ? 'text-emerald-700' : 'text-rose-600'}`}>{msg.text}</p>}
-            <label className="flex items-center gap-2 text-xs text-slate-500">
-              <input type="checkbox" checked={printOn} onChange={(e) => setPrintOn(e.target.checked)} />
-              <Printer className="size-3.5" /> In biên lai sau khi thanh toán
-            </label>
-            <Button className="h-12 w-full text-base" disabled={busy || p.lines.length === 0} onClick={() => void checkout()}>
+            {outOfStock > 0 && <p className="text-xs text-amber-600">{outOfStock} sản phẩm vượt tồn hiện có, vẫn cho bán (tồn sẽ âm).</p>}
+          </div>
+          <div className="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
+            <Button className="h-12 w-full text-base" disabled={busy || p.lines.length === 0} onClick={openConfirm}>
               THANH TOÁN
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="flex gap-1 border-t border-slate-200 bg-white px-3 py-1 dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex shrink-0 gap-1 border-t border-slate-200 bg-white px-3 py-1 dark:border-slate-800 dark:bg-slate-900">
         {(
           [
             ['retail', 'Bán thường', Store],
@@ -495,13 +683,128 @@ export default function PosPage() {
         ).map(([m, label, Icon]) => (
           <button
             key={m}
-            onClick={() => edit(draft.id, (d) => ({ ...d, mode: m }))}
+            onClick={() => setMode(m)}
             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium ${draft.mode === m ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500'}`}
           >
             <Icon className="size-4" /> {label}
           </button>
         ))}
       </div>
+
+      {/* recent orders slide out from the left */}
+      <div className={`absolute inset-y-0 left-0 z-40 w-80 transform bg-white shadow-xl transition-transform duration-200 dark:bg-slate-900 ${recentOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex items-center justify-between border-b border-slate-200 px-3 py-3 dark:border-slate-800">
+          <h2 className="font-medium">Đơn bán gần đây</h2>
+          <button aria-label="Đóng" onClick={() => setRecentOpen(false)}>
+            <X className="size-4" />
+          </button>
+        </div>
+        <ul className="h-[calc(100%-3rem)] divide-y divide-slate-100 overflow-auto dark:divide-slate-800">
+          {recent.length === 0 && <li className="p-4 text-sm text-slate-500">Chưa có đơn bán tại quầy.</li>}
+          {recent.map((o) => (
+            <li key={o.code}>
+              <button className="w-full px-3 py-2.5 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800" onClick={() => window.open(`/orders/${encodeURIComponent(o.code)}`, '_blank')}>
+                <span className="flex items-center justify-between">
+                  <span className="font-medium">{o.code}</span>
+                  <span className="tabular-nums">{fmt(o.total)}</span>
+                </span>
+                <span className="flex items-center justify-between text-xs text-slate-500">
+                  <span>{o.customer?.name ?? 'Khách lẻ'} · {formatRelativeDateTime(o.orderedAt)}</span>
+                  <Badge tone={o.status === 'cancelled' || o.status === 'returned' ? 'danger' : o.status === 'completed' || o.status === 'delivered' ? 'success' : 'brand'}>{STATUS_LABEL[o.status] ?? o.status}</Badge>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* confirm drawer */}
+      {confirming && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={() => !busy && setConfirming(false)}>
+          <div className="flex h-full w-full max-w-md flex-col bg-white p-5 shadow-xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between text-sm text-slate-500">
+              <span>{retail ? 'Bán thường' : 'Bán giao hàng'}</span>
+              <span className="flex items-center gap-2">
+                <input type="date" className="border-b border-slate-300 bg-transparent outline-none dark:border-slate-700" value={when.date} max={toLocal(null).date} onChange={(e) => setWhen(e.target.value, when.time)} />
+                <input type="time" className="border-b border-slate-300 bg-transparent outline-none dark:border-slate-700" value={when.time} onChange={(e) => setWhen(when.date, e.target.value)} />
+                <button aria-label="Đóng" onClick={() => setConfirming(false)}>
+                  <X className="size-5" />
+                </button>
+              </span>
+            </div>
+            <h2 className="mt-3 border-t border-dashed border-slate-300 pt-3 text-lg font-semibold dark:border-slate-700">
+              {customer?.name || p.customer?.name || (!retail ? p.receiver.name : '') || 'Khách lẻ'}
+            </h2>
+            <div className="mt-3 flex-1 space-y-3 overflow-auto text-sm">
+              <div className="flex justify-between"><span>Tổng tiền hàng ({p.lines.reduce((a, l) => a + l.qty, 0)})</span><span className="tabular-nums">{fmt(subtotal)}</span></div>
+              <div className="flex items-center justify-between"><span>Giảm giá</span><span className="w-36"><Money value={p.discount} onChange={(n) => patch({ discount: n })} /></span></div>
+              <div className="flex items-center justify-between"><span>Thu khác</span><span className="w-36"><Money value={p.otherIncome} onChange={(n) => patch({ otherIncome: n })} /></span></div>
+              <div className="flex justify-between text-base font-semibold"><span>Khách cần trả</span><span className="tabular-nums text-brand-700">{fmt(total)}</span></div>
+              <div className="flex items-center justify-between font-semibold"><span>Khách thanh toán</span><span className="w-36"><Money value={paid} onChange={(n) => setPaidInput(n)} /></span></div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {METHODS.map(([k, label]) => (
+                  <label key={k} className="flex items-center gap-1.5">
+                    <input type="radio" name="method" checked={p.paymentMethod === k} onChange={() => patch({ paymentMethod: k })} /> {label}
+                  </label>
+                ))}
+              </div>
+              {retail && (
+                <div className="flex flex-wrap gap-2 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
+                  {quickAmounts(total).map((n) => (
+                    <button key={n} className="rounded-full border border-slate-300 bg-white px-4 py-1.5 tabular-nums hover:border-brand-600 dark:border-slate-600 dark:bg-slate-900" onClick={() => setPaidInput(n)}>
+                      {fmt(n)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {retail && paidInput > total && <p className="text-slate-500">Tiền thừa trả khách: {fmt(paidInput - total)}</p>}
+              {!retail && (
+                <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  <p>Người nhận: {p.receiver.name || '—'} · {p.receiver.phone || '—'}</p>
+                  <p>{[p.receiver.address, p.receiver.ward, p.receiver.area].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}</p>
+                  <p className="mt-1">{p.cod ? `Thu hộ COD: ${fmt(cod)}` : 'Không thu hộ'}{p.carrier ? ` · ${p.carrier}` : ''}</p>
+                </div>
+              )}
+              {msg && <p className="text-rose-600">{msg}</p>}
+            </div>
+            <Button className="mt-3 h-12 w-full text-base" disabled={busy} onClick={() => void confirm()}>
+              {busy ? 'ĐANG TẠO ĐƠN…' : 'XÁC NHẬN'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* success popup */}
+      {done && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 text-center shadow-xl dark:bg-slate-900">
+            <p className="text-lg font-semibold text-emerald-700">Tạo đơn hàng thành công</p>
+            <p className="mt-1 text-sm text-slate-500">Mã đơn {done.code}</p>
+            <div className="mt-5 flex justify-center gap-2">
+              <Button onClick={() => void print()}>
+                <Printer className="size-4" /> In biên lai
+              </Button>
+              <Button variant="secondary" onClick={() => window.open(`/orders/${encodeURIComponent(done.code)}`, '_blank')}>
+                Xem đơn
+              </Button>
+              <Button variant="ghost" onClick={() => setDone(null)}>
+                Đóng
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {customerOpen && (
+        <CustomerModal
+          id={customerOpen}
+          onClose={() => setCustomerOpen(null)}
+          onSaved={(c) => {
+            setCinfo((cur) => ({ ...cur, [c.id]: c }));
+            patch({ customer: { id: c.id, name: c.name, phone: c.phone } });
+          }}
+        />
+      )}
     </div>
   );
 }

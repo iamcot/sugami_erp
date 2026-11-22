@@ -115,6 +115,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P4-P2 worker tự kéo đơn Pancake (Shopee VN + TikTok), trừ/hoàn tồn, chống trùng với đơn KiotViet, báo đơn mới | xem commit `[P4-P2]` |
 | 2026-11-22 | [P4] Ghép tay dòng hàng Pancake chưa liên kết vào mã hàng Sugami có sẵn (trang Dữ liệu Pancake) | main |
 | 2026-11-22 | [P6] Trang Bán hàng tại quầy: nhiều đơn nháp, bán thường/giao hàng, trừ tồn, mẫu biên lai và in bill, đổi trạng thái tay | main |
+| 2026-11-22 | [P6] Bán hàng: ảnh sản phẩm, chọn ngày giờ, thẻ khách + popup, ngăn xác nhận + popup thành công, khung cố định, ngăn đơn gần đây | main |
 
 ## P0 — Chuẩn bị & xác minh
 

@@ -47,6 +47,9 @@ export const PosPayload = z.object({
   shippingFee: int.default(0),
   trackingNo: z.string().trim().max(255).default(''),
   note: z.string().trim().max(1000).default(''),
+  /** When the sale happened (defaults to now); can be set back for a sale rung up late. */
+  orderedAt: z.iso.datetime().nullable().default(null),
+  paymentMethod: z.enum(['cash', 'transfer', 'card', 'wallet']).default('cash'),
 });
 export type PosPayload = z.infer<typeof PosPayload>;
 

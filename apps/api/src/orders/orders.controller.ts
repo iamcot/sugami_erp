@@ -18,6 +18,8 @@ const STATUSES = [
 const ListQuery = z.object({
   q: z.string().trim().max(64).optional(),
   channel: z.string().trim().max(32).optional(),
+  /** Where the order was created: pos (counter), pancake, kiotviet_excel. */
+  source: z.string().trim().max(32).optional(),
   status: z.enum(STATUSES).optional(),
   group: z.enum(['waiting', 'shipping', 'done', 'returned', 'other']).optional(),
   from: z.coerce.date().optional(),
@@ -56,6 +58,7 @@ export class OrdersController {
           }
         : {}),
       ...(q.channel ? { channel: { code: q.channel } } : {}),
+      ...(q.source ? { source: q.source } : {}),
       ...(q.status ? { status: q.status as OrderStatus } : {}),
       ...(q.group ? { status: { in: GROUPS[q.group] } } : {}),
       ...(q.from || q.to
@@ -88,6 +91,7 @@ export class OrdersController {
       data: orders.map((o) => ({
         id: o.id,
         code: o.code,
+        source: o.source,
         externalCode: o.externalCode,
         channel: o.channel,
         customer: o.customer

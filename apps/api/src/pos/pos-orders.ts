@@ -78,6 +78,8 @@ export async function createPosOrder(
   }
 
   const now = new Date();
+  const at = p.orderedAt ? new Date(p.orderedAt) : now;
+  if (at.getTime() > now.getTime() + 5 * 60_000) throw new PosError('Thời gian bán không được ở tương lai');
   const retail = mode === 'retail';
   for (let attempt = 0; ; attempt++) {
     const code = await nextCode(db);
@@ -105,8 +107,9 @@ export async function createPosOrder(
             paidAmount: big(t.paid),
             codAmount: big(t.cod),
             shippingFee: big(retail ? 0 : p.shippingFee),
-            orderedAt: now,
-            completedAt: retail ? now : null,
+            orderedAt: at,
+            paymentMethod: t.paid > 0 ? p.paymentMethod : null,
+            completedAt: retail ? at : null,
             source: 'pos',
             stockAppliedAt: now,
             internalNote: [!retail && p.receiver.name ? `Người nhận: ${p.receiver.name}` : '', p.note]
@@ -144,7 +147,7 @@ export async function createPosOrder(
             refType: 'order',
             refId: order.id,
             note: `Bán hàng ${order.code}`,
-            occurredAt: now,
+            occurredAt: at,
             createdBy: input.userId,
           })),
         );
