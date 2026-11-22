@@ -21,6 +21,7 @@
     "db:deploy": "pnpm --filter @sugami/db db:deploy",
     "db:seed": "pnpm --filter @sugami/db db:seed",
     "db:studio": "pnpm --filter @sugami/db db:studio",
+    "storage:check": "pnpm --filter @sugami/storage build && pnpm --filter @sugami/storage check",
     "kiotviet:probe": "pnpm --filter @sugami/channels-kiotviet build && pnpm --filter @sugami/channels-kiotviet probe -- --out ../../../kiotviet-probe-report.json"
   },
   "devDependencies": {

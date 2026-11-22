@@ -59,7 +59,7 @@ Sửa trong `.env`:
 | `DATABASE_URL`, `SHADOW_DATABASE_URL` | thay `sugami-dev` bằng mật khẩu ở bước 3 |
 | `APP_ENCRYPTION_KEY` | chuỗi ngẫu nhiên: `openssl rand -base64 32` |
 | `SEED_OWNER_EMAIL`, `SEED_OWNER_PASSWORD` | email và mật khẩu đăng nhập của chủ shop |
-| `STORAGE_DRIVER` | `local` nếu chưa có key S3; `s3` kèm `S3_*` khi đã có |
+| `STORAGE_DRIVER` | `local` nếu chưa có key S3; `s3` kèm `S3_*` khi đã có (xem [`docs/ops/s3.md`](docs/ops/s3.md), kiểm tra bằng `pnpm storage:check`) |
 
 `.env` chỉ nằm trên máy, không commit, không gửi qua chat.
 

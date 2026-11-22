@@ -32,6 +32,7 @@ model User {
   updatedAt        DateTime   @updatedAt @map("updated_at")
   roles            UserRole[]
   auditLogs        AuditLog[]
+  mediaUploads     MediaAsset[]
 
   @@map("users")
 }
@@ -150,6 +151,7 @@ model Product {
   brand       Brand?          @relation(fields: [brandId], references: [id], onDelete: SetNull)
   options     ProductOption[]
   variants    Variant[]
+  media       ProductMedia[]
 
   @@index([searchKey])
   @@index([categoryId])
@@ -213,6 +215,7 @@ model Variant {
   usedInCombos    ComboItem[]         @relation("ComboComponent")
   prices          PriceListItem[]
   stockLevels     StockLevel[]
+  media           ProductMedia[]
   movements       StockMovement[]
   documentLines   StockDocumentLine[]
 
@@ -425,4 +428,93 @@ model StockDocumentLine {
 
   @@index([documentId])
   @@map("stock_document_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Media
+// ---------------------------------------------------------------------------
+
+enum MediaKind {
+  image
+  video
+  file
+}
+
+enum MediaStatus {
+  /// Upload URL issued, file not confirmed in storage yet.
+  pending
+  ready
+}
+
+/// One uploaded file. The bytes live in storage (S3 / local) under storageKey.
+model MediaAsset {
+  id           String         @id @default(uuid(7)) @db.Char(36)
+  kind         MediaKind
+  status       MediaStatus    @default(pending)
+  /// Full object key, prefix included (e.g. "sugami/media/2026/11/<id>.jpg").
+  storageKey   String         @unique @map("storage_key") @db.VarChar(512)
+  originalName String         @map("original_name") @db.VarChar(255)
+  mime         String         @db.VarChar(127)
+  sizeBytes    BigInt         @map("size_bytes")
+  width        Int?
+  height       Int?
+  /// SHA-256 hex, for duplicate detection (filled by the image worker).
+  checksum     String?        @db.Char(64)
+  alt          String?        @db.VarChar(255)
+  tags         Json?
+  /// Where it came from: upload, kiotviet, shopee, taobao...
+  source       String         @default("upload") @db.VarChar(32)
+  uploadedBy   String?        @map("uploaded_by") @db.Char(36)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  uploader     User?          @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
+  variants     MediaVariant[]
+  usages       ProductMedia[]
+
+  @@index([status, createdAt])
+  @@index([checksum])
+  @@map("media_assets")
+}
+
+/// Derived file (thumbnail, 1:1 1000px, WebP...) made by the worker (P3-03).
+model MediaVariant {
+  id         String     @id @default(uuid(7)) @db.Char(36)
+  assetId    String     @map("asset_id") @db.Char(36)
+  preset     String     @db.VarChar(32)
+  storageKey String     @unique @map("storage_key") @db.VarChar(512)
+  width      Int?
+  height     Int?
+  sizeBytes  BigInt?    @map("size_bytes")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  asset      MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, preset])
+  @@map("media_variants")
+}
+
+enum ProductMediaRole {
+  main
+  gallery
+  size_chart
+  video
+}
+
+/// Media attached to a product (optionally one variant, optionally one channel).
+model ProductMedia {
+  id          String           @id @default(uuid(7)) @db.Char(36)
+  productId   String           @map("product_id") @db.Char(36)
+  variantId   String?          @map("variant_id") @db.Char(36)
+  assetId     String           @map("asset_id") @db.Char(36)
+  role        ProductMediaRole @default(gallery)
+  sort        Int              @default(0)
+  /// null = all channels; otherwise "shopee", "tiktok"...
+  channelCode String?          @map("channel_code") @db.VarChar(32)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  product     Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant     Variant?         @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  asset       MediaAsset       @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@index([productId, sort])
+  @@index([assetId])
+  @@map("product_media")
 }
