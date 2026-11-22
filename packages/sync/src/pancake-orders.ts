@@ -11,6 +11,8 @@ const CHANNELS: Record<string, { type: 'shopee' | 'tiktok'; name: string }> = {
 /** Re-read this much before the cursor: Pancake's updated_at window is not exact. */
 const OVERLAP_MS = 10 * 60 * 1000;
 const CHUNK = 400;
+const WINDOW_MS = 30 * 86_400_000;
+const NEW_ORDERS_KEPT = 50;
 
 export interface OrderSyncOptions {
   warehouseId: string;
@@ -406,6 +408,35 @@ export async function syncPancakeOrders(
   return summary;
 }
 
+function mergeSummaries(a: OrderSyncSummary, b: OrderSyncSummary): OrderSyncSummary {
+  return {
+    dryRun: a.dryRun,
+    fetched: a.fetched + b.fetched,
+    skipped: {
+      currency: a.skipped.currency + b.skipped.currency,
+      channel: a.skipped.channel + b.skipped.channel,
+    },
+    created: a.created + b.created,
+    updated: a.updated + b.updated,
+    unchanged: a.unchanged + b.unchanged,
+    keptFromKiotViet: a.keptFromKiotViet + b.keptFromKiotViet,
+    enriched: a.enriched + b.enriched,
+    stock: {
+      applied: a.stock.applied + b.stock.applied,
+      beforeSnapshot: a.stock.beforeSnapshot + b.stock.beforeSnapshot,
+      reversed: a.stock.reversed + b.stock.reversed,
+    },
+    customers: {
+      created: a.customers.created + b.customers.created,
+      linked: a.customers.linked + b.customers.linked,
+    },
+    unknownSkus: [...new Set([...a.unknownSkus, ...b.unknownSkus])].sort(),
+    unlinkedLines: a.unlinkedLines + b.unlinkedLines,
+    newOrders: [...a.newOrders, ...b.newOrders].slice(0, NEW_ORDERS_KEPT),
+    errors: [...a.errors, ...b.errors],
+  };
+}
+
 async function findMany<K, T>(keys: K[], fn: (chunk: K[]) => Promise<T[]>): Promise<T[]> {
   const out: T[] = [];
   for (let i = 0; i < keys.length; i += CHUNK) out.push(...(await fn(keys.slice(i, i + CHUNK))));
@@ -413,7 +444,7 @@ async function findMany<K, T>(keys: K[], fn: (chunk: K[]) => Promise<T[]>): Prom
 }
 
 export interface PancakeSource {
-  pullOrders(since?: Date): AsyncIterable<ExternalOrder>;
+  pullOrders(since?: Date, until?: Date): AsyncIterable<ExternalOrder>;
   pullProducts(since?: Date): AsyncIterable<ExternalProduct>;
 }
 
@@ -447,19 +478,38 @@ export async function runPancakeOrderSync(
       ? new Date(saved.cursor.getTime() - OVERLAP_MS)
       : new Date(startedAt.getTime() - (opts.sinceDays ?? 14) * 86_400_000);
 
-  const orders: ExternalOrder[] = [];
-  for await (const o of source.pullOrders(since)) orders.push(o);
-
-  const skuByVariationId = new Map<string, string>();
-  if (orders.length) {
-    for await (const p of source.pullProducts())
-      for (const v of p.variants) skuByVariationId.set(v.externalId, v.sku);
+  // A long look-back (history backfill) is pulled and applied one month at a time, so memory and
+  // each Pancake request stay small; a short window is a single pass as before.
+  const windows: { from: Date; to?: Date }[] = [];
+  for (let from = since; ;) {
+    const next = new Date(from.getTime() + WINDOW_MS);
+    if (next >= startedAt || startedAt.getTime() - since.getTime() <= WINDOW_MS * 1.5) {
+      windows.push({ from, to: undefined });
+      break;
+    }
+    windows.push({ from, to: next });
+    from = next;
   }
-  const summary = await syncPancakeOrders(db, orders, {
-    warehouseId: warehouse.id,
-    dryRun: opts.dryRun ?? false,
-    skuByVariationId,
-  });
+
+  let skuByVariationId: Map<string, string> | undefined;
+  const loadSkus = async () => {
+    const m = new Map<string, string>();
+    for await (const p of source.pullProducts()) for (const v of p.variants) m.set(v.externalId, v.sku);
+    return m;
+  };
+  let summary: OrderSyncSummary | undefined;
+  for (const w of windows) {
+    const orders: ExternalOrder[] = [];
+    for await (const o of source.pullOrders(w.from, w.to)) orders.push(o);
+    if (orders.length) skuByVariationId ??= await loadSkus();
+    const part = await syncPancakeOrders(db, orders, {
+      warehouseId: warehouse.id,
+      dryRun: opts.dryRun ?? false,
+      skuByVariationId,
+    });
+    summary = summary ? mergeSummaries(summary, part) : part;
+  }
+  summary ??= await syncPancakeOrders(db, [], { warehouseId: warehouse.id, dryRun: opts.dryRun ?? false });
   if (!summary.dryRun && summary.errors.length === 0) {
     await db.syncCursor.upsert({
       where: { key: PANCAKE_ORDER_CURSOR },

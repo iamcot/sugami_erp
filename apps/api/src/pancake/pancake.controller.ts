@@ -26,7 +26,7 @@ const Body_ = z.object({
 const SyncBody = z.object({
   dryRun: z.boolean().default(true),
   /** Only used when the sync has never run: how far back to look. */
-  sinceDays: z.number().int().min(1).max(60).default(14),
+  sinceDays: z.number().int().min(1).max(1500).default(14),
   /** Look back sinceDays ignoring the saved cursor (updates older orders when not a preview). */
   rescan: z.boolean().default(false),
 });

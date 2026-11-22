@@ -75,9 +75,9 @@ export default function PancakePage() {
           <input
             type="number"
             min={1}
-            max={60}
+            max={1500}
             value={sinceDays}
-            onChange={(e) => setSinceDays(Math.min(60, Math.max(1, Number(e.target.value) || 14)))}
+            onChange={(e) => setSinceDays(Math.min(1500, Math.max(1, Number(e.target.value) || 14)))}
             className="mt-1 block h-9 w-28 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
           />
         </label>

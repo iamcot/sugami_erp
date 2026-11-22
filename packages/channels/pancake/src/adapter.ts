@@ -55,10 +55,10 @@ export class PancakeAdapter implements ChannelAdapter {
     yield* groupVariations(variations);
   }
 
-  /** Orders updated since `since` (all orders when omitted). */
-  async *pullOrders(since?: Date): AsyncIterable<ExternalOrder> {
+  /** Orders updated from `since` to `until` (now when omitted); all orders when `since` is omitted. */
+  async *pullOrders(since?: Date, until?: Date): AsyncIterable<ExternalOrder> {
     const query = since
-      ? { updateStatus: 'updated_at', startDateTime: unix(since), endDateTime: unix(new Date()) }
+      ? { updateStatus: 'updated_at', startDateTime: unix(since), endDateTime: unix(until ?? new Date()) }
       : {};
     for await (const raw of this.client.paginate<unknown>('/orders', query))
       yield toExternalOrder(Order.parse(raw));

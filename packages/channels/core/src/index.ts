@@ -107,7 +107,7 @@ export interface ChannelAdapter {
   readonly code: ChannelCode;
   readonly capabilities: ChannelCapabilities;
   pullProducts(since?: Date): AsyncIterable<ExternalProduct>;
-  pullOrders(since?: Date): AsyncIterable<ExternalOrder>;
+  pullOrders(since?: Date, until?: Date): AsyncIterable<ExternalOrder>;
   pushStock?(items: StockPush[]): Promise<PushResult[]>;
   verifyWebhook?(req: RawRequest): boolean;
   parseWebhook?(req: RawRequest): ChannelEvent[];

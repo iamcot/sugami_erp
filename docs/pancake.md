@@ -77,3 +77,9 @@ pnpm pancake:probe
 - Lưu vào đơn: hạn bàn giao (`additional_info.ship_by_date`, dự phòng `delivery_deadline`), địa chỉ nhận (`shipping_address.full_address`, tỉnh), phí sàn (`fee_marketplace`) và chi tiết (`advanced_platform_fee`, chỉ các mục số khác 0). Đơn nhập từ KiotViet được bổ sung các trường này nhưng giữ trạng thái/tồn.
 - Dòng hàng không có mã (tin đăng chưa nối sản phẩm Pancake) được đếm ở "Dòng hàng chưa liên kết" và không trừ tồn; cần nối tin đăng với sản phẩm trong Pancake.
 - Chạy lại "Quét lại" sau khi cập nhật để đơn cũ nhận thông tin mới.
+
+## Nạp lại lịch sử đơn (backfill)
+
+- Tab "Đơn từ Pancake": đặt "Số ngày quét lùi" tới 1500 ngày, tick "Quét lại", bấm "Xem trước" rồi chạy thật. Quét dài được chia từng cửa sổ 30 ngày để không quá tải; chạy lại nhiều lần không tạo trùng.
+- Đơn cũ bán trước lần nhập tồn đầu của SKU thì không trừ tồn (cùng quy tắc nhập KiotViet); đơn trùng mã sàn với hóa đơn KiotViet chỉ được bổ sung thông tin (ĐVVC, địa chỉ, phí sàn, khách), giữ trạng thái và tồn của KiotViet.
+- Giới hạn: Pancake chỉ có đơn từ lúc shop nối sàn vào Pancake.
