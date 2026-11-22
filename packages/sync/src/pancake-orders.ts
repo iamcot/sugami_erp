@@ -190,6 +190,8 @@ export async function syncPancakeOrders(
       status: o.status as Prisma.OrderCreateInput['status'],
       total: big(o.total),
       shippingFee: big(o.shippingFee ?? 0),
+      carrier: o.carrier?.slice(0, 255) ?? null,
+      trackingNo: o.trackingNo?.slice(0, 255) ?? null,
       completedAt: o.status === 'completed' || o.status === 'delivered' ? o.orderedAt : null,
     };
 
@@ -276,7 +278,11 @@ export async function syncPancakeOrders(
         await db.order.update({ where: { id: prev.id }, data: { customerId: buyerId } });
     }
     const changed =
-      prev.status !== fields.status || prev.total !== fields.total || prev.shippingFee !== fields.shippingFee;
+      prev.status !== fields.status ||
+      prev.total !== fields.total ||
+      prev.shippingFee !== fields.shippingFee ||
+      prev.carrier !== fields.carrier ||
+      prev.trackingNo !== fields.trackingNo;
     if (!changed) {
       summary.unchanged++;
       return;

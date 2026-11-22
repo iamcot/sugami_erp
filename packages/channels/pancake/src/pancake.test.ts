@@ -176,6 +176,14 @@ describe('mapping', () => {
     ).toBeUndefined();
   });
 
+  it('reads the shipping carrier and tracking number from the partner', () => {
+    const o = toExternalOrder(
+      Order.parse(order({ partner: { partner_name: ' SPX ', extend_code: 'SPXVN0123456789' } })),
+    );
+    expect(o).toMatchObject({ carrier: 'SPX', trackingNo: 'SPXVN0123456789' });
+    expect(toExternalOrder(Order.parse(order())).carrier).toBeUndefined();
+  });
+
   it('labels unknown marketplaces and rejects unknown statuses', () => {
     expect(toExternalOrder(Order.parse(order({ marketplace_id: '-99' }))).saleChannel).toBe('pancake:-99');
     expect(toExternalOrder(Order.parse(order({ marketplace_id: '-9' }))).saleChannel).toBe('tiktok');

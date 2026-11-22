@@ -17,6 +17,7 @@ interface OrderRow {
   customer: { code: string | null; name: string | null; phone: string | null } | null;
   status: string;
   shippingStatus: string | null;
+  carrier: string | null;
   trackingNo: string | null;
   total: number;
   orderedAt: string;
@@ -82,6 +83,19 @@ const columns: Column<OrderRow>[] = [
           <span className="block">{o.customer.name ?? o.customer.code}</span>
           {o.customer.phone && <span className="block text-xs text-slate-500">{o.customer.phone}</span>}
         </Link>
+      ) : (
+        <span className="text-slate-400">–</span>
+      ),
+  },
+  {
+    key: 'carrier',
+    header: 'Vận chuyển',
+    className: 'hidden whitespace-nowrap lg:table-cell',
+    render: (o) =>
+      o.carrier ? (
+        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
+          {o.carrier}
+        </span>
       ) : (
         <span className="text-slate-400">–</span>
       ),

@@ -127,6 +127,8 @@ export function toExternalOrder(o: Order): ExternalOrder {
     status,
     currency: o.order_currency ?? undefined,
     customer: buyerOf(o),
+    carrier: o.partner?.partner_name?.trim() || undefined,
+    trackingNo: o.partner?.extend_code?.trim() || undefined,
     orderedAt: parsePancakeTime(o.inserted_at),
     total: o.total_price ?? 0,
     shippingFee: o.shipping_fee ?? undefined,

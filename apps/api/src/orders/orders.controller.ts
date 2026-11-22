@@ -82,6 +82,7 @@ export class OrdersController {
           : null,
         status: o.status,
         shippingStatus: o.shippingStatus,
+        carrier: o.carrier,
         trackingNo: o.trackingNo,
         total: Number(o.total),
         orderedAt: o.orderedAt.toISOString(),

@@ -64,6 +64,9 @@ export interface ExternalOrder {
   total: number;
   /** Buyer as the source system shows it (Shopee shows the buyer's nickname). */
   customer?: { name: string; phone?: string };
+  /** Shipping carrier name (e.g. SPX) and its tracking number. */
+  carrier?: string;
+  trackingNo?: string;
   shippingFee?: number;
   platformFee?: number;
   lines: ExternalOrderLine[];
