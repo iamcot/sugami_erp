@@ -184,6 +184,8 @@ function CustomerModal({
   const [stats, setStats] = useState<{ orders: number; spent: number } | null>(null);
   const [history, setHistory] = useState<HistoryOrder[]>([]);
   const [tab, setTab] = useState<'info' | 'history'>('info');
+  /** The phone typed for a new buyer already belongs to this customer. */
+  const [dup, setDup] = useState<CustomerFull | null>(null);
   useEffect(() => {
     if (!id) return;
     api<{ customer: CustomerFull; stats: { orders: number; spent: number }; orders: HistoryOrder[] }>(
@@ -212,6 +214,10 @@ function CustomerModal({
             ward: c.ward,
           },
         });
+        if (r.existing) {
+          setDup(r.customer);
+          return;
+        }
         onSaved(r.customer);
         onClose();
       } catch (e) {
@@ -273,6 +279,28 @@ function CustomerModal({
           ))}
         </div>
         {err && <p className="mt-2 text-sm text-rose-600">{err}</p>}
+        {dup && (
+          <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+            <p>
+              Số điện thoại <b>{dup.phone}</b> đã có trong danh sách khách: <b>{dup.name ?? '(không tên)'}</b>
+              {dup.code ? ` (${dup.code})` : ''}
+              {dup.addressLine ? `, ${dup.addressLine}` : ''}. Chưa tạo khách mới.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <Button
+                onClick={() => {
+                  onSaved(dup);
+                  onClose();
+                }}
+              >
+                Dùng khách này
+              </Button>
+              <Button variant="secondary" onClick={() => setDup(null)}>
+                Sửa số điện thoại
+              </Button>
+            </div>
+          </div>
+        )}
         {tab === 'history' && (
           <div className="mt-3 min-h-0 flex-1 overflow-auto">
             {history.length === 0 ? (
