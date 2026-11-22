@@ -26,7 +26,6 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Bị chặn / chờ chủ shop
 
-- P0-05: còn thiếu **mẫu import hàng hóa** của KiotViet (cho P1-13, tạo sản phẩm mới).
 - P0-08: **nộp hồ sơ ngay** app Shopee Open Platform và TikTok Shop Partner Center (hướng dẫn: docs/ops/dang-ky-app-san.md).
 - P0-11: cài Docker trên iMac.
 - P3-01: tạo IAM user/key và cấu hình CORS theo docs/ops/s3.md, điền `.env`, chạy `pnpm storage:check`; cho biết region, folder, có CloudFront không.
@@ -34,6 +33,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Quyết định đã chốt
 
+- 2026-11-22: Không dùng mẫu import hàng hóa KiotViet. Hàng vào KiotViet qua phiếu nhập; mã mới phải tạo tay trên KiotViet trước, Sugami cảnh báo khi xuất phiếu có mã KiotViet chưa có.
 - 2026-11-22: Mã hàng KiotViet là SKU, giữ nguyên; biến thể gom theo `Mã HH Liên quan` (D10). Shop có 1.029 mã hàng (nhiều hơn ước tính ban đầu).
 - 2026-11-22: Chạy trên KiotViet trước, dài hạn thay KiotViet; Sugami tự giữ sổ kho từ đầu.
 - 2026-11-22: Server là iMac của shop, Docker Compose, Cloudflare Tunnel. Tên miền **sugami.vn**: `erp.sugami.vn` (giao diện), `hooks.sugami.vn` (webhook).
@@ -70,7 +70,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P0-02 | Docker Compose dev | ✅ | 726704e | |
 | P0-03 | CI GitHub Actions: lint, typecheck, test, build trên mỗi PR | ✅ | 2a53d81 | |
 | P0-04 | Prisma schema khung (user, role, audit_log) + migration đầu + seed | ✅ | 2c78005 | |
-| P0-05 | Xuất file Excel mẫu từ KiotViet (hàng hóa + tồn, hóa đơn, phiếu nhập, NCC, mẫu import) | 👤 🟡 | | Đã có 8 file (22/11); còn thiếu mẫu import hàng hóa |
+| P0-05 | Xuất file Excel mẫu từ KiotViet (hàng hóa + tồn, hóa đơn, phiếu nhập, NCC, mẫu import) | 👤 ✅ | | Đủ file (22/11); shop đưa hàng vào KiotViet bằng phiếu nhập, không dùng mẫu import hàng hóa |
 | P0-06 | Script probe KiotViet Public API | ⏸ | e3c0d6e | Tạm ngưng: gói hiện tại không có API |
 | P0-07 | Phân tích file Excel KiotViet (`docs/kiotviet-excel.md`) | ✅ | 117ab2d | |
 | P0-08 | Đăng ký app Shopee Open Platform và TikTok Shop Partner Center | 👤 ⬜ | | |

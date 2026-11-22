@@ -83,7 +83,10 @@ Phí ship/thuế từ trung gian đã phân bổ vào giá vốn ở Sugami → 
 
 Sheet `StockTakeTemplate`, 2 cột: `Mã hàng` (chuỗi), `Số lượng` (số nguyên, định dạng `#,##0`). `Số lượng` là **tồn thực tế sau kiểm**, không phải số chênh lệch: KiotViet tự tính chênh lệch và cân bằng kho. Sugami xuất tồn hiện tại theo sổ kho cho các mã cần chỉnh.
 
-## Còn thiếu (cần chủ shop gửi)
+## Sản phẩm mới
 
-- **Mẫu import hàng hóa** (Hàng hóa → Nhập file → tải file mẫu): để tạo sản phẩm mới trên KiotViet từ Sugami.
+Shop không dùng mẫu import hàng hóa của KiotViet: hàng vào KiotViet qua phiếu nhập (mục 5). Phiếu nhập chỉ nhận mã đã có trên KiotViet, nên khi xuất phiếu Sugami liệt kê các mã chưa từng có trong file danh sách hàng hóa KiotViet gần nhất, để tạo tay trên KiotViet trước.
+
+## Còn thiếu
+
 - Một đơn TikTok Shop (nếu có) để biết tiền tố mã hóa đơn.
