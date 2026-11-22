@@ -581,6 +581,9 @@ export default function PosPage() {
         : {}),
     });
   };
+  /** Dropping the customer also clears what that customer filled into the order (the receiver). */
+  const removeCustomer = () =>
+    patch({ customer: null, receiver: { name: '', phone: '', address: '', area: '', ward: '' } });
   const setMode = (m: Mode) => {
     if (!draft) return;
     const c = draft.payload.customer?.id ? cinfo[draft.payload.customer.id] : undefined;
@@ -1040,7 +1043,7 @@ export default function PosPage() {
                       tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation();
-                        patch({ customer: null });
+                        removeCustomer();
                       }}
                     >
                       <X className="size-4" />
@@ -1074,7 +1077,7 @@ export default function PosPage() {
                         )}
                       </span>
                     </button>
-                    <button aria-label="Bỏ khách" tabIndex={-1} onClick={() => patch({ customer: null })}>
+                    <button aria-label="Bỏ khách" tabIndex={-1} onClick={() => removeCustomer()}>
                       <X className="size-4" />
                     </button>
                   </div>
