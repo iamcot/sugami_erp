@@ -31,8 +31,9 @@ collation-server = utf8mb4_0900_ai_ci
 cp .env.example .env        # sửa mật khẩu, khóa mã hóa
 pnpm install
 pnpm infra:up               # Redis trong Docker
-pnpm db:migrate             # tạo bảng (P0-04)
-pnpm db:seed                # dữ liệu mẫu
+pnpm build                  # build các package
+pnpm db:deploy              # tạo bảng (db:migrate chỉ dùng khi sửa schema)
+pnpm db:seed                # vai trò, kho chính, tài khoản chủ shop (SEED_OWNER_*)
 pnpm dev                    # web :3000, api :4000, worker
 ```
 
