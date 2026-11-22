@@ -24,6 +24,7 @@
 | D7 | TypeScript monorepo: Next.js + NestJS + **MySQL 8 native** + Redis/BullMQ + ảnh trên AWS S3 có sẵn, chạy bằng **Docker trên iMac** của shop, ra internet qua Cloudflare Tunnel | Chủ shop chọn; không tốn tiền server; chuyển lên VPS sau dễ |
 | D8 | Web app + PWA cho kho, chưa làm app native | Đủ cho quy mô hiện tại |
 | D9 | Không nâng gói KiotViet. Trao đổi với KiotViet bằng **file Excel** cho tới khi kết nối thẳng Shopee/TikTok; nộp hồ sơ app sàn ngay (chủ shop chọn 22/11/2026) | Không tăng chi phí; đơn ít nên thao tác tay vài phút/tuần |
+| D10 | Giữ nguyên **mã hàng KiotViet làm SKU** (kể cả mã không theo mẫu `SP…`); sản phẩm = nhóm mã theo cột `Mã HH Liên quan` | Đơn và tồn hai bên khớp nhau theo mã, không phải đổi mã trên sàn |
 
 ## 8.3 Câu hỏi còn mở
 
