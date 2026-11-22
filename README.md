@@ -1,0 +1,5 @@
+# Sugami ERP
+
+Hệ thống quản lý shop toàn diện: kho & xuất nhập tồn, nguồn hàng, hình ảnh & content, đơn hàng đa kênh. Giai đoạn đầu kết nối sàn Shopee thông qua KiotViet Public API, sau đó mở rộng TikTok Shop và các kênh khác.
+
+Tài liệu kế hoạch nằm trong [`docs/`](docs/README.md).
