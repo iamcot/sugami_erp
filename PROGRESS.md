@@ -113,6 +113,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | UI: trang danh sách full-width; chi tiết đơn/khách mở dạng drawer theo URL (`?d=order:MÃ`), giữ nguyên tìm kiếm/trang khi quay lại, Quay lại trong drawer về đúng đơn/khách trước | xem commit `[UI]` |
 | 2026-11-22 | P4-P2: tên khách lấy từ `customer.username` (nickname Shopee); lưu hạn bàn giao, địa chỉ nhận, phí sàn + chi tiết vào đơn, hiện ở danh sách/chi tiết đơn, bổ sung cho đơn KiotViet cũ; đếm dòng hàng chưa liên kết | xem commit `[P4-P2]` |
 | 2026-11-22 | P4-P2 worker tự kéo đơn Pancake (Shopee VN + TikTok), trừ/hoàn tồn, chống trùng với đơn KiotViet, báo đơn mới | xem commit `[P4-P2]` |
+| 2026-11-22 | [P4] Ghép tay dòng hàng Pancake chưa liên kết vào mã hàng Sugami có sẵn (trang Dữ liệu Pancake) | main |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -228,4 +229,3 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P5-05 | Checklist chuyển đổi | ⬜ | | |
 | P5-06 | Xuất & lưu trữ toàn bộ dữ liệu KiotViet | ⬜ | | |
 | P5-07 | 30 ngày vận hành không KiotViet, gỡ adapter khỏi lịch chạy | ⬜ | | |
-| 2026-11-22 | [P4] Ghép tay dòng hàng Pancake chưa liên kết vào mã hàng Sugami có sẵn (trang Dữ liệu Pancake) | main |
