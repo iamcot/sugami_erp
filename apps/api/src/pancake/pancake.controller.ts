@@ -304,15 +304,17 @@ export class PancakeController {
           });
       const pancake = await syncPancakeVariantRefs(this.prisma.client, pancakeVariants, { dryRun });
       // Listings (and linked options) per Pancake marketplace id, to confirm which id is Shopee/TikTok.
-      const marketplaces: Record<string, string> = {};
+      const counts: Record<string, { listings: number; linked: number }> = {};
       for (const l of vn) {
-        const k = l.marketplace_id ?? '?';
-        const linked = (l.variations ?? []).filter(
+        const c = (counts[l.marketplace_id ?? '?'] ??= { listings: 0, linked: 0 });
+        c.listings++;
+        c.linked += (l.variations ?? []).filter(
           (v) => v.linked_variation_custom_id || v.linked_product_custom_id,
         ).length;
-        const prev = marketplaces[k]?.split('/') ?? ['0', '0'];
-        marketplaces[k] = `${Number(prev[0]) + 1} tin/${Number(prev[1]) + linked} nối`;
       }
+      const marketplaces = Object.fromEntries(
+        Object.entries(counts).map(([k, c]) => [k, `${c.listings} tin/${c.linked} nối`]),
+      );
       return {
         ...summary,
         marketplaces,
