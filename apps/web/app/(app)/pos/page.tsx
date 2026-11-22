@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button } from '@/components/ui';
 import { OrderDetail } from '@/components/order-detail';
+import { AreaSelect } from '@/components/vn-area-select';
 import { formatRelativeDateTime } from '@/lib/datetime';
 import { api } from '@/lib/api';
 import { printReceipt, type ReceiptOrder, type ReceiptTemplate } from '@/lib/receipt';
@@ -173,7 +174,14 @@ function CustomerModal({
     try {
       await api(`/customers/${id}`, {
         method: 'PATCH',
-        json: { name: c.name, phone: c.phone, email: c.email, addressLine: c.addressLine },
+        json: {
+          name: c.name,
+          phone: c.phone,
+          email: c.email,
+          addressLine: c.addressLine,
+          region: c.region,
+          ward: c.ward,
+        },
       });
       onSaved(c);
       onClose();
@@ -185,7 +193,7 @@ function CustomerModal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900"
+        className="flex h-[620px] max-h-[92vh] w-full max-w-2xl flex-col rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
@@ -220,34 +228,34 @@ function CustomerModal({
         </div>
         {err && <p className="mt-2 text-sm text-rose-600">{err}</p>}
         {tab === 'history' && (
-          <div className="mt-3 max-h-80 overflow-auto">
+          <div className="mt-3 min-h-0 flex-1 overflow-auto">
             {history.length === 0 ? (
               <p className="py-6 text-center text-sm text-slate-500">Chưa có đơn hàng nào.</p>
             ) : (
               <table className="w-full text-sm">
-                <thead className="text-left text-xs text-slate-500">
+                <thead className="sticky top-0 bg-white text-left text-xs text-slate-500 dark:bg-slate-900">
                   <tr>
-                    <th className="py-1.5 font-medium">Mã đơn</th>
-                    <th className="py-1.5 font-medium">Thời gian</th>
-                    <th className="py-1.5 font-medium">Sản phẩm</th>
-                    <th className="py-1.5 text-right font-medium">Tổng tiền</th>
-                    <th className="py-1.5 pl-3 font-medium">Trạng thái</th>
+                    <th className="px-3 py-2 font-medium">Mã đơn</th>
+                    <th className="px-3 py-2 font-medium">Thời gian</th>
+                    <th className="px-3 py-2 font-medium">Sản phẩm</th>
+                    <th className="px-3 py-2 text-right font-medium">Tổng tiền</th>
+                    <th className="px-3 py-2 font-medium">Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.map((o) => (
-                    <tr key={o.code} className="border-t border-slate-100 align-top dark:border-slate-800">
-                      <td className="py-1.5 font-medium">{o.code}</td>
-                      <td className="whitespace-nowrap py-1.5">{formatRelativeDateTime(o.orderedAt)}</td>
-                      <td className="py-1.5 text-xs text-slate-600">
+                    <tr key={o.code} className="align-top even:bg-slate-50 dark:even:bg-slate-800/50">
+                      <td className="px-3 py-2 font-medium">{o.code}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatRelativeDateTime(o.orderedAt)}</td>
+                      <td className="px-3 py-2 text-xs text-slate-600">
                         {o.items
                           .slice(0, 3)
                           .map((it) => `${it.qty} × ${it.name}`)
                           .join('; ')}
                         {o.items.length > 3 ? ` … (+${o.items.length - 3})` : ''}
                       </td>
-                      <td className="py-1.5 text-right tabular-nums">{fmt(o.total)}</td>
-                      <td className="py-1.5 pl-3">{STATUS_LABEL[o.status] ?? o.status}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmt(o.total)}</td>
+                      <td className="px-3 py-2">{STATUS_LABEL[o.status] ?? o.status}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -256,7 +264,7 @@ function CustomerModal({
           </div>
         )}
         {tab === 'info' && c && (
-          <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+          <div className="mt-4 grid min-h-0 flex-1 content-start gap-x-8 gap-y-3 overflow-auto pb-48 sm:grid-cols-2">
             <label className="text-xs text-slate-500">
               Mã khách hàng
               <input className={line} value={c.code ?? ''} disabled />
@@ -281,14 +289,13 @@ function CustomerModal({
                 onChange={(e) => set('addressLine', e.target.value)}
               />
             </label>
-            <label className="text-xs text-slate-500">
-              Khu vực
-              <input className={line} value={c.region ?? ''} disabled />
-            </label>
-            <label className="text-xs text-slate-500">
-              Phường/Xã
-              <input className={line} value={c.ward ?? ''} disabled />
-            </label>
+            <div className="sm:col-span-2">
+              <AreaSelect
+                province={c.region ?? ''}
+                ward={c.ward ?? ''}
+                onChange={(v) => setC((cur) => (cur ? { ...cur, region: v.province, ward: v.ward } : cur))}
+              />
+            </div>
           </div>
         )}
         <div className="mt-6 flex justify-end gap-2">
@@ -926,20 +933,11 @@ export default function PosPage() {
                       value={p.receiver.address}
                       onChange={(e) => patch({ receiver: { ...p.receiver, address: e.target.value } })}
                     />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        className={line}
-                        placeholder="Khu vực (tỉnh/quận)"
-                        value={p.receiver.area}
-                        onChange={(e) => patch({ receiver: { ...p.receiver, area: e.target.value } })}
-                      />
-                      <input
-                        className={line}
-                        placeholder="Phường/Xã"
-                        value={p.receiver.ward}
-                        onChange={(e) => patch({ receiver: { ...p.receiver, ward: e.target.value } })}
-                      />
-                    </div>
+                    <AreaSelect
+                      province={p.receiver.area}
+                      ward={p.receiver.ward}
+                      onChange={(v) => patch({ receiver: { ...p.receiver, area: v.province, ward: v.ward } })}
+                    />
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <label className="text-xs text-slate-500">
                         Đối tác giao hàng

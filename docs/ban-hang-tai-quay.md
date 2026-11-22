@@ -16,3 +16,7 @@ Trang **Bán hàng** (`/pos`) thay màn hình bán hàng của KiotViet.
 ## Mẫu biên lai
 
 Cài đặt → Mẫu biên lai (quyền `settings.write`, chủ shop có sẵn). Mẫu gồm các block: dòng chữ (căn lề, cỡ, đậm; biến `{{code}} {{date}} {{customer}} {{total}}`), thông tin đơn, chi tiết đơn hàng, tổng tiền/giảm giá/thanh toán, đường kẻ. Khổ 58 hoặc 80mm. Mẫu mặc định được in từ popup sau khi tạo đơn và nút "In biên lai" ở đơn. In qua hộp thoại in của trình duyệt (chọn máy in bill; tắt lề/đầu trang nếu cần). Biến môi trường `POS_WAREHOUSE` chọn kho (mặc định `KHO-CHINH`).
+
+## Địa chỉ hành chính
+
+Chọn Tỉnh/Thành phố và Phường/Xã (tìm không dấu) dùng danh sách mới sau sáp nhập 2025: 34 tỉnh/thành, 3.321 phường/xã, không còn cấp quận/huyện. Dữ liệu ở `apps/web/public/data/vn-units.json`, lấy từ gói npm `vietnam-address-database` (MIT, theo Nghị quyết 202/2025/QH15), tải một lần khi mở popup/biểu mẫu. Khách cũ từ KiotViet có "Khu vực" kiểu cũ ("Hà Nội - Quận Cầu Giấy"): hiển thị nguyên giá trị; chọn lại để chuyển sang địa chỉ mới. Popup khách hàng lưu `region` (tỉnh/thành) và `ward` (phường/xã).

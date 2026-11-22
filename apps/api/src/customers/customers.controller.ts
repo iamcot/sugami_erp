@@ -21,6 +21,8 @@ const UpdateBody = z.object({
   phone: z.string().trim().max(32).nullable().optional(),
   email: z.string().trim().max(191).nullable().optional(),
   addressLine: z.string().trim().max(500).nullable().optional(),
+  region: z.string().trim().max(191).nullable().optional(),
+  ward: z.string().trim().max(191).nullable().optional(),
   tags: z.array(z.string().trim().min(1).max(64)).max(20).optional(),
 });
 
@@ -194,6 +196,8 @@ export class CustomersController {
         phone,
         ...(data.email !== undefined ? { email: data.email || null } : {}),
         ...(data.addressLine !== undefined ? { addressLine: data.addressLine || null } : {}),
+        ...(data.region !== undefined ? { region: data.region || null } : {}),
+        ...(data.ward !== undefined ? { ward: data.ward || null } : {}),
         ...(data.tags !== undefined ? { tags: data.tags } : {}),
         searchKey: toSearchKey([name, phone, c.kiotvietCode].filter(Boolean).join(' ')).slice(0, 400),
       },
