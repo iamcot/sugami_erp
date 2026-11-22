@@ -2,9 +2,9 @@
 
 import { formatVnd } from '@sugami/shared';
 import { Search } from 'lucide-react';
-import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
+import { useDetail } from '@/components/detail-drawer';
 import { Badge, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useQueryState } from '@/lib/use-query-state';
@@ -49,6 +49,22 @@ const STATUS: Record<string, { label: string; tone: 'neutral' | 'brand' | 'succe
   returned: { label: 'Trả hàng', tone: 'danger' },
 };
 
+function CustomerLink({ customer }: { customer: NonNullable<OrderRow['customer']> }) {
+  const { open } = useDetail();
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        open('customer', customer.code ?? customer.id);
+      }}
+      className="text-left text-brand-700 hover:underline dark:text-brand-50"
+    >
+      <span className="block">{customer.name ?? customer.code}</span>
+      {customer.phone && <span className="block text-xs text-slate-500">{customer.phone}</span>}
+    </button>
+  );
+}
+
 const columns: Column<OrderRow>[] = [
   {
     key: 'code',
@@ -76,17 +92,7 @@ const columns: Column<OrderRow>[] = [
     header: 'Khách hàng',
     className: 'hidden whitespace-nowrap md:table-cell',
     render: (o) =>
-      o.customer ? (
-        <Link
-          href={`/customers/${encodeURIComponent(o.customer.code ?? o.customer.id)}`}
-          className="text-brand-700 hover:underline dark:text-brand-50"
-        >
-          <span className="block">{o.customer.name ?? o.customer.code}</span>
-          {o.customer.phone && <span className="block text-xs text-slate-500">{o.customer.phone}</span>}
-        </Link>
-      ) : (
-        <span className="text-slate-400">–</span>
-      ),
+      o.customer ? <CustomerLink customer={o.customer} /> : <span className="text-slate-400">–</span>,
   },
   {
     key: 'carrier',
@@ -157,6 +163,7 @@ const columns: Column<OrderRow>[] = [
 ];
 
 function OrdersList() {
+  const { open } = useDetail();
   const [qs, setQs] = useQueryState({ q: '', channel: '', status: '', page: '1' });
   const [search, setSearch] = useState(qs.q);
   const [res, setRes] = useState<ListResponse | null>(null);
@@ -235,7 +242,7 @@ function OrdersList() {
         columns={columns}
         rows={res?.data ?? []}
         rowKey={(o) => o.id}
-        rowHref={(o) => `/orders/${encodeURIComponent(o.code)}`}
+        onRowClick={(o) => open('order', o.code)}
         page={Number(qs.page)}
         pageSize={50}
         total={res?.total}

@@ -26,6 +26,7 @@ export function DataTable<T>({
   rows,
   rowKey,
   rowHref,
+  onRowClick,
   sort,
   onSort,
   page,
@@ -39,6 +40,8 @@ export function DataTable<T>({
   rows: T[];
   rowKey: (row: T) => string;
   rowHref?: (row: T) => string;
+  /** Click anywhere on a row (e.g. open a detail drawer). */
+  onRowClick?: (row: T) => void;
   sort?: SortState;
   onSort?: (s: SortState) => void;
   page?: number;
@@ -109,7 +112,14 @@ export function DataTable<T>({
             {rows.map((r) => {
               const href = rowHref?.(r);
               return (
-                <tr key={rowKey(r)} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <tr
+                  key={rowKey(r)}
+                  className={cn(
+                    'hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                    onRowClick && 'cursor-pointer',
+                  )}
+                  onClick={onRowClick ? () => onRowClick(r) : undefined}
+                >
                   {columns.map((c, i) => (
                     <td key={c.key} className={cn('px-4 py-2.5', alignClass(c.align), c.className)}>
                       {href && i === 0 ? (

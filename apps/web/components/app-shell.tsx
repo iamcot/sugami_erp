@@ -20,7 +20,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
+import { DetailProvider } from './detail-drawer';
 import { PwaBootstrap } from './app-settings';
 import { UserMenu } from './user-menu';
 
@@ -117,7 +118,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 lg:px-8 lg:pb-10">{children}</main>
+      <main className="px-4 pb-24 pt-6 lg:px-8 lg:pb-10">
+        <Suspense>
+          <DetailProvider>{children}</DetailProvider>
+        </Suspense>
+      </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden dark:border-slate-800 dark:bg-slate-900">
         {mobileNav.map(({ href, label, icon: Icon }) => (

@@ -4,6 +4,7 @@ import { formatVnd } from '@sugami/shared';
 import { Search } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
+import { useDetail } from '@/components/detail-drawer';
 import { Badge, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useQueryState } from '@/lib/use-query-state';
@@ -98,6 +99,7 @@ const columns: Column<CustomerRow>[] = [
 ];
 
 function CustomersList() {
+  const { open } = useDetail();
   const [qs, setQs] = useQueryState({ q: '', group: '', sort: 'recent', page: '1' });
   const [search, setSearch] = useState(qs.q);
   const [res, setRes] = useState<ListResponse | null>(null);
@@ -181,7 +183,7 @@ function CustomersList() {
         columns={columns}
         rows={res?.data ?? []}
         rowKey={(c) => c.id}
-        rowHref={(c) => `/customers/${encodeURIComponent(c.code ?? c.id)}`}
+        onRowClick={(c) => open('customer', c.code ?? c.id)}
         page={Number(qs.page)}
         pageSize={50}
         total={res?.total}
