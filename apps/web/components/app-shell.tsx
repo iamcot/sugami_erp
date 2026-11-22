@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Package,
   Receipt,
-  PenLine,
   Search,
   Settings,
   ShoppingBag,
@@ -31,8 +30,6 @@ const nav = [
   { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/customers', label: 'Khách hàng', icon: Users },
   { href: '#sourcing', label: 'Nguồn hàng', icon: Truck },
-  // Media is folded into Content for now (same page until Content has its own).
-  { href: '/media', label: 'Content', icon: PenLine },
   { href: '#reports', label: 'Báo cáo', icon: BarChart3 },
   { href: '/data/import', label: 'Đồng bộ', icon: RefreshCw },
 ];

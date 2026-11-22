@@ -95,7 +95,7 @@ function healthChecks(d: Dashboard): Check[] {
       ok: h.noImage === 0,
       tone: 'warn',
       text: h.noImage ? `${h.noImage} sản phẩm đang bán chưa có ảnh` : 'Mọi sản phẩm đang bán đều có ảnh',
-      href: '/media',
+      href: '/products',
     },
   ];
 }
