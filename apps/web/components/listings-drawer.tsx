@@ -4,6 +4,7 @@ import { formatVnd } from '@sugami/shared';
 import { ChevronDown, ChevronRight, ImageOff, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { LINKED_BY } from '@/components/listing-detail';
+import { ShopeeIcon, TikTokIcon } from '@/components/platform-icons';
 import { Badge, Button } from '@/components/ui';
 import { api } from '@/lib/api';
 
@@ -47,8 +48,21 @@ const LINKS = [
 const PAGE = 30;
 
 /** Marketplace listings pulled from Pancake, with the link status Pancake reports. Filter by platform. */
-export function ListingsDrawer({ onClose, version }: { onClose: () => void; version: number }) {
-  const [platform, setPlatform] = useState('');
+export function ListingsDrawer({
+  onClose,
+  version,
+  platform: initialPlatform = '',
+  productCode,
+  title,
+}: {
+  onClose: () => void;
+  version: number;
+  platform?: '' | 'shopee' | 'tiktok';
+  /** Only the listings linked to this Sugami product. */
+  productCode?: string;
+  title?: string;
+}) {
+  const [platform, setPlatform] = useState<string>(initialPlatform);
   const [link, setLink] = useState('');
   const [search, setSearch] = useState('');
   const [q, setQ] = useState('');
@@ -74,6 +88,7 @@ export function ListingsDrawer({ onClose, version }: { onClose: () => void; vers
     const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE) });
     if (q) params.set('q', q);
     if (platform) params.set('platform', platform);
+    if (productCode) params.set('productCode', productCode);
     if (link) params.set('link', link);
     api<{ data: Row[]; total: number }>(`/listings?${params}`, { signal: ctrl.signal })
       .then((r) => {
@@ -86,7 +101,7 @@ export function ListingsDrawer({ onClose, version }: { onClose: () => void; vers
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [q, platform, link, page, version]);
+  }, [q, platform, link, page, version, productCode]);
 
   const toggle = (id: string) => {
     setOpen((o) => (o === id ? null : id));
@@ -107,7 +122,11 @@ export function ListingsDrawer({ onClose, version }: { onClose: () => void; vers
       >
         <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
           <div>
-            <h2 className="text-lg font-semibold">Tin đăng sàn</h2>
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              {platform === 'shopee' && <ShopeeIcon className="size-5" />}
+              {platform === 'tiktok' && <TikTokIcon className="size-5" />}
+              {title ?? 'Tin đăng sàn'}
+            </h2>
             <p className="text-xs text-slate-500">
               Lấy từ Pancake; trạng thái nối là liên kết bên Pancake (Sugami không tự nối).
             </p>
@@ -118,20 +137,22 @@ export function ListingsDrawer({ onClose, version }: { onClose: () => void; vers
         </div>
         <div className="flex flex-col gap-2 border-b border-slate-200 p-4 dark:border-slate-800">
           <div className="flex flex-wrap gap-2">
-            <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-              {PLATFORMS.map(([v, label]) => (
-                <button
-                  key={v}
-                  className={seg(platform === v)}
-                  onClick={() => {
-                    setPlatform(v);
-                    setPage(1);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {!productCode && (
+              <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+                {PLATFORMS.map(([v, label]) => (
+                  <button
+                    key={v}
+                    className={seg(platform === v)}
+                    onClick={() => {
+                      setPlatform(v);
+                      setPage(1);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <select
               value={link}
               onChange={(e) => {

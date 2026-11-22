@@ -9,6 +9,8 @@ const ListQuery = z.object({
   q: z.string().trim().max(64).optional(),
   shop: z.string().trim().max(191).optional(),
   platform: z.enum(['shopee', 'tiktok']).optional(),
+  /** Only listings with an option linked to a variant of this Sugami product. */
+  productCode: z.string().trim().max(64).optional(),
   /** linked = every option matched a Sugami variant, partial = some, none = no option matched. */
   link: z.enum(['linked', 'partial', 'none']).optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -64,7 +66,9 @@ export class ListingsController {
               }
             : {}),
     };
-    const finalWhere = where;
+    const finalWhere: Prisma.ChannelListingWhereInput = q.productCode
+      ? { AND: [where, { variations: { some: { variant: { product: { code: q.productCode } } } } }] }
+      : where;
     const [rows, total, shops, counts] = await Promise.all([
       db.channelListing.findMany({
         where: finalWhere,

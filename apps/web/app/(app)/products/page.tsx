@@ -1,12 +1,13 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { ImageOff, RefreshCw, Search, Store } from 'lucide-react';
+import { ImageOff, RefreshCw, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
 import { ListingsDrawer } from '@/components/listings-drawer';
+import { PancakeIcon, ShopeeIcon, TikTokIcon } from '@/components/platform-icons';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import type { InventoryResponse } from '@/lib/inventory';
@@ -51,7 +52,49 @@ const STATUS: Record<ProductRow['status'], { label: string; tone: 'success' | 'n
   archived: { label: 'Lưu trữ', tone: 'warn' },
 };
 
-const columns: Column<ProductRow>[] = [
+const tone = (n: number, total: number) =>
+  (n === 0 ? 'neutral' : n >= total ? 'success' : 'warn') as 'neutral' | 'success' | 'warn';
+
+function LinkChip({
+  tone: t,
+  icon,
+  text,
+  onClick,
+}: {
+  tone: 'neutral' | 'success' | 'warn';
+  icon: React.ReactNode;
+  text: string;
+  onClick?: () => void;
+}) {
+  const color = {
+    neutral: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+    success: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+    warn: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+  }[t];
+  const cls = `inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums ${color}`;
+  return onClick ? (
+    <button
+      type="button"
+      className={`${cls} hover:ring-1 hover:ring-slate-300`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+    >
+      {icon}
+      {text}
+    </button>
+  ) : (
+    <span className={cls}>
+      {icon}
+      {text}
+    </span>
+  );
+}
+
+const makeColumns = (
+  openListings: (platform: 'shopee' | 'tiktok', p: ProductRow) => void,
+): Column<ProductRow>[] => [
   {
     key: 'name',
     header: 'Sản phẩm',
@@ -129,17 +172,24 @@ const columns: Column<ProductRow>[] = [
     className: 'hidden whitespace-nowrap lg:table-cell',
     render: (p) => (
       <div className="flex gap-1">
-        {(
-          [
-            ['pancake', 'Pancake'],
-            ['shopee', 'Shopee'],
-            ['tiktok', 'TikTok'],
-          ] as const
-        ).map(([k, label]) => (
-          <span key={k} title={`${label}: ${p.links[k]}/${p.variantCount} biến thể đã kết nối`}>
-            <Badge tone={p.links[k] === 0 ? 'neutral' : p.links[k] >= p.variantCount ? 'success' : 'warn'}>
-              {label} {p.links[k]}/{p.variantCount}
-            </Badge>
+        <span title={`Pancake: ${p.links.pancake}/${p.variantCount} biến thể đã có trên Pancake`}>
+          <LinkChip
+            tone={tone(p.links.pancake, p.variantCount)}
+            icon={<PancakeIcon />}
+            text={`${p.links.pancake}/${p.variantCount}`}
+          />
+        </span>
+        {(['shopee', 'tiktok'] as const).map((k) => (
+          <span
+            key={k}
+            title={`${k === 'shopee' ? 'Shopee' : 'TikTok'}: ${p.links[k]}/${p.variantCount} biến thể đã nối trên Pancake. Bấm để xem tin đăng`}
+          >
+            <LinkChip
+              tone={tone(p.links[k], p.variantCount)}
+              icon={k === 'shopee' ? <ShopeeIcon /> : <TikTokIcon />}
+              text={`${p.links[k]}/${p.variantCount}`}
+              onClick={() => openListings(k, p)}
+            />
           </span>
         ))}
       </div>
@@ -160,7 +210,12 @@ function ProductsList() {
   const [res, setRes] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showListings, setShowListings] = useState(false);
+  const [listingsFor, setListingsFor] = useState<{
+    platform: 'shopee' | 'tiktok';
+    code: string;
+    name: string;
+  } | null>(null);
+  const columns = makeColumns((platform, p) => setListingsFor({ platform, code: p.code, name: p.name }));
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
@@ -236,9 +291,6 @@ function ProductsList() {
             <Button variant="secondary" disabled={syncing} onClick={sync}>
               <RefreshCw className={`size-4 ${syncing ? 'animate-spin' : ''}`} /> Đồng bộ từ Pancake
             </Button>
-            <Button variant="secondary" onClick={() => setShowListings(true)}>
-              <Store className="size-4" /> Tin đăng sàn
-            </Button>
             <Link href="/inventory/documents">
               <Button variant="secondary">Phiếu kho</Button>
             </Link>
@@ -271,7 +323,15 @@ function ProductsList() {
         </div>
       )}
       {syncMsg && <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">{syncMsg}</p>}
-      {showListings && <ListingsDrawer version={version} onClose={() => setShowListings(false)} />}
+      {listingsFor && (
+        <ListingsDrawer
+          version={version}
+          platform={listingsFor.platform}
+          productCode={listingsFor.code}
+          title={listingsFor.name}
+          onClose={() => setListingsFor(null)}
+        />
+      )}
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center">
         <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
           {VIEWS.map(([v, label]) => (
