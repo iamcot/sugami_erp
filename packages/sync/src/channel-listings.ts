@@ -139,10 +139,16 @@ export async function syncChannelListings(
         variantId: m?.id ?? null,
         linkedBy: m?.by ?? null,
       };
+      // A link made by hand in Sugami wins over the automatic matching.
+      const prevV = await db.channelListingVariant.findUnique({
+        where: { listingId_externalId: { listingId, externalId: v.externalId } },
+        select: { linkedBy: true },
+      });
+      const { variantId: _v, linkedBy: _l, ...keepLink } = vdata;
       await db.channelListingVariant.upsert({
         where: { listingId_externalId: { listingId, externalId: v.externalId } },
         create: { listingId, externalId: v.externalId, ...vdata },
-        update: vdata,
+        update: prevV?.linkedBy === 'manual' ? keepLink : vdata,
       });
     }
   }

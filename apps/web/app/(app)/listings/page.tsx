@@ -5,6 +5,7 @@ import { ImageOff, RefreshCw, Search } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
+import { ListingsByProduct } from '@/components/listings-by-product';
 import { Badge, Button, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useQueryState } from '@/lib/use-query-state';
@@ -103,7 +104,7 @@ const columns: Column<Row>[] = [
 
 function ListingsList() {
   const { open, selected } = useDetail();
-  const [qs, setQs] = useQueryState({ q: '', shop: '', link: '', page: '1' });
+  const [qs, setQs] = useQueryState({ q: '', shop: '', link: '', page: '1', view: 'product' });
   const [search, setSearch] = useState(qs.q);
   const [res, setRes] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -170,56 +171,78 @@ function ListingsList() {
         }
       />
       {syncMsg && <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">{syncMsg}</p>}
-      <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-        <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-          {LINKS.map(([v, label]) => (
-            <button
-              key={v}
-              onClick={() => setQs({ link: v, page: '1' })}
-              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.link === v ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {res && res.shops.length > 1 && (
-          <select
-            value={qs.shop}
-            onChange={(e) => setQs({ shop: e.target.value, page: '1' })}
-            className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
+      <div className="mb-3 flex gap-1 rounded-lg bg-slate-100 p-1 md:w-fit dark:bg-slate-800">
+        {(
+          [
+            ['product', 'Theo sản phẩm Sugami'],
+            ['listing', 'Theo tin đăng sàn'],
+          ] as const
+        ).map(([v, label]) => (
+          <button
+            key={v}
+            onClick={() => setQs({ view: v })}
+            className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.view === v ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
           >
-            <option value="">Mọi shop</option>
-            {res.shops.map((s) => (
-              <option key={s.shop} value={s.shop}>
-                {s.shop || '(không tên)'} · {s.listings}
-              </option>
-            ))}
-          </select>
-        )}
-        <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm md:ml-auto md:max-w-xs dark:border-slate-800 dark:bg-slate-900">
-          <Search className="size-4 shrink-0 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tên tin, SKU sàn, mã hàng Sugami"
-            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
-          />
-        </label>
+            {label}
+          </button>
+        ))}
       </div>
-      {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
-      <DataTable
-        columns={columns}
-        rows={res?.data ?? []}
-        rowKey={(l) => l.id}
-        onRowClick={(l) => open('listing', l.id)}
-        isSelected={(l) => selected.listing === l.id}
-        page={Number(qs.page)}
-        pageSize={50}
-        total={res?.total}
-        onPage={(p) => setQs({ page: String(p) })}
-        loading={loading}
-        empty="Chưa có tin đăng. Vào Nhập KiotViet → Đơn từ Pancake, bấm Đồng bộ tin đăng."
-      />
+      {qs.view === 'product' ? (
+        <ListingsByProduct key={reload} />
+      ) : (
+        <>
+          <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+            <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+              {LINKS.map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => setQs({ link: v, page: '1' })}
+                  className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.link === v ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {res && res.shops.length > 1 && (
+              <select
+                value={qs.shop}
+                onChange={(e) => setQs({ shop: e.target.value, page: '1' })}
+                className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
+              >
+                <option value="">Mọi shop</option>
+                {res.shops.map((s) => (
+                  <option key={s.shop} value={s.shop}>
+                    {s.shop || '(không tên)'} · {s.listings}
+                  </option>
+                ))}
+              </select>
+            )}
+            <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm md:ml-auto md:max-w-xs dark:border-slate-800 dark:bg-slate-900">
+              <Search className="size-4 shrink-0 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tên tin, SKU sàn, mã hàng Sugami"
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
+              />
+            </label>
+          </div>
+          {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
+          <DataTable
+            columns={columns}
+            rows={res?.data ?? []}
+            rowKey={(l) => l.id}
+            onRowClick={(l) => open('listing', l.id)}
+            isSelected={(l) => selected.listing === l.id}
+            page={Number(qs.page)}
+            pageSize={50}
+            total={res?.total}
+            onPage={(p) => setQs({ page: String(p) })}
+            loading={loading}
+            empty="Chưa có tin đăng. Vào Nhập KiotViet → Đơn từ Pancake, bấm Đồng bộ tin đăng."
+          />
+        </>
+      )}
     </>
   );
 }

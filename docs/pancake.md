@@ -116,3 +116,7 @@ API: `GET /pancake/unlinked-lines`, `GET /pancake/variant-search?q=`, `POST /pan
 ## Tên biến thể trên dòng đơn
 
 Dòng đơn chưa liên kết ("Thêm nhanh") chỉ có tiêu đề sàn trong `variation_info.name`, còn tùy chọn (ví dụ "Xanh đen đậm") Pancake để riêng. `lineName()` (`packages/channels/pancake/src/mapping.ts`) đọc `variation_info.fields[].value` và nối vào cuối tên (`… - Xanh đen đậm`) nếu tên chưa có. Lần đồng bộ/quét lại sau đó cập nhật tên các dòng đã lưu (không đụng tồn). Cấu trúc `fields` dựa trên định dạng tùy chọn của Pancake, chưa kiểm với dữ liệu thật: chạy `pnpm pancake:probe` xem `items[].variation_info` nếu tên biến thể vẫn chưa hiện.
+
+## Tin đăng sàn theo sản phẩm Sugami
+
+Trang "Tin đăng sàn" mặc định xem theo sản phẩm Sugami: mỗi mã hàng hiện các tin đăng Shopee/TikTok đã nối (mở rộng từng dòng), có nút "Nối tin đăng" để chọn tay biến thể sàn chưa nối và "Bỏ nối". Nối tay lưu `linked_by = manual` và được giữ nguyên khi đồng bộ tin đăng. Lưu ý: nối trong Sugami chỉ để quản lý; Pancake chỉ đẩy tồn lên tin đăng đã được liên kết trong chính Pancake (API công khai của Pancake không có lệnh tạo liên kết).
