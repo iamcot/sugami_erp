@@ -53,12 +53,18 @@ console.log('Đơn 7 ngày theo trạng thái:', byStatus);
 // Listings synced from the marketplaces into Pancake, per marketplace shop (no product details printed).
 const listings: Record<string, number> = {};
 let linked = 0;
+let listingShown = false;
 try {
   for await (const l of client.paginate<{
     marketplace_id?: string | null;
     marketplace_shop_name?: string | null;
     linked_product_custom_id?: string | null;
   }>('/marketplace/products')) {
+    if (!listingShown) {
+      listingShown = true;
+      console.log('Cấu trúc 1 listing sàn (chỉ tên trường và kiểu, không giá trị):');
+      console.log(JSON.stringify(shape(l), null, 1));
+    }
     const k = `${l.marketplace_shop_name ?? '?'} (marketplace_id ${l.marketplace_id ?? '?'})`;
     listings[k] = (listings[k] ?? 0) + 1;
     if (l.linked_product_custom_id) linked++;
