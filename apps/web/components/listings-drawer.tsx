@@ -41,6 +41,7 @@ const PLATFORMS = [
 ] as const;
 const LINKS = [
   ['', 'Mọi trạng thái'],
+  ['unresolved', 'Cần xác nhận sản phẩm'],
   ['linked', 'Đã nối đủ'],
   ['partial', 'Nối một phần'],
   ['none', 'Chưa nối'],
@@ -52,6 +53,7 @@ export function ListingsDrawer({
   onClose,
   version,
   platform: initialPlatform = '',
+  link: initialLink = '',
   productCode,
   title,
   onChanged,
@@ -59,6 +61,7 @@ export function ListingsDrawer({
   onClose: () => void;
   version: number;
   platform?: '' | 'shopee' | 'tiktok';
+  link?: '' | 'linked' | 'partial' | 'none' | 'unresolved';
   /** Only the listings linked to this Sugami product. */
   productCode?: string;
   title?: string;
@@ -66,7 +69,7 @@ export function ListingsDrawer({
   onChanged?: () => void;
 }) {
   const [platform, setPlatform] = useState<string>(initialPlatform);
-  const [link, setLink] = useState('');
+  const [link, setLink] = useState<string>(initialLink);
   const [search, setSearch] = useState('');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);

@@ -226,7 +226,16 @@ function ProductsList() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const [pendingConfirm, setPendingConfirm] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [totals, setTotals] = useState<InventoryResponse['totals'] | null>(null);
+
+  // Listings Pancake links but whose product Sugami cannot tell: they wait for a one-time confirmation.
+  useEffect(() => {
+    api<{ total: number }>('/listings?link=unresolved&pageSize=1')
+      .then((r) => setPendingConfirm(r.total))
+      .catch(() => setPendingConfirm(0));
+  }, [version]);
 
   // Stock totals for the whole catalogue (the cards above the list).
   useEffect(() => {
@@ -306,6 +315,11 @@ function ProductsList() {
             <Button variant="secondary" disabled={syncing} onClick={sync}>
               <RefreshCw className={`size-4 ${syncing ? 'animate-spin' : ''}`} /> Đồng bộ từ Pancake
             </Button>
+            {pendingConfirm > 0 && (
+              <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
+                Tin đăng cần xác nhận ({pendingConfirm})
+              </Button>
+            )}
             <Link href="/inventory/documents">
               <Button variant="secondary">Phiếu kho</Button>
             </Link>
@@ -338,6 +352,15 @@ function ProductsList() {
         </div>
       )}
       {syncMsg && <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">{syncMsg}</p>}
+      {confirmOpen && (
+        <ListingsDrawer
+          version={version}
+          link="unresolved"
+          title="Tin đăng cần xác nhận sản phẩm"
+          onChanged={() => setVersion((n) => n + 1)}
+          onClose={() => setConfirmOpen(false)}
+        />
+      )}
       {listingsFor && (
         <ListingsDrawer
           version={version}

@@ -22,7 +22,7 @@ const ListQuery = z.object({
   /** Only listings with an option linked to a variant of this Sugami product. */
   productCode: z.string().trim().max(64).optional(),
   /** linked = every option matched a Sugami variant, partial = some, none = no option matched. */
-  link: z.enum(['linked', 'partial', 'none']).optional(),
+  link: z.enum(['linked', 'partial', 'none', 'unresolved']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
 });
@@ -69,18 +69,20 @@ export class ListingsController {
             ],
           }
         : {}),
-      ...(q.link === 'linked'
-        ? { variations: { some: {}, none: { variantId: null } } }
-        : q.link === 'none'
-          ? { variations: { none: { variantId: { not: null } } } }
-          : q.link === 'partial'
-            ? {
-                AND: [
-                  { variations: { some: { variantId: null } } },
-                  { variations: { some: { variantId: { not: null } } } },
-                ],
-              }
-            : {}),
+      ...(q.link === 'unresolved'
+        ? { variations: { some: { linkedBy: 'unresolved' } } }
+        : q.link === 'linked'
+          ? { variations: { some: {}, none: { variantId: null } } }
+          : q.link === 'none'
+            ? { variations: { none: { variantId: { not: null } } } }
+            : q.link === 'partial'
+              ? {
+                  AND: [
+                    { variations: { some: { variantId: null } } },
+                    { variations: { some: { variantId: { not: null } } } },
+                  ],
+                }
+              : {}),
     };
     const finalWhere: Prisma.ChannelListingWhereInput = q.productCode
       ? { AND: [where, { variations: { some: { variant: { product: { code: q.productCode } } } } }] }
