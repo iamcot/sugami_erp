@@ -27,6 +27,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - P0-05: cần client_id/client_secret/tên gian hàng KiotViet (gửi riêng, không dán vào chat công khai hay commit).
 - P0-08: đăng ký app Shopee Open Platform và TikTok Shop Partner Center.
 - P0-11: cài Docker trên iMac.
+- P3-01: tạo IAM user/access key chỉ có quyền trên bucket (prefix `sugami/`), điền vào `.env` trên iMac; cho biết region và có CloudFront không.
 - P2-07: gửi 1–2 file Excel mẫu của đơn vị vận chuyển trung gian.
 
 ## Quyết định đã chốt
@@ -34,7 +35,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - 2026-11-22: Chạy trên KiotViet trước, dài hạn thay KiotViet; Sugami tự giữ sổ kho từ đầu.
 - 2026-11-22: Server là iMac của shop, Docker Compose, Cloudflare Tunnel. Tên miền **sugami.vn**: `erp.sugami.vn` (giao diện), `hooks.sugami.vn` (webhook).
 - 2026-11-22: MySQL 8.4 cài **native** trên iMac, không chạy trong Docker; container kết nối qua `host.docker.internal`.
-- 2026-11-22: Bỏ MinIO (đã ngừng phát hành Docker image bản cộng đồng). File lưu trên ổ đĩa iMac qua lớp storage `local`, có thể chuyển sang S3/R2 bằng cấu hình.
+- 2026-11-22: Bỏ MinIO. Ảnh/video lưu trên **AWS S3 có sẵn của shop** (driver `s3`, prefix `sugami/`); driver `local` chỉ dùng cho dev/offline.
 - 2026-11-22: Đơn vị trung gian không có API, chỉ có file Excel → import Excel (P2-07).
 - 2026-11-22: Stack thực tế: Node 22, pnpm 10, TypeScript 6, Next.js 16, NestJS 12, Prisma 7 (MariaDB adapter), BullMQ 6 + ioredis, Tailwind 4, Vitest 5.
 - 2026-11-22: Claude viết toàn bộ code, commit thẳng lên `main` (không PR); mỗi task cập nhật file này trong commit cuối.

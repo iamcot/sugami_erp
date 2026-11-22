@@ -38,7 +38,7 @@ pnpm dev                    # web :3000, api :4000, worker
 
 - Web: http://localhost:3000
 - API: http://localhost:4000/health
-- File (ảnh, video) lưu trong thư mục `STORAGE_DIR` (mặc định `./data/storage`), được sao lưu hàng đêm.
+- Ảnh, video lưu trên AWS S3 của shop (`STORAGE_DRIVER=s3`). Máy dev không có key S3 có thể đặt `STORAGE_DRIVER=local` để lưu vào `./data/storage`.
 
 Máy không có MySQL native (ví dụ máy dev khác, CI) có thể chạy MySQL trong Docker: `pnpm infra:mysql`.
 

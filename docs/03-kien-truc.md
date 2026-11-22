@@ -17,7 +17,7 @@
                        │             │               │
               ┌────────▼───┐  ┌──────▼─────┐  ┌──────▼──────────┐
               │ MySQL 8    │  │ Redis      │  │ Object storage  │
-              │ (dữ liệu,  │  │ (queue,    │  │ (ổ đĩa: ảnh,    │
+              │ (dữ liệu,  │  │ (queue,    │  │ (AWS S3: ảnh,   │
               │  sổ kho)   │  │  cache,    │  │  video, file)   │
               └────────▲───┘  │  rate-lim) │  └──────▲──────────┘
                        │      └──────▲─────┘         │
@@ -52,7 +52,7 @@
 | ORM | **Prisma** (hoặc Drizzle) | Migration rõ ràng, type-safe |
 | Database | **MySQL 8.4 LTS** (InnoDB, `utf8mb4_0900_ai_ci`) | Chủ shop chọn; đủ giao dịch cho sổ kho, cột `JSON` cho thuộc tính linh hoạt; collation `ai_ci` giúp tìm tiếng Việt không dấu sẵn |
 | Queue/cache | **Redis** + **BullMQ** | Job đồng bộ, retry, lịch chạy, rate limit |
-| Lưu file | Ổ đĩa iMac qua lớp `storage` (driver `local`), có driver `s3` cho Cloudflare R2 | Đơn giản nhất cho 1 máy; MinIO đã ngừng phát hành image cộng đồng nên không dùng; chuyển lên R2 chỉ cần đổi cấu hình |
+| Lưu file | **AWS S3 có sẵn của shop** qua lớp `storage` (driver `s3`, prefix `sugami/`); driver `local` cho dev/offline | Ảnh an toàn ngoài iMac, không phải tự sao lưu, link ảnh dùng được từ mọi nơi |
 | Xử lý ảnh | **imgproxy** hoặc sharp trong worker | Resize, crop vuông 1:1 cho sàn, nén WebP, watermark |
 | Tìm kiếm | MySQL `LIKE` trên collation `ai_ci` + FULLTEXT (ngram) | Tìm tiếng Việt không dấu; dư sức cho vài trăm SKU |
 | Auth | Session cookie + RBAC tự quản (Lucia/better-auth) | Phân quyền theo vai trò, theo kho |
@@ -112,7 +112,7 @@ interface ChannelAdapter {
 - RBAC: vai trò + quyền theo module + giới hạn theo kho/chi nhánh.
 - Nhật ký thao tác (audit log) cho mọi thay đổi giá, tồn, xóa.
 - Webhook URL chứa token ngẫu nhiên + kiểm tra chữ ký HMAC.
-- Sao lưu MySQL (`mysqldump`) và thư mục file hàng đêm ra **ngoài iMac** (Cloudflare R2 gói miễn phí 10 GB hoặc Google Drive bằng rclone), giữ 30 ngày; thử khôi phục hàng tháng.
+- Sao lưu MySQL (`mysqldump`) (ảnh đã nằm trên S3, bật versioning cho bucket để chống xóa nhầm) hàng đêm ra **ngoài iMac** (Cloudflare R2 gói miễn phí 10 GB hoặc Google Drive bằng rclone), giữ 30 ngày; thử khôi phục hàng tháng.
 
 ## 3.6 Hiệu năng mục tiêu
 
@@ -145,4 +145,4 @@ Chủ shop có một iMac bật cả ngày, dùng luôn làm server.
 | Mất điện/mất mạng, iMac tắt | UPS; webhook bị lỡ sẽ được job đồng bộ tăng dần và reconcile bù lại khi máy lên |
 | Hỏng ổ cứng, mất máy | Sao lưu hàng đêm ra ngoài iMac, thử khôi phục hàng tháng |
 | Cập nhật macOS tự khởi động lại | Tắt tự cài cập nhật, cập nhật thủ công ngoài giờ |
-| Cần mở rộng | Cùng file Docker Compose chạy được trên VPS; chuyển bằng dump MySQL + copy thư mục file |
+| Cần mở rộng | Cùng file Docker Compose chạy được trên VPS; chuyển bằng dump MySQL (ảnh đã ở S3) |

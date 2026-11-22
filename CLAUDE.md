@@ -26,7 +26,7 @@ Claude viết toàn bộ code và **commit thẳng lên `main`** (không mở PR
 - `apps/web`: Next.js (App Router), Tailwind, shadcn/ui, TanStack Table/Query, React Hook Form + Zod.
 - `apps/api`: NestJS (modular monolith). `apps/worker`: BullMQ.
 - `packages/db`: Prisma + **MySQL 8.4** (`utf8mb4_0900_ai_ci`). `packages/shared`: Zod schema, kiểu, tiện ích. `packages/ui`. `packages/channels/{core,kiotviet,tiktok,shopee}`.
-- MySQL 8.4 chạy **native** trên iMac (không trong Docker). Redis 7 trong Docker. File (ảnh/video) lưu ổ đĩa qua lớp `storage` (driver `local`, có driver `s3` cho R2 sau này). App chạy bằng Docker Compose trên iMac, ra internet qua Cloudflare Tunnel: `erp.sugami.vn` (giao diện), `hooks.sugami.vn` (webhook).
+- MySQL 8.4 chạy **native** trên iMac (không trong Docker). Redis 7 trong Docker. File (ảnh/video) lưu trên **AWS S3 có sẵn của shop** qua lớp `storage` (driver `s3`, prefix `sugami/`; driver `local` cho dev/offline). App chạy bằng Docker Compose trên iMac, ra internet qua Cloudflare Tunnel: `erp.sugami.vn` (giao diện), `hooks.sugami.vn` (webhook).
 
 ## Quy ước
 

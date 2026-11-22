@@ -21,7 +21,7 @@
 | D4 | Không xây POS đầy đủ, chỉ tạo đơn thủ công | Đơn ít, chủ yếu bán online |
 | D5 | **SKU = mã hàng KiotViet = SKU người bán trên sàn** | Khớp liên kết sàn hiện tại và dễ chuyển đổi sau |
 | D6 | Mỗi thời điểm chỉ **một** hệ thống đẩy tồn lên sàn | Tránh bán âm; khi Sugami bật đẩy tồn thì tắt của KiotViet cùng lúc |
-| D7 | TypeScript monorepo: Next.js + NestJS + **MySQL 8 native** + Redis/BullMQ + file trên ổ đĩa, chạy bằng **Docker trên iMac** của shop, ra internet qua Cloudflare Tunnel | Chủ shop chọn; không tốn tiền server; chuyển lên VPS sau dễ |
+| D7 | TypeScript monorepo: Next.js + NestJS + **MySQL 8 native** + Redis/BullMQ + ảnh trên AWS S3 có sẵn, chạy bằng **Docker trên iMac** của shop, ra internet qua Cloudflare Tunnel | Chủ shop chọn; không tốn tiền server; chuyển lên VPS sau dễ |
 | D8 | Web app + PWA cho kho, chưa làm app native | Đủ cho quy mô hiện tại |
 
 ## 8.3 Câu hỏi còn mở

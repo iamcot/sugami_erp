@@ -27,7 +27,7 @@ Quy ước:
 | P0-10 | Prototype UI 5 màn hình (Tổng quan, Danh sách SP, Chi tiết SP, Nhận hàng mobile, Media) bằng Next.js + dữ liệu mẫu, deploy bản xem trước | P0-01 | 👤 Chủ shop duyệt |
 | P0-11 | 👤 Chuẩn bị iMac: cài Docker (Docker Desktop hoặc Colima), tắt ngủ, tự khởi động sau mất điện, tự đăng nhập | – | `docker run hello-world` chạy trên iMac |
 | P0-12 | Cloudflare Tunnel: tạo tunnel, gắn `erp.sugami.vn` và `hooks.sugami.vn` (chuyển DNS của sugami.vn sang Cloudflare nếu chưa); hướng dẫn trong `docs/ops/imac-server.md` | P0-11 | Truy cập được trang thử từ 4G |
-| P0-13 | Compose production + script sao lưu đêm (`mysqldump` + thư mục file → R2/Google Drive bằng rclone) + script khôi phục | P0-02, P0-11 | Khôi phục thử thành công trên máy khác |
+| P0-13 | Compose production + script sao lưu đêm (`mysqldump` → S3/Google Drive; ảnh đã nằm trên S3, bật versioning) + script khôi phục | P0-02, P0-11 | Khôi phục thử thành công trên máy khác |
 
 ## P1 — Nền tảng + catalog + kết nối KiotViet
 
@@ -82,7 +82,7 @@ Quy ước:
 
 | ID | Task | Phụ thuộc | Hoàn thành khi |
 |----|------|-----------|----------------|
-| P3-01 | Schema media + lớp storage (local/S3), upload qua API | P0-02 | – |
+| P3-01 | Schema media + lớp storage (S3 mặc định, local cho dev), upload trực tiếp lên S3 bằng presigned URL | P0-02, 👤 IAM key S3 | Upload một ảnh lên bucket của shop dưới prefix `sugami/` |
 | P3-02 | Thư viện media: lưới, tag, tìm, kéo thả hàng loạt, tự gán SKU theo tên file, phát hiện ảnh trùng | P3-01 | Tải 100 ảnh gán đúng SKU |
 | P3-03 | Worker xử lý ảnh: thumbnail, vuông 1:1 1000px, WebP, watermark logo tùy chọn | P3-01 | – |
 | P3-04 | Tab Ảnh trong chi tiết SP: sắp xếp, ảnh chính, ảnh theo biến thể/kênh | P3-02 | – |
