@@ -27,7 +27,7 @@ describe.skipIf(!hasDb)('stock ledger (MySQL)', () => {
     );
 
   const doc = async (
-    type: 'receipt' | 'transfer' | 'adjustment',
+    type: 'receipt' | 'transfer' | 'adjustment' | 'count',
     lines: { qty: number; cost?: number }[],
     to?: string,
   ) =>
@@ -107,6 +107,21 @@ describe.skipIf(!hasDb)('stock ledger (MySQL)', () => {
         ),
       ),
     );
+    expect(await level(wh1)).toBe(35);
+  });
+
+  it('books a count as the difference between counted and book quantity', async () => {
+    const c = await doc('count', [{ qty: 30 }]);
+    await confirmStockDocument(prisma, c.id);
+    expect(await level(wh1)).toBe(30);
+    const moves = await prisma.stockMovement.findMany({ where: { documentId: c.id } });
+    expect(moves.map((m) => [m.type, Number(m.qtyDelta)])).toEqual([['count', -5]]);
+    const same = await doc('count', [{ qty: 30 }]);
+    await confirmStockDocument(prisma, same.id);
+    expect(await prisma.stockMovement.count({ where: { documentId: same.id } })).toBe(0);
+    expect((await prisma.stockDocument.findUniqueOrThrow({ where: { id: same.id } })).status).toBe('confirmed');
+    const back = await doc('count', [{ qty: 35 }]);
+    await confirmStockDocument(prisma, back.id);
     expect(await level(wh1)).toBe(35);
   });
 

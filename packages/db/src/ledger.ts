@@ -203,7 +203,21 @@ export async function confirmStockDocument(
     if (doc.status !== 'draft')
       throw new StockDocumentError(`Document ${doc.code} is ${doc.status}, not draft`);
     if (doc.lines.length === 0) throw new StockDocumentError(`Document ${doc.code} has no lines`);
-    await applyMovements(tx, linesToMovements(doc, doc.lines, userId));
+    let lines = doc.lines;
+    if (doc.type === 'count') {
+      // Count lines hold the counted quantity; the movement is the difference from the book.
+      lines = [];
+      for (const l of doc.lines) {
+        const onHand = await lockStockLevel(tx, doc.warehouseId, l.variantId);
+        const delta = D(l.quantity).minus(onHand);
+        if (!delta.isZero()) lines.push({ ...l, quantity: delta });
+      }
+      if (lines.length === 0) {
+        await tx.stockDocument.update({ where: { id: doc.id }, data: { status: 'confirmed', confirmedAt: new Date() } });
+        return;
+      }
+    }
+    await applyMovements(tx, linesToMovements(doc, lines, userId));
     await tx.stockDocument.update({
       where: { id: doc.id },
       data: { status: 'confirmed', confirmedAt: new Date() },

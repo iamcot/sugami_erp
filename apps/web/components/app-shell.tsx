@@ -10,7 +10,6 @@ import {
   Package,
   PenLine,
   RefreshCw,
-  ScanLine,
   Search,
   Settings,
   ShoppingBag,
@@ -33,13 +32,13 @@ const nav = [
   { href: '/media', label: 'Media', icon: Images },
   { href: '#content', label: 'Content', icon: PenLine },
   { href: '#reports', label: 'Báo cáo', icon: BarChart3 },
-  { href: '/data/import', label: 'Nhập KiotViet', icon: FileSpreadsheet },
+  { href: '/data/import', label: 'KiotViet', icon: FileSpreadsheet },
 ];
 
 const mobileNav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/orders', label: 'Đơn', icon: ClipboardList },
-  { href: '/inventory/receive', label: 'Quét', icon: ScanLine },
+  { href: '/inventory', label: 'Kho', icon: Boxes },
   { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/media', label: 'Media', icon: Images },
 ];

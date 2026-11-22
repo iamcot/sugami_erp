@@ -22,13 +22,15 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 - P0-10 chờ duyệt giao diện.
 - Pancake POS: chờ chủ shop chạy `probe` trên shop thật (P4-P1).
-- Tiếp theo: P1-13 xuất phiếu nhập/kiểm kho sang KiotViet, P1-15 đối chiếu tồn.
+- P1-13: chờ chủ shop import thử file phiếu nhập/kiểm kho/sản phẩm mới vào KiotViet.
+- Tiếp theo: P1-15 đối chiếu tồn, P1-16 trung tâm dữ liệu, P1-17 nhắc việc.
 
 ## Bị chặn / chờ chủ shop
 
 - P0-08: **nộp hồ sơ ngay** app Shopee Open Platform và TikTok Shop Partner Center (hướng dẫn: docs/ops/dang-ky-app-san.md).
 - P0-11: cài Docker trên iMac.
 - Pancake: mở bản thử, nối Shopee/TikTok (tắt đồng bộ tồn), thử 1 SKU, điền `PANCAKE_*` vào `.env`, chạy `pnpm --filter @sugami/channels-pancake probe` (docs/pancake.md).
+- P1-13: thử import vào KiotViet các file từ trang KiotViet → Xuất sang KiotViet và trang Phiếu kho.
 - P3-01: tạo IAM user/key và cấu hình CORS theo docs/ops/s3.md, điền `.env`, chạy `pnpm storage:check`; cho biết region, folder, có CloudFront không.
 - P2-07: gửi 1–2 file Excel mẫu của đơn vị vận chuyển trung gian.
 
@@ -71,6 +73,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-18/P1-20 API tồn kho theo SKU × kho và API tổng quan (chưa có giao diện) | 83dc4cc |
 | 2026-11-22 | P1-18/P1-20 trang Tồn kho và Tổng quan với số liệu thật | 8ee9509 |
 | 2026-11-22 | P1-23 PWA + thông báo đẩy; thiết kế chịu máy tắt (docs/03 mục 3.8) | 7beb1dd |
+| 2026-11-22 | P1-13 phiếu nhập/kiểm kho trên Sugami + xuất file mẫu KiotViet (phiếu nhập, kiểm kho, sản phẩm mới) | (commit này) |
 | 2026-11-22 | P4-P1 nối Pancake POS (chỉ đọc): client, ánh xạ sản phẩm/đơn, webhook vào `webhook_events`, `probe` | 43fbac4 |
 
 ## P0 — Chuẩn bị & xác minh
@@ -107,7 +110,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-10 | Import/export Excel sản phẩm, sửa hàng loạt | ⬜ | | |
 | P1-11 | Import Excel hàng hóa + tồn từ KiotViet | ✅ | f5d2bbf | File thật: 1.029 SKU, 12.257 cái, khớp 100% |
 | P1-12 | Import Excel hóa đơn/đặt hàng KiotViet → đơn hàng | ✅ | a610588 | File thật: 38 đơn, doanh thu khớp file tổng quan |
-| P1-13 | Export Excel phiếu nhập/kiểm kho theo mẫu import KiotViet | ⬜ | | |
+| P1-13 | Export Excel phiếu nhập/kiểm kho theo mẫu import KiotViet | 🟡 | (commit này) | Code xong; chờ chủ shop import thử vào KiotViet |
 | P1-14 | Schema kho: warehouse, stock_level, stock_movement | ✅ | aaf6f99 | |
 | P1-15 | Đối chiếu tồn file KiotViet ↔ sổ kho Sugami | ⬜ | | |
 | P1-16 | Trung tâm dữ liệu: lịch sử import/export | ⬜ | | |

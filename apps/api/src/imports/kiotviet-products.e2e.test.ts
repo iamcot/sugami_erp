@@ -87,6 +87,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet product import (MySQL)', ()
         await db.stockMovement.deleteMany({ where: { warehouseId: w.id } });
         await db.stockLevel.deleteMany({ where: { warehouseId: w.id } });
       }
+      await db.externalRef.deleteMany({ where: { provider: 'kiotviet', externalId: { startsWith: `${run}-` } } });
       await db.product.deleteMany({ where: { code: { startsWith: `${run}-` } } });
       await db.category.deleteMany({ where: { name: cat } });
       await db.warehouse.deleteMany({ where: { code: wh } });
@@ -151,6 +152,8 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet product import (MySQL)', ()
     const moves = await db.stockMovement.findMany({ where: { warehouseId: w.id } });
     expect(moves.every((m) => m.type === 'kiotviet_import')).toBe(true);
     expect(Number((await db.variant.findUniqueOrThrow({ where: { sku: sku('C') } })).costAvg)).toBe(30000);
+    const refs = await db.externalRef.findMany({ where: { provider: 'kiotviet', externalId: { in: [sku('A'), sku('B'), sku('C')] } } });
+    expect(refs.map((r) => r.externalId).sort()).toEqual([sku('A'), sku('B'), sku('C')]);
   });
 
   it('is idempotent and reports, but does not overwrite, later stock differences', async () => {

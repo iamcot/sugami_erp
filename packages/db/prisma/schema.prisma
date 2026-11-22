@@ -422,7 +422,8 @@ model StockDocumentLine {
   id         String        @id @default(uuid(7)) @db.Char(36)
   documentId String        @map("document_id") @db.Char(36)
   variantId  String        @map("variant_id") @db.Char(36)
-  /// Signed for adjustments; positive for receipts/issues/transfers (direction comes from type).
+  /// Signed for adjustments; counted quantity for counts (confirm books the difference);
+  /// positive for receipts/issues/transfers (direction comes from type).
   quantity   Decimal       @db.Decimal(14, 3)
   unitCost   BigInt?       @map("unit_cost")
   note       String?       @db.VarChar(255)

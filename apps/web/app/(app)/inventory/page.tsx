@@ -122,9 +122,14 @@ function InventoryList() {
         title="Tồn kho"
         description="Tồn theo từng SKU và kho, tính từ sổ xuất nhập tồn"
         actions={
-          <Link href="/inventory/receive">
-            <Button variant="secondary">Nhận hàng</Button>
-          </Link>
+          <>
+            <Link href="/inventory/documents">
+              <Button variant="secondary">Phiếu kho</Button>
+            </Link>
+            <Link href="/inventory/documents/new?type=count">
+              <Button variant="secondary">Kiểm kho</Button>
+            </Link>
+          </>
         }
       />
       {stats.length > 0 && (

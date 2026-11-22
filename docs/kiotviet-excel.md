@@ -113,6 +113,14 @@ Sheet `ProductTemplate`, 26 cột, **cùng tên và thứ tự với file danh s
 
 Sugami xuất các mã mới chưa có trên KiotViet: `Loại hàng` = `Hàng hóa`, `Tồn kho` = 0 (tồn vào KiotViet qua phiếu nhập), `Quy đổi` = 1, `Đang kinh doanh` = 1, `Được bán trực tiếp` = 1, `Thuộc tính` dạng `Tên:Giá trị|…`, `Mã HH Liên quan` = mã cha. Mẫu có ví dụ `Vị trí` ngăn bằng `|`.
 
+### Cách Sugami xuất (P1-13)
+
+- **Phiếu kho** (`/inventory/documents`): tạo phiếu nhập hàng (số lượng + đơn giá vốn) hoặc kiểm kho (số đếm thực tế) trên Sugami, xác nhận để ghi sổ kho, rồi tải file đúng mẫu §5/§6. Lần tải đầu đánh dấu phiếu "đã xuất" (`exported_to_kiotviet_at`) để không quên/không xuất trùng; tải lại vẫn được.
+- Mã trùng trong một phiếu nhập được gộp một dòng, đơn giá bình quân theo số lượng. Phiếu kiểm kho mỗi mã một dòng.
+- **Sản phẩm mới** (`/data/export`): mã đang bán trên Sugami nhưng chưa từng xuất hiện trong file danh sách hàng hóa KiotViet (Sugami ghi `external_refs` provider `kiotviet` mỗi lần import §1). Biến thể thứ hai trở đi của cùng sản phẩm có `Mã HH Liên quan` = mã đầu tiên. Sau khi nhập file vào KiotViet, xuất lại danh sách hàng hóa và import vào Sugami để đánh dấu đã có.
+- Phiếu có mã KiotViet chưa có sẽ hiện cảnh báo: nhập file sản phẩm mới trước.
+- Chưa thử import vào KiotViet thật (cần chủ shop thử, tiêu chí P1-13).
+
 ## Còn thiếu
 
 - Một đơn TikTok Shop (nếu có) để biết tiền tố mã hóa đơn.

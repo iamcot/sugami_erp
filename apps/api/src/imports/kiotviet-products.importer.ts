@@ -131,6 +131,8 @@ export async function importKiotVietProducts(
   };
 
   const openings: (MovementInput & { sku: string; cost: number })[] = [];
+  /** SKUs present in this KiotViet file: recorded so exports know which codes KiotViet already has. */
+  const seenInKiotviet: { sku: string; variantId: string }[] = [];
 
   for (const g of groups) {
     const categoryId = await ensureCategory(g.categoryPath);
@@ -210,6 +212,7 @@ export async function importKiotVietProducts(
         } else summary.variants.unchanged++;
       }
       if (barcode) barcodeOwner.set(barcode, v.sku);
+      if (variantId && !opts.dryRun) seenInKiotviet.push({ sku: v.sku, variantId });
 
       // ---- Stock ----
       const current = Number(levelBySku.get(v.sku)?.onHand ?? 0);
@@ -249,6 +252,20 @@ export async function importKiotVietProducts(
         // KiotViet's cost is the opening average cost (also for negative/zero openings).
         for (const o of chunk)
           await tx.variant.update({ where: { id: o.variantId }, data: { costAvg: BigInt(o.cost) } });
+      });
+    }
+  }
+  if (!opts.dryRun) {
+    for (let i = 0; i < seenInKiotviet.length; i += 500) {
+      await db.externalRef.createMany({
+        data: seenInKiotviet.slice(i, i + 500).map((r) => ({
+          provider: 'kiotviet',
+          entityType: 'variant',
+          entityId: r.variantId,
+          externalId: r.sku,
+          externalCode: r.sku,
+        })),
+        skipDuplicates: true,
       });
     }
   }

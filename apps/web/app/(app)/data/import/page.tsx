@@ -2,6 +2,7 @@
 
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload, XCircle } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { KiotVietTabs } from '../../../../components/kiotviet-tabs';
 import { Badge, Button, Card, PageHeader } from '../../../../components/ui';
 import { ApiError } from '../../../../lib/api';
 
@@ -131,9 +132,10 @@ export default function ImportPage() {
   return (
     <>
       <PageHeader
-        title="Nhập dữ liệu từ KiotViet"
+        title="KiotViet"
         description="Chạy lại cùng file nhiều lần không bị nhân đôi. Luôn xem trước rồi mới nhập."
       />
+      <KiotVietTabs />
 
       <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
         {(Object.keys(KINDS) as Kind[]).map((k) => (
