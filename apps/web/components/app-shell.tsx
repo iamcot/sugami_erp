@@ -3,6 +3,7 @@
 import { cn } from '@sugami/ui';
 import {
   Boxes,
+  FileSpreadsheet,
   ClipboardList,
   Images,
   LayoutDashboard,
@@ -31,6 +32,7 @@ const nav = [
   { href: '/media', label: 'Media', icon: Images },
   { href: '#content', label: 'Content', icon: PenLine },
   { href: '#reports', label: 'Báo cáo', icon: BarChart3 },
+  { href: '/data/import', label: 'Nhập KiotViet', icon: FileSpreadsheet },
 ];
 
 const mobileNav = [

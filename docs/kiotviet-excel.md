@@ -37,6 +37,17 @@ Quy ước chung của mọi file:
 
 Nhóm `Order` và `Ship` là dòng phí, không phải hàng: import với trạng thái lưu trữ (`archived`).
 
+### Cách Sugami import (P1-11)
+
+Màn hình **Nhập KiotViet** (`/data/import`) hoặc `POST /api/imports/kiotviet/products?dryRun=true|false&warehouse=KHO-CHINH` (multipart `file`, tối đa 10 MB; quyền `catalog.write` + `inventory.write`).
+
+1. Luôn xem trước (`dryRun=true`): số sản phẩm/SKU mới, cập nhật, giữ nguyên; tồn đầu kỳ; lỗi và cảnh báo theo dòng. File có dòng **lỗi** (thiếu mã/tên, trùng mã, số sai) thì không cho nhập.
+2. Khớp theo mã: sản phẩm theo mã cha, biến thể theo `Mã hàng`. Chạy lại cùng file không đổi gì.
+3. Tồn: chỉ ghi **tồn đầu kỳ** (movement `kiotviet_import`, giá vốn = `Giá vốn` KiotViet) cho SKU chưa có lịch sử kho trong Sugami. SKU đã có lịch sử mà số khác KiotViet thì chỉ báo `stockDiffs`, không ghi đè (đối chiếu ở P1-15).
+4. Mỗi lần chỉ một import chạy.
+
+Đã thử với file thật của shop (1.029 dòng): 542 sản phẩm, 1.029 SKU, 12.257 cái ở 714 mã, khớp 100%; chạy lại lần 2 giữ nguyên toàn bộ; 151 cảnh báo (giá 0, tồn âm, mã liên quan không có, trùng phân loại).
+
 ## 2. Hóa đơn — `DanhSachChiTietHoaDon_KV*.xlsx` (P1-12)
 
 Bản **chi tiết**: một dòng cho mỗi dòng hàng, thông tin hóa đơn lặp lại trên mỗi dòng. 38 hóa đơn, 47 dòng. Bản tổng quan (`DanhSachHoaDon_KV*`, 9 cột) chỉ dùng đối chiếu tổng tiền.

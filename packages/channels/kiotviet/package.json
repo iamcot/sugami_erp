@@ -18,7 +18,9 @@
     "probe": "node --env-file-if-exists=../../../.env dist/probe.js"
   },
   "dependencies": {
-    "@sugami/channels-core": "workspace:*"
+    "@sugami/channels-core": "workspace:*",
+    "@sugami/shared": "workspace:*",
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

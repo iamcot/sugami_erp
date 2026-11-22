@@ -15,6 +15,7 @@
     "@nestjs/common": "^12.6.0",
     "@nestjs/core": "^12.6.0",
     "@nestjs/platform-express": "^12.6.0",
+    "@sugami/channels-kiotviet": "workspace:*",
     "@sugami/db": "workspace:*",
     "@sugami/shared": "workspace:*",
     "@sugami/storage": "workspace:*",
