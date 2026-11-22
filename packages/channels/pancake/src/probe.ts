@@ -71,3 +71,29 @@ for await (const o of client.paginate<{ marketplace_id?: string | null; order_cu
 }
 console.log('Đơn 30 ngày theo sàn và tiền tệ:', mix);
 console.log(`Số request: ${client.requestCount}`);
+
+// Shape of a few orders: key names and value kinds only (no values, so no customer data is printed).
+function shape(v: unknown, depth = 0): unknown {
+  if (v === null) return 'null';
+  if (Array.isArray(v)) return depth > 3 ? 'array' : v.length ? [shape(v[0], depth + 1)] : [];
+  if (typeof v === 'object') {
+    if (depth > 3) return 'object';
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) out[k] = shape(val, depth + 1);
+    return out;
+  }
+  return typeof v === 'string' && v === '' ? 'string(empty)' : typeof v;
+}
+let shown = 0;
+for await (const o of client.paginate<Record<string, unknown>>('/orders', {
+  updateStatus: 'updated_at',
+  startDateTime: Math.floor((Date.now() - 30 * 86_400_000) / 1000),
+  endDateTime: Math.floor(Date.now() / 1000),
+})) {
+  if (shown++ >= 3) break;
+  const items = Array.isArray(o.items) ? (o.items as Record<string, unknown>[]) : [];
+  const unlinked = items.filter((i) => !i.variation_id && !i.product_id).length;
+  console.log(`Cấu trúc đơn mẫu ${shown} (${items.length} dòng hàng, ${unlinked} dòng không có variation_id/product_id):`);
+  console.log(JSON.stringify(shape(o), null, 1));
+}
+if (shown === 0) console.log('Chưa có đơn nào để xem cấu trúc.');
