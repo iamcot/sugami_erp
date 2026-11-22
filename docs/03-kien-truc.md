@@ -147,3 +147,30 @@ Chủ shop có một iMac bật cả ngày, dùng luôn làm server.
 | Hỏng ổ cứng, mất máy | Sao lưu hàng đêm ra ngoài iMac, thử khôi phục hàng tháng |
 | Cập nhật macOS tự khởi động lại | Tắt tự cài cập nhật, cập nhật thủ công ngoài giờ |
 | Cần mở rộng | Cùng file Docker Compose chạy được trên VPS; chuyển bằng dump MySQL (ảnh đã ở S3) |
+
+## 3.8 Khi máy tắt hoặc dịch vụ chết
+
+iMac có thể tắt, mất mạng, hoặc một container (api, worker, redis) chết. Nguyên tắc: **không mất dữ liệu, tự đuổi kịp khi lên lại, không ghi đè số mới bằng số cũ.**
+
+**Nhận dữ liệu (đơn, sản phẩm, tồn từ Pancake/sàn):**
+
+- Webhook chỉ là **tín hiệu báo sớm**, không phải nguồn duy nhất. Pancake chỉ gửi lại 2 lần (sau 10 và 30 phút) rồi bỏ, nên máy tắt quá 40 phút là mất webhook.
+- Nguồn chính là **job quét bù** theo con trỏ `sync_cursor` (mỗi loại dữ liệu một con trỏ = mốc `updated_at` lớn nhất đã xử lý xong). Job chạy **ngay khi worker khởi động**, mỗi 5 phút, và ngay khi có webhook. Mỗi lần quét lùi lại 15 phút trước con trỏ để không sót bản ghi cập nhật trễ.
+- Ghi vào Sugami theo mã ngoài + `updated_at` (idempotent): nhận trùng không sao, bản cũ hơn không ghi đè bản mới hơn.
+- Con trỏ chỉ tiến sau khi cả trang dữ liệu đã ghi xong trong transaction; chết giữa chừng thì lần sau làm lại trang đó.
+- Webhook được lưu vào `webhook_events` trước khi trả 200; worker chết thì sự kiện vẫn nằm đó chờ xử lý.
+
+**Đẩy dữ liệu ra (tồn lên Pancake/sàn):**
+
+- Mọi lệnh ghi ra ngoài đi qua `outbox` trong cùng transaction với thay đổi ở Sugami; mạng lỗi hoặc Pancake lỗi thì thử lại với backoff, không mất lệnh.
+- Đẩy **số tồn tuyệt đối** (không đẩy chênh lệch), gộp nhiều lệnh cùng SKU thành lệnh mới nhất.
+- **Chốt chặn:** chỉ đẩy tồn khi job quét bù đơn đã chạy xong trong 5 phút gần nhất. Lúc Sugami tắt, sàn vẫn bán và Pancake vẫn tự trừ tồn; nếu Sugami vừa lên đã đẩy số cũ thì sẽ ghi đè mất phần đã bán. Vì vậy phải kéo hết đơn bị lỡ, trừ tồn, rồi mới đẩy.
+
+**Phát hiện máy chết:**
+
+- Máy đã tắt thì không tự báo được. Dùng dịch vụ kiểm tra từ bên ngoài miễn phí (UptimeRobot hoặc Healthchecks.io) gọi `https://erp.sugami.vn/health` mỗi 5 phút, báo qua email/app điện thoại khi không trả lời.
+- `/health` báo cả tình trạng worker (lần chạy job gần nhất) và độ trễ quét bù, để biết khi web còn sống mà worker đã chết.
+- Trên giao diện: thanh trên cùng hiện thời điểm đồng bộ gần nhất; trễ quá 15 phút thì chuyển đỏ và gửi thông báo đẩy cho chủ shop.
+
+**Khởi động lại:** container đặt `restart: unless-stopped`; Redis bật AOF để hàng đợi job không mất khi khởi động lại.
+

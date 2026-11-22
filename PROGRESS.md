@@ -11,7 +11,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
 | P0 — Chuẩn bị & xác minh | 6/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
-| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 10/22 | |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 11/23 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 0/15 | Đang thử Pancake POS làm lớp trung gian |
@@ -46,6 +46,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - 2026-11-22: Stack thực tế: Node 22, pnpm 10, TypeScript 6, Next.js 16, NestJS 12, Prisma 7 (MariaDB adapter), BullMQ 6 + ioredis, Tailwind 4, Vitest 5.
 - 2026-11-22: Claude viết toàn bộ code, commit thẳng lên `main` (không PR); mỗi task cập nhật file này trong commit cuối.
 - 2026-11-22: Chủ shop chọn **dùng thử Pancake POS 15 ngày** (200k/tháng, đối tác TikTok) làm lớp trung gian thay KiotViet (D11, docs/pancake.md). Trong lúc thử, KiotViet vẫn là bên duy nhất đẩy tồn.
+- 2026-11-22: Chủ shop yêu cầu: đồng bộ/webhook phải chịu được iMac tắt hoặc dịch vụ chết (thiết kế ở docs/03 mục 3.8: quét bù theo con trỏ, chỉ đẩy tồn khi đã kéo hết đơn bị lỡ, giám sát từ bên ngoài); web là PWA có thông báo đẩy cho chủ shop.
 
 ## Nhật ký
 
@@ -69,6 +70,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-08 danh sách sản phẩm/đơn hàng trên dữ liệu thật, chi tiết sản phẩm có lịch sử, bảng dữ liệu dùng chung | 5e7493e |
 | 2026-11-22 | P1-18/P1-20 API tồn kho theo SKU × kho và API tổng quan (chưa có giao diện) | 83dc4cc |
 | 2026-11-22 | P1-18/P1-20 trang Tồn kho và Tổng quan với số liệu thật | 8ee9509 |
+| 2026-11-22 | P1-23 PWA + thông báo đẩy; thiết kế chịu máy tắt (docs/03 mục 3.8) | (commit này) |
 | 2026-11-22 | P4-P1 nối Pancake POS (chỉ đọc): client, ánh xạ sản phẩm/đơn, webhook vào `webhook_events`, `probe` | 43fbac4 |
 
 ## P0 — Chuẩn bị & xác minh
@@ -115,6 +117,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-20 | Dashboard cơ bản | ✅ | 8ee9509 | Doanh thu hôm nay/7 ngày, lãi gộp 30 ngày, giá trị tồn, việc cần làm |
 | P1-21 | Báo cáo sức khỏe dữ liệu: SKU trùng/thiếu, thiếu ảnh, tồn âm | ⬜ | | |
 | P1-22 | Deploy production lên iMac, dùng thật 1 tuần | 👤 ⬜ | | |
+| P1-23 | PWA cài lên điện thoại + thông báo đẩy (đăng ký thiết bị, API gửi, nút bật/tắt) | ✅ | (commit này) | Chủ shop yêu cầu 2026-11-22; thông báo thật thêm ở P4-P2, P1-17 |
 
 ## P2 — Nguồn hàng Taobao/1688 + kho
 
@@ -156,8 +159,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
 | P4-P1 | Pancake: client API, đọc sản phẩm/tồn/đơn, nhận webhook vào `webhook_events`, lệnh `probe` | 🟡 | 43fbac4 | Chờ chạy `probe` trên shop thật |
-| P4-P2 | Pancake: worker xử lý webhook + quét bù, ghi đơn và trừ tồn theo đơn | ⬜ | | |
-| P4-P3 | Pancake: đẩy tồn từ Sugami (outbox), tắt đồng bộ tồn KiotViet | ⬜ | | Sau khi thử 1 SKU đạt |
+| P4-P2 | Pancake: worker xử lý webhook + quét bù theo con trỏ (chạy khi khởi động, mỗi 5 phút), ghi đơn và trừ tồn theo đơn | ⬜ | | Thiết kế chịu máy tắt: docs/03 mục 3.8 |
+| P4-P3 | Pancake: đẩy tồn từ Sugami (outbox, chỉ đẩy khi quét bù đơn còn mới), tắt đồng bộ tồn KiotViet | ⬜ | | Sau khi thử 1 SKU đạt |
 | P4-01 | Interface `ChannelAdapter` + chuẩn hóa ExternalProduct/ExternalOrder | ⬜ | | |
 | P4-02 | TikTok Shop: OAuth, lưu/làm mới token, ký request | ⬜ | | |
 | P4-03 | TikTok Shop: đọc sản phẩm, ánh xạ listing ↔ SKU | ⬜ | | |

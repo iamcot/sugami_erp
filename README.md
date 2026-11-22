@@ -60,6 +60,7 @@ Sửa trong `.env`:
 | `APP_ENCRYPTION_KEY` | chuỗi ngẫu nhiên: `openssl rand -base64 32` |
 | `SEED_OWNER_EMAIL`, `SEED_OWNER_PASSWORD` | email và mật khẩu đăng nhập của chủ shop |
 | `STORAGE_DRIVER` | `local` nếu chưa có key S3; `s3` kèm `S3_*` khi đã có (xem [`docs/ops/s3.md`](docs/ops/s3.md), kiểm tra bằng `pnpm storage:check`) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | khóa thông báo đẩy, tạo bằng `pnpm --filter @sugami/notify vapid` (xem [`docs/ops/pwa.md`](docs/ops/pwa.md)) |
 
 `.env` chỉ nằm trên máy, không commit, không gửi qua chat.
 
@@ -98,3 +99,7 @@ pnpm lint && pnpm typecheck && pnpm test
 | `pnpm db:studio` | xem dữ liệu trong trình duyệt |
 | `pnpm infra:down` | tắt Redis |
 | `pnpm infra:mysql` | MySQL trong Docker (máy không có MySQL native) |
+
+## Cài lên điện thoại
+
+Sugami cài được như app và gửi thông báo đẩy: xem [`docs/ops/pwa.md`](docs/ops/pwa.md).

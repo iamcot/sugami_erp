@@ -15,6 +15,7 @@ Shopee / TikTok ⇄ Pancake POS ⇄ Sugami
 
 - Webhook không có chữ ký. Sugami kiểm header bí mật `x-sugami-secret` (giá trị = `PANCAKE_WEBHOOK_SECRET`, nhập ở `webhook_headers` của Pancake), lưu vào `webhook_events`, trả 200 ngay. Pancake chỉ gửi lại 2 lần (sau 10 và 30 phút) nên worker vẫn quét bù định kỳ bằng `updateStatus=updated_at`.
 - Webhook không có mã lần gửi: Sugami dùng SHA-256 của body làm `delivery_id` để không lưu trùng.
+- Máy tắt hoặc dịch vụ chết: xem [3.8](03-kien-truc.md#38-khi-máy-tắt-hoặc-dịch-vụ-chết). Tóm tắt: quét bù theo con trỏ khi worker khởi động và mỗi 5 phút; chỉ đẩy tồn sau khi đã kéo hết đơn bị lỡ.
 - Chống vòng lặp: khi Sugami đẩy tồn lên Pancake, webhook `variations_warehouses` quay về sẽ được so với tồn Sugami; trùng thì bỏ qua.
 
 ## Ánh xạ

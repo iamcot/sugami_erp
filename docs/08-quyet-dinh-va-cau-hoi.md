@@ -26,6 +26,8 @@
 | D9 | Không nâng gói KiotViet. Trao đổi với KiotViet bằng **file Excel** cho tới khi kết nối thẳng Shopee/TikTok; nộp hồ sơ app sàn ngay (chủ shop chọn 22/11/2026) | Không tăng chi phí; đơn ít nên thao tác tay vài phút/tuần |
 | D10 | Giữ nguyên **mã hàng KiotViet làm SKU** (kể cả mã không theo mẫu `SP…`); sản phẩm = nhóm mã theo cột `Mã HH Liên quan` | Đơn và tồn hai bên khớp nhau theo mã, không phải đổi mã trên sàn |
 | D11 | **Dùng thử Pancake POS** (200k/tháng, thử 15 ngày, đối tác TikTok) làm lớp trung gian thay KiotViet: Sugami nối Pancake qua Open API + webhook; trong lúc thử KiotViet vẫn là bên duy nhất đẩy tồn | Bỏ xuất/nhập Excel bằng tay; không phải chờ Shopee/TikTok duyệt app |
+| D12 | Đồng bộ phải **chịu được iMac tắt/dịch vụ chết**: webhook chỉ là tín hiệu, nguồn chính là quét bù theo con trỏ; chỉ đẩy tồn khi đã kéo hết đơn bị lỡ (docs/03 mục 3.8) | Máy ở nhà có thể tắt; Pancake chỉ gửi lại webhook 2 lần |
+| D13 | Web là **PWA** cài lên điện thoại, có **thông báo đẩy** cho chủ shop (Web Push/VAPID) | Không cần làm app riêng; iPhone cần iOS 16.4+ và mở từ màn hình chính |
 
 ## 8.3 Câu hỏi còn mở
 

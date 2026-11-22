@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { PwaBootstrap } from './app-settings';
 import { UserMenu } from './user-menu';
 
 const nav = [
@@ -52,6 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   return (
     <div className="min-h-dvh lg:pl-60">
+      <PwaBootstrap />
       <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col border-r border-slate-200 bg-white px-3 py-4 lg:flex dark:border-slate-800 dark:bg-slate-900">
         <Link href="/" className="mb-6 flex items-center gap-2 px-2">
           <span className="grid size-8 place-items-center rounded-lg bg-brand-600 text-sm font-bold text-white">
@@ -85,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
       </aside>
 
-      <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+      <header className="sticky top-0 z-10 flex min-h-14 items-center pt-[env(safe-area-inset-top)] gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-sm font-bold text-white lg:hidden">
           S
         </span>

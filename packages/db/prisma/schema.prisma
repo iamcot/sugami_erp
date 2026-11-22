@@ -17,22 +17,23 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
-  id               String     @id @default(uuid(7)) @db.Char(36)
-  email            String     @unique @db.VarChar(191)
-  name             String     @db.VarChar(191)
-  passwordHash     String     @map("password_hash") @db.VarChar(255)
-  isActive         Boolean    @default(true) @map("is_active")
-  lastLoginAt      DateTime?  @map("last_login_at")
+  id                String             @id @default(uuid(7)) @db.Char(36)
+  email             String             @unique @db.VarChar(191)
+  name              String             @db.VarChar(191)
+  passwordHash      String             @map("password_hash") @db.VarChar(255)
+  isActive          Boolean            @default(true) @map("is_active")
+  lastLoginAt       DateTime?          @map("last_login_at")
   /// Consecutive failed logins; reset on success.
-  failedLoginCount Int        @default(0) @map("failed_login_count")
+  failedLoginCount  Int                @default(0) @map("failed_login_count")
   /// Login refused until this time after too many failures.
-  lockedUntil      DateTime?  @map("locked_until")
-  sessions         Session[]
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
-  roles            UserRole[]
-  auditLogs        AuditLog[]
-  mediaUploads     MediaAsset[]
+  lockedUntil       DateTime?          @map("locked_until")
+  sessions          Session[]
+  pushSubscriptions PushSubscription[]
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  roles             UserRole[]
+  auditLogs         AuditLog[]
+  mediaUploads      MediaAsset[]
 
   @@map("users")
 }
@@ -672,4 +673,23 @@ model WebhookEvent {
   @@unique([provider, deliveryId])
   @@index([processedAt, receivedAt])
   @@map("webhook_events")
+}
+
+/// Web push subscription of one browser/phone (PWA). Removed when the push service says it is gone.
+model PushSubscription {
+  id            String    @id @default(uuid(7)) @db.Char(36)
+  userId        String    @map("user_id") @db.Char(36)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 of endpoint (endpoints are too long for a unique index).
+  endpointHash  String    @unique @map("endpoint_hash") @db.Char(64)
+  endpoint      String    @db.Text
+  p256dh        String    @db.VarChar(255)
+  auth          String    @db.VarChar(255)
+  userAgent     String?   @map("user_agent") @db.VarChar(255)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  lastSuccessAt DateTime? @map("last_success_at")
+  failCount     Int       @default(0) @map("fail_count")
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
