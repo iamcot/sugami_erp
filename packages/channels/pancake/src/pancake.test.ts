@@ -410,3 +410,18 @@ describe('lineName', () => {
     expect(lineName({})).toBe('');
   });
 });
+
+describe('Listing codes', () => {
+  it('keeps numeric codes as text', async () => {
+    const { Listing } = await import('./listings.js');
+    const l = Listing.parse({
+      id: '1',
+      sku: 123,
+      linked_product_custom_id: 1031,
+      variations: [{ id: 'v', linked_variation_custom_id: 7, linked_product_custom_id: null }],
+    });
+    expect(l.linked_product_custom_id).toBe('1031');
+    expect(l.sku).toBe('123');
+    expect(l.variations?.[0]?.linked_variation_custom_id).toBe('7');
+  });
+});

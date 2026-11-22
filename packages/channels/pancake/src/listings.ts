@@ -6,26 +6,31 @@ import { z } from 'zod';
 import type { PancakeClient } from './client.js';
 
 const str = z.string().nullish();
+/** Codes the shop typed can come back as numbers (e.g. 1031); keep them as text. */
+const code = z
+  .union([z.string(), z.number()])
+  .nullish()
+  .transform((v) => (v == null ? v : String(v)));
 
 export const ListingVariation = z.looseObject({
   id: z.string(),
   name: str,
-  sku: str,
+  sku: code,
   images: z.array(z.string()).nullish(),
   price: z.number().nullish(),
   quantity: z.number().nullish(),
-  linked_product_custom_id: str,
-  linked_variation_custom_id: str,
+  linked_product_custom_id: code,
+  linked_variation_custom_id: code,
 });
 
 export const Listing = z.looseObject({
   id: z.string(),
   name: str,
-  sku: str,
+  sku: code,
   marketplace_id: str,
   marketplace_shop_name: str,
   price: z.number().nullish(),
-  linked_product_custom_id: str,
+  linked_product_custom_id: code,
   variations: z.array(ListingVariation).nullish(),
 });
 export type Listing = z.infer<typeof Listing>;
