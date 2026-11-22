@@ -11,7 +11,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
 | P0 — Chuẩn bị & xác minh | 6/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
-| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 7/22 | |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 8/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 0/12 | |
@@ -21,7 +21,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Đang làm
 
 - P0-10 chờ duyệt giao diện.
-- Tiếp theo: P1-04/P1-05 giao diện + bảng dữ liệu, P1-08 danh sách sản phẩm, P1-18 tồn kho, P1-19 đơn hàng (dữ liệu thật đã vào được).
+- Tiếp theo: P1-18 danh sách tồn kho, P1-20 dashboard số thật, P1-13 xuất phiếu nhập/kiểm kho sang KiotViet, P1-15 đối chiếu tồn.
 
 ## Bị chặn / chờ chủ shop
 
@@ -63,6 +63,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P0-07 phân tích file Excel KiotViet (1.029 mã hàng, 153 nhóm biến thể, hóa đơn Shopee) | 117ab2d |
 | 2026-11-22 | P1-11 import danh sách hàng hóa KiotViet (xem trước, tồn đầu kỳ, chạy lại an toàn) + màn hình Nhập KiotViet | f5d2bbf |
 | 2026-11-22 | P1-12 import hóa đơn KiotViet thành đơn hàng (kênh, trạng thái, trừ tồn sau tồn đầu kỳ, hoàn tồn khi hủy); sửa .gitignore làm sót trang Nhập KiotViet | a610588 |
+| 2026-11-22 | P1-08 danh sách sản phẩm/đơn hàng trên dữ liệu thật, chi tiết sản phẩm có lịch sử, bảng dữ liệu dùng chung | 5e7493e |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -90,11 +91,11 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-02 | RBAC | ✅ | c799ed3 | Guard toàn cục, quyền `*` / `module.*` |
 | P1-03 | Audit log: middleware ghi thay đổi giá, tồn, xóa | ✅ | f971be5 | Tồn xem qua stock_movement |
 | P1-04 | Layout app | ⬜ | | |
-| P1-05 | Bộ component bảng dữ liệu dùng chung | ⬜ | | |
+| P1-05 | Bộ component bảng dữ liệu dùng chung | 🟡 | 5e7493e | Có sắp xếp, phân trang server, lọc qua URL; còn chọn nhiều, saved views, sửa tại chỗ |
 | P1-06 | Schema catalog | ✅ | aaf6f99 | |
 | P1-07 | API + màn hình nhóm hàng, thương hiệu | ⬜ | | |
-| P1-08 | API + màn hình danh sách sản phẩm (bảng + lưới ảnh), tìm không dấu | ⬜ | | |
-| P1-09 | Chi tiết sản phẩm | ⬜ | | |
+| P1-08 | API + màn hình danh sách sản phẩm, tìm không dấu | ✅ | 5e7493e | Chưa có lưới ảnh (chờ ảnh ở P3) |
+| P1-09 | Chi tiết sản phẩm | 🟡 | 5e7493e | Xem biến thể, giá vốn, tồn, lịch sử; chưa sửa/tạo SP, sinh ma trận SKU |
 | P1-10 | Import/export Excel sản phẩm, sửa hàng loạt | ⬜ | | |
 | P1-11 | Import Excel hàng hóa + tồn từ KiotViet | ✅ | f5d2bbf | File thật: 1.029 SKU, 12.257 cái, khớp 100% |
 | P1-12 | Import Excel hóa đơn/đặt hàng KiotViet → đơn hàng | ✅ | a610588 | File thật: 38 đơn, doanh thu khớp file tổng quan |
@@ -104,7 +105,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-16 | Trung tâm dữ liệu: lịch sử import/export | ⬜ | | |
 | P1-17 | Nhắc việc đồng bộ Excel trên dashboard | ⬜ | | |
 | P1-18 | Danh sách tồn kho (ma trận SKU × kho, tô màu mức tồn) | ⬜ | | |
-| P1-19 | Danh sách đơn hàng, chi tiết đơn, lọc theo kênh | ⬜ | | |
+| P1-19 | Danh sách đơn hàng, chi tiết đơn, lọc theo kênh | 🟡 | 5e7493e | Danh sách + lọc kênh/trạng thái + API chi tiết; chưa có trang chi tiết đơn |
 | P1-20 | Dashboard cơ bản | ⬜ | | |
 | P1-21 | Báo cáo sức khỏe dữ liệu: SKU trùng/thiếu, thiếu ảnh, tồn âm | ⬜ | | |
 | P1-22 | Deploy production lên iMac, dùng thật 1 tuần | 👤 ⬜ | | |
