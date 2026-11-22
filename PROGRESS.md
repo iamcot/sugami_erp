@@ -67,7 +67,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-12 import hóa đơn KiotViet thành đơn hàng (kênh, trạng thái, trừ tồn sau tồn đầu kỳ, hoàn tồn khi hủy); sửa .gitignore làm sót trang Nhập KiotViet | a610588 |
 | 2026-11-22 | P1-08 danh sách sản phẩm/đơn hàng trên dữ liệu thật, chi tiết sản phẩm có lịch sử, bảng dữ liệu dùng chung | 5e7493e |
 | 2026-11-22 | P1-18/P1-20 API tồn kho theo SKU × kho và API tổng quan (chưa có giao diện) | 83dc4cc |
-| 2026-11-22 | P4-P1 nối Pancake POS (chỉ đọc): client, ánh xạ sản phẩm/đơn, webhook vào `webhook_events`, `probe` | (commit này) |
+| 2026-11-22 | P4-P1 nối Pancake POS (chỉ đọc): client, ánh xạ sản phẩm/đơn, webhook vào `webhook_events`, `probe` | 43fbac4 |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -153,7 +153,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
-| P4-P1 | Pancake: client API, đọc sản phẩm/tồn/đơn, nhận webhook vào `webhook_events`, lệnh `probe` | 🟡 | | Chờ chạy `probe` trên shop thật |
+| P4-P1 | Pancake: client API, đọc sản phẩm/tồn/đơn, nhận webhook vào `webhook_events`, lệnh `probe` | 🟡 | 43fbac4 | Chờ chạy `probe` trên shop thật |
 | P4-P2 | Pancake: worker xử lý webhook + quét bù, ghi đơn và trừ tồn theo đơn | ⬜ | | |
 | P4-P3 | Pancake: đẩy tồn từ Sugami (outbox), tắt đồng bộ tồn KiotViet | ⬜ | | Sau khi thử 1 SKU đạt |
 | P4-01 | Interface `ChannelAdapter` + chuẩn hóa ExternalProduct/ExternalOrder | ⬜ | | |
