@@ -26,6 +26,26 @@ console.log(
 const warehouses = await client.get<{ data?: { id: string; name?: string }[] }>('/warehouses');
 console.log('Kho:', (warehouses.data ?? []).map((w) => `${w.name} (${w.id})`).join(', '));
 
+// Where does the KiotViet code live on imported variations? (product data only, no customer data)
+let sampled = 0;
+for await (const v of client.paginate<Record<string, unknown>>('/products/variations')) {
+  if (sampled++ >= 6) break;
+  const pr = (v.product ?? {}) as Record<string, unknown>;
+  console.log(
+    'variation mẫu:',
+    JSON.stringify({
+      custom_id: v.custom_id,
+      display_id: v.display_id,
+      barcode: v.barcode,
+      sku: v.sku,
+      product_custom_id: pr.custom_id,
+      product_display_id: pr.display_id,
+      name: pr.name,
+      keys: Object.keys(v).filter((k) => /id|code|sku|bar/i.test(k)),
+    }),
+  );
+}
+
 let products = 0;
 let variants = 0;
 let units = 0;
@@ -122,7 +142,10 @@ for await (const o of client.paginate<Record<string, unknown>>('/orders', {
   // Product-level text only (no customer data): to find where the variant option name lives.
   for (const i of items.slice(0, 5)) {
     const vi = (i.variation_info ?? {}) as Record<string, unknown>;
-    console.log('  dòng:', JSON.stringify({ name: vi.name, detail: vi.detail, fields: vi.fields, note_product: i.note_product }));
+    console.log(
+      '  dòng:',
+      JSON.stringify({ name: vi.name, detail: vi.detail, fields: vi.fields, note_product: i.note_product }),
+    );
   }
 }
 if (shown === 0) console.log('Chưa có đơn nào để xem cấu trúc.');
