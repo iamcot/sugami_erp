@@ -5,6 +5,7 @@ import { CloudUpload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { PancakePush } from '@/components/pancake-push';
+import { useDetail } from '@/components/detail-drawer';
 import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
 
@@ -30,6 +31,17 @@ interface Product {
   category: { name: string } | null;
   brand: { name: string } | null;
   options: string[];
+  listings: {
+    id: string;
+    name: string;
+    shop: string;
+    imageUrl: string | null;
+    variantId: string;
+    option: string | null;
+    marketplaceSku: string | null;
+    price: number | null;
+    quantity: number | null;
+  }[];
   createdAt: string;
   updatedAt: string;
   variants: Variant[];
@@ -90,6 +102,7 @@ const show = (v: unknown) =>
   v === null || v === undefined || v === '' ? '–' : Array.isArray(v) ? v.join(' / ') : String(v);
 
 export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
+  const { open } = useDetail();
   const [product, setProduct] = useState<Product | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -232,6 +245,46 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
           </table>
         </div>
       </Card>
+
+      {product.listings.length > 0 && (
+        <Card className="mb-4 overflow-hidden">
+          <div className="border-b border-slate-200 px-4 py-2.5 text-sm font-medium dark:border-slate-800">
+            Đang đăng trên sàn ({new Set(product.listings.map((l) => l.id)).size} tin)
+          </div>
+          <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+            {product.listings.map((l) => (
+              <li key={`${l.id}-${l.variantId}-${l.option}`}>
+                <button
+                  onClick={() => open('listing', l.id)}
+                  className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                >
+                  {l.imageUrl && (
+                    <img
+                      src={l.imageUrl}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="size-9 shrink-0 rounded border border-slate-200 object-cover dark:border-slate-800"
+                    />
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-1">{l.name}</span>
+                    <span className="text-xs text-slate-500">
+                      {[l.shop, l.option, l.marketplaceSku].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right tabular-nums">
+                    {l.price === null ? '–' : formatVnd(l.price)}
+                    {l.quantity !== null && (
+                      <span className="block text-xs text-slate-500">tồn sàn {l.quantity}</span>
+                    )}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {product.description && (
         <Card className="mb-4 whitespace-pre-line p-4 text-sm text-slate-700 dark:text-slate-300">

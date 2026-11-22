@@ -220,6 +220,7 @@ model Variant {
   stockLevels     StockLevel[]
   media           ProductMedia[]
   orderLines      OrderLine[]
+  listingVariants ChannelListingVariant[]
   movements       StockMovement[]
   documentLines   StockDocumentLine[]
 
@@ -523,6 +524,52 @@ model ProductMedia {
   @@index([productId, sort])
   @@index([assetId])
   @@map("product_media")
+}
+
+/// A product listing on a marketplace shop (Shopee/TikTok), as Pancake pulled it. Read-only copy.
+model ChannelListing {
+  id         String                  @id @default(uuid(7)) @db.Char(36)
+  /// Where we read it from: pancake (later shopee/tiktok directly).
+  source     String                  @db.VarChar(32)
+  /// Marketplace shop name; part of the key because several shops (VN/MY/PH) share one marketplace id.
+  shopKey    String                  @default("") @map("shop_key") @db.VarChar(191)
+  externalId String                  @map("external_id") @db.VarChar(128)
+  marketplaceId String?              @map("marketplace_id") @db.VarChar(32)
+  name       String                  @db.VarChar(512)
+  sku        String?                 @db.VarChar(128)
+  price      BigInt?
+  imageUrl   String?                 @map("image_url") @db.VarChar(1000)
+  syncedAt   DateTime                @map("synced_at")
+  createdAt  DateTime                @default(now()) @map("created_at")
+  updatedAt  DateTime                @updatedAt @map("updated_at")
+  variations ChannelListingVariant[]
+
+  @@unique([source, shopKey, externalId])
+  @@index([name(length: 100)])
+  @@map("channel_listings")
+}
+
+/// One option of a listing, with the seller SKU and the Sugami variant it was matched to (if any).
+model ChannelListingVariant {
+  id         String         @id @default(uuid(7)) @db.Char(36)
+  listingId  String         @map("listing_id") @db.Char(36)
+  externalId String         @map("external_id") @db.VarChar(128)
+  name       String?        @db.VarChar(512)
+  /// Seller SKU on the marketplace.
+  sku        String?        @db.VarChar(128)
+  price      BigInt?
+  quantity   Decimal?       @db.Decimal(14, 3)
+  images     Json?
+  variantId  String?        @map("variant_id") @db.Char(36)
+  /// How it was matched: link (Pancake link), sku, barcode, orders (learned from orders).
+  linkedBy   String?        @map("linked_by") @db.VarChar(16)
+  listing    ChannelListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  variant    Variant?       @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@unique([listingId, externalId])
+  @@index([variantId])
+  @@index([sku])
+  @@map("channel_listing_variants")
 }
 
 // ---------------------------------------------------------------------------

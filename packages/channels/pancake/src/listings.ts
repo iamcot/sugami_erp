@@ -14,6 +14,8 @@ export const ListingVariation = z.looseObject({
   images: z.array(z.string()).nullish(),
   price: z.number().nullish(),
   quantity: z.number().nullish(),
+  linked_product_custom_id: str,
+  linked_variation_custom_id: str,
 });
 
 export const Listing = z.looseObject({
@@ -22,6 +24,8 @@ export const Listing = z.looseObject({
   sku: str,
   marketplace_id: str,
   marketplace_shop_name: str,
+  price: z.number().nullish(),
+  linked_product_custom_id: str,
   variations: z.array(ListingVariation).nullish(),
 });
 export type Listing = z.infer<typeof Listing>;

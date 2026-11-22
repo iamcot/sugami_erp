@@ -196,6 +196,17 @@ export class ProductsController {
       orderBy: { sort: 'asc' },
       select: { variantId: true, asset: { select: { storageKey: true } } },
     });
+    const links = await this.prisma.client.channelListingVariant.findMany({
+      where: { variantId: { in: product.variants.map((v) => v.id) } },
+      select: {
+        sku: true,
+        name: true,
+        price: true,
+        quantity: true,
+        variantId: true,
+        listing: { select: { id: true, name: true, shopKey: true, imageUrl: true } },
+      },
+    });
     const stored = await this.urlsFor([...new Set(media.map((m) => m.asset.storageKey))]);
     const storedByVariant = new Map<string, string[]>();
     for (const m of media) {
@@ -212,6 +223,17 @@ export class ProductsController {
         category: product.category,
         brand: product.brand,
         options: product.options.map((o) => o.name),
+        listings: links.map((l) => ({
+          id: l.listing.id,
+          name: l.listing.name,
+          shop: l.listing.shopKey,
+          imageUrl: l.listing.imageUrl,
+          variantId: l.variantId,
+          option: l.name,
+          marketplaceSku: l.sku,
+          price: l.price === null ? null : Number(l.price),
+          quantity: l.quantity === null ? null : Number(l.quantity),
+        })),
         createdAt: product.createdAt.toISOString(),
         updatedAt: product.updatedAt.toISOString(),
         variants: product.variants.map((v) => ({

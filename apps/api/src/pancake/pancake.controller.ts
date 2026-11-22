@@ -18,7 +18,7 @@ import {
   pullListings,
   type PushProductInput,
 } from '@sugami/channels-pancake';
-import { runPancakeOrderSync, syncListingImages } from '@sugami/sync';
+import { runPancakeOrderSync, syncChannelListings, syncListingImages } from '@sugami/sync';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
@@ -150,6 +150,40 @@ export class PancakeController {
         range,
       }),
     );
+  }
+
+  /** Store the marketplace listings Pancake pulled and match their options to Sugami variants. Preview by default. */
+  @Post('sync-listings')
+  @HttpCode(200)
+  @RequirePermissions('catalog.write')
+  syncListings(@Body() raw: unknown) {
+    const { dryRun } = parseInput(Body_, raw ?? {});
+    return this.guard(async () => {
+      const listings: Listing[] = [];
+      for await (const l of pullListings(this.client())) listings.push(l);
+      return syncChannelListings(
+        this.prisma.client,
+        listings.map((l) => ({
+          source: 'pancake',
+          externalId: l.id,
+          shopName: l.marketplace_shop_name,
+          marketplaceId: l.marketplace_id,
+          name: l.name ?? l.sku ?? l.id,
+          sku: l.sku,
+          price: l.price,
+          variations: (l.variations ?? []).map((v) => ({
+            externalId: v.id,
+            name: v.name,
+            sku: v.sku,
+            price: v.price,
+            quantity: v.quantity,
+            images: (v.images ?? []).filter((u) => /^https?:\/\//.test(u)),
+            linkedCustomId: v.linked_variation_custom_id || v.linked_product_custom_id,
+          })),
+        })),
+        { dryRun },
+      );
+    });
   }
 
   /** Fill product images from the marketplace listings Pancake pulled (matched by seller SKU). Preview by default. */

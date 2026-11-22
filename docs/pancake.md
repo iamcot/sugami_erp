@@ -101,3 +101,9 @@ pnpm pancake:probe
 
 - Đơn Shopee/TikTok trong Pancake có `display_id` chính là mã đơn sàn (ví dụ `2611220ND1CP8V`, mã Pancake `PC2611220ND1CP8V`); `invoice_info_list[].order_sn` thường trống. Sugami dùng `order_sn` nếu có, không thì dùng `display_id` của đơn từ sàn (chuỗi có chữ hoặc từ 12 ký tự; đơn tạo trong Pancake có số nhỏ nên bị loại).
 - Nhờ vậy đơn Pancake nối được với hóa đơn KiotViet (`HDSPE_…`) cùng mã đơn sàn. Đơn Pancake đã tạo trước đó thành bản trùng sẽ được gộp: bản Pancake bị xóa, tồn đã trừ được hoàn lại, bản KiotViet được giữ và bổ sung ĐVVC, địa chỉ, phí sàn.
+
+## Tin đăng trên sàn (channel_listings)
+
+- Bảng `channel_listings` (tin đăng: shop, tiêu đề, SKU, giá, ảnh) và `channel_listing_variants` (biến thể của tin: SKU sàn, giá, tồn, ảnh, biến thể Sugami đã nối và cách nối). Chỉ là bản sao đọc từ Pancake (`GET /marketplace/products`), chạy lại thì cập nhật tại chỗ. Khóa tin đăng gồm tên shop vì shop VN/MY/PH dùng chung `marketplace_id`.
+- Nối biến thể sàn với biến thể Sugami, theo thứ tự: link trên Pancake (`linked_variation_custom_id`), SKU sàn = mã hàng, SKU sàn = mã vạch, mã học từ đơn (`pancake_sku`).
+- Giao diện: mục "Tin đăng sàn" (lọc đã nối/một phần/chưa nối, theo shop, tìm theo tên/SKU), drawer chi tiết tin, và thẻ "Đang đăng trên sàn" ở chi tiết sản phẩm. Nút "Đồng bộ tin đăng" ở tab "Đơn từ Pancake".

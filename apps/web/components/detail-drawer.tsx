@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { CustomerDetail } from '@/components/customer-detail';
+import { ListingDetail } from '@/components/listing-detail';
 import { OrderDetail } from '@/components/order-detail';
 import { ProductDetail } from '@/components/product-detail';
 
-export type DetailType = 'order' | 'customer' | 'product';
+export type DetailType = 'order' | 'customer' | 'product' | 'listing';
 
 interface DetailApi {
   open: (type: DetailType, code: string) => void;
@@ -22,8 +23,18 @@ const Ctx = createContext<DetailApi>({ open: () => undefined, selected: {} });
 export const useDetail = () => useContext(Ctx);
 
 const PARAM = 'd';
-const TITLE: Record<DetailType, string> = { order: 'Đơn hàng', customer: 'Khách hàng', product: 'Sản phẩm' };
-const PATH: Record<DetailType, string> = { order: 'orders', customer: 'customers', product: 'products' };
+const TITLE: Record<DetailType, string> = {
+  order: 'Đơn hàng',
+  customer: 'Khách hàng',
+  product: 'Sản phẩm',
+  listing: 'Tin đăng sàn',
+};
+const PATH: Record<DetailType, string> = {
+  order: 'orders',
+  customer: 'customers',
+  product: 'products',
+  listing: 'listings',
+};
 
 /**
  * Detail drawer driven by the URL: each open detail is a repeated `d=type:code` query param, so the
@@ -40,7 +51,7 @@ export function DetailProvider({ children }: { children: ReactNode }) {
       const i = v.indexOf(':');
       return { type: v.slice(0, i) as DetailType, code: v.slice(i + 1) };
     })
-    .filter((d) => (d.type === 'order' || d.type === 'customer' || d.type === 'product') && d.code);
+    .filter((d) => ['order', 'customer', 'product', 'listing'].includes(d.type) && d.code);
   const top = stack[stack.length - 1];
 
   const [selected, setSelected] = useState<DetailApi['selected']>({});
@@ -144,8 +155,10 @@ export function DetailProvider({ children }: { children: ReactNode }) {
                 <OrderDetail key={shown.code} code={shown.code} embedded />
               ) : shown.type === 'customer' ? (
                 <CustomerDetail key={shown.code} code={shown.code} embedded />
-              ) : (
+              ) : shown.type === 'product' ? (
                 <ProductDetail key={shown.code} code={shown.code} embedded />
+              ) : (
+                <ListingDetail key={shown.code} id={shown.code} embedded />
               )}
             </div>
           </aside>
