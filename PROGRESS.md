@@ -11,7 +11,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
 | P0 — Chuẩn bị & xác minh | 4/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
-| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 2/22 | |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 4/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 0/12 | |
@@ -21,7 +21,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Đang làm
 
 - P0-10 chờ duyệt giao diện.
-- Đang làm: P1-01 đăng nhập, P1-02 phân quyền.
+- Tiếp theo: P1-03 audit log, P1-04 layout app, P1-05 bảng dữ liệu dùng chung.
 
 ## Bị chặn / chờ chủ shop
 
@@ -55,6 +55,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-06 + P1-14 schema sản phẩm, kho và sổ kho (test trên MySQL) | aaf6f99 |
 | 2026-11-22 | P0-10 prototype giao diện 5 màn hình (dữ liệu mẫu) | 84065e7 |
 | 2026-11-22 | P0-06 client KiotViet + script probe chỉ đọc (chưa chạy với store thật) | e3c0d6e |
+| 2026-11-22 | P1-01/P1-02 đăng nhập, phân quyền, trang /login; tài khoản chủ shop tạo bằng `pnpm db:seed` | c799ed3 |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -78,8 +79,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
-| P1-01 | Auth | ⬜ | | |
-| P1-02 | RBAC | ⬜ | | |
+| P1-01 | Auth | ✅ | c799ed3 | Cookie phiên httpOnly, khóa 15 phút sau 5 lần sai |
+| P1-02 | RBAC | ✅ | c799ed3 | Guard toàn cục, quyền `*` / `module.*` |
 | P1-03 | Audit log: middleware ghi thay đổi giá, tồn, xóa | ⬜ | | |
 | P1-04 | Layout app | ⬜ | | |
 | P1-05 | Bộ component bảng dữ liệu dùng chung | ⬜ | | |
