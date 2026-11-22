@@ -28,10 +28,11 @@
 | D11 | **Dùng thử Pancake POS** (200k/tháng, thử 15 ngày, đối tác TikTok) làm lớp trung gian thay KiotViet: Sugami nối Pancake qua Open API + webhook; trong lúc thử KiotViet vẫn là bên duy nhất đẩy tồn | Bỏ xuất/nhập Excel bằng tay; không phải chờ Shopee/TikTok duyệt app |
 | D12 | Đồng bộ phải **chịu được iMac tắt/dịch vụ chết**: webhook chỉ là tín hiệu, nguồn chính là quét bù theo con trỏ; chỉ đẩy tồn khi đã kéo hết đơn bị lỡ (docs/03 mục 3.8) | Máy ở nhà có thể tắt; Pancake chỉ gửi lại webhook 2 lần |
 | D13 | Web là **PWA** cài lên điện thoại, có **thông báo đẩy** cho chủ shop (Web Push/VAPID) | Không cần làm app riêng; iPhone cần iOS 16.4+ và mở từ màn hình chính |
+| D14 | Mỗi tài khoản sàn trong Pancake là một **kênh riêng** trong Sugami, tên theo "tên gợi nhớ" trong Pancake; phân biệt theo ID tài khoản, tiền tệ lưu riêng cho MY/PH | 3 shop Shopee cùng `marketplace_id` -3; đơn MY/PH không tính bằng VND |
 
 ## 8.3 Câu hỏi còn mở
 
-0. **Pancake POS**: còn cần kiểm chứng các mục trong [pancake.md](pancake.md#chưa-kiểm-chứng-cần-dữ-liệu-thật) trong 15 ngày dùng thử.
+0. **Pancake POS**: còn cần kiểm chứng các mục trong [pancake.md](pancake.md#chưa-kiểm-chứng-cần-dữ-liệu-thật) trong 15 ngày dùng thử, và chủ shop cho biết shop Shopee MY/PH có cần quản lý trong Sugami không.
 1. Đơn vị trung gian **chỉ có file Excel** (đã xác nhận). Còn cần: họ tính phí theo kg, theo m³, hay lấy số lớn hơn? Có phí mua hộ (% giá trị) không? Gửi 1–2 file mẫu cho task P2-07.
 2. Bạn đặt hàng trực tiếp trên Taobao/1688 rồi gửi về kho trung gian, hay đưa link để họ mua hộ?
 3. Ngoài Shopee và TikTok Shop, hiện có bán qua Facebook/Zalo hay cửa hàng không?

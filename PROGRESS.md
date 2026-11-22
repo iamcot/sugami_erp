@@ -10,29 +10,53 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
-| P0 — Chuẩn bị & xác minh | 6/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
-| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 11/23 | |
+| P0 — Chuẩn bị & xác minh | 6/13 | Khung dự án và phân tích file KiotViet xong; còn P0-10 chờ duyệt, P0-08 hồ sơ app sàn, P0-11/12/13 iMac |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 11/23 | Import, tồn kho, tổng quan, phiếu kho, PWA đã chạy trên dữ liệu thật; P1-13 chờ thử KiotViet; còn đối chiếu tồn, trung tâm dữ liệu, nhắc việc, sức khỏe dữ liệu |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
-| P4 — Kết nối sàn trực tiếp | 0/15 | Đang thử Pancake POS làm lớp trung gian |
+| P4 — Kết nối sàn trực tiếp | 1/15 | Đang thử Pancake POS làm lớp trung gian (P4-P1 xong) |
 | P5 — Thay KiotViet | 0/7 | |
 | P6 — Mở rộng | – | Lên kế hoạch sau P5 |
 
 ## Đang làm
 
 - P0-10 chờ duyệt giao diện.
-- Pancake POS: chờ chủ shop chạy `probe` trên shop thật (P4-P1).
-- P1-13: chờ chủ shop import thử file phiếu nhập/kiểm kho/sản phẩm mới vào KiotViet.
-- Tiếp theo: P1-15 đối chiếu tồn, P1-16 trung tâm dữ liệu, P1-17 nhắc việc.
+- P4-P2 (Pancake tự kéo đơn, trừ tồn, báo đơn mới): chờ chủ shop xác nhận phạm vi rồi làm; không cần webhook.
+- Việc kế tiếp phía Claude: P1-15 đối chiếu tồn, P1-16 trung tâm dữ liệu, P1-17 nhắc việc, P1-21 sức khỏe dữ liệu, P1-19 trang chi tiết đơn.
+
+## Đã hoàn thành
+
+- **Nền tảng:** monorepo, CI, đăng nhập + phân quyền, nhật ký thay đổi (P0-01..04, P1-01..03, P1-06, P1-14).
+- **Dữ liệu từ KiotViet:** import hàng hóa + tồn (1.029 SKU khớp 100%) và hóa đơn (38 đơn, doanh thu khớp) từ file Excel thật (P1-11, P1-12); tài liệu định dạng file (P0-07).
+- **Giao diện thật:** sản phẩm, đơn hàng, tồn kho, tổng quan, phiếu kho (P1-08, P1-18, P1-20), cài lên điện thoại + thông báo đẩy (P1-23).
+- **Xuất sang KiotViet:** phiếu nhập, kiểm kho, sản phẩm mới đúng mẫu import (P1-13, chờ thử thật).
+- **Media:** lớp lưu trữ S3/local + API upload (P3-01, chờ thử bucket thật).
+- **Pancake POS:** client, ánh xạ, hộp thư webhook, lệnh kiểm tra `pnpm pancake:probe` (P4-P1). Đã chạy trên shop thật: nối được 4 kênh, Pancake chưa có sản phẩm/đơn.
 
 ## Bị chặn / chờ chủ shop
 
-- P0-08: **nộp hồ sơ ngay** app Shopee Open Platform và TikTok Shop Partner Center (hướng dẫn: docs/ops/dang-ky-app-san.md).
-- P0-11: cài Docker trên iMac.
-- Pancake: mở bản thử, nối Shopee/TikTok (tắt đồng bộ tồn), thử 1 SKU, điền `PANCAKE_*` vào `.env`, chạy `pnpm pancake:probe` (docs/pancake.md).
-- P1-13: thử import vào KiotViet các file từ trang KiotViet → Xuất sang KiotViet và trang Phiếu kho.
-- P3-01: tạo IAM user/key và cấu hình CORS theo docs/ops/s3.md, điền `.env`, chạy `pnpm storage:check`; cho biết region, folder, có CloudFront không.
+**Pancake (đang dùng thử 15 ngày từ 22/11):**
+- Thử **1 SKU** trọn vòng: tạo sản phẩm Pancake đúng mã hàng KiotViet, liên kết với listing Shopee, sửa tồn, xem sàn có cập nhật không và sau bao lâu. Đạt thì làm P4-P3, không đạt thì quay lại KiotViet + Excel.
+- Hiện có 625 listing đã kéo về Pancake nhưng 0 liên kết.
+- Trả lời: shop Shopee MY và PH có cần quản lý đơn/tồn trong Sugami không, hay chỉ shop VN?
+- Webhook (tùy chọn, sau khi iMac chạy ổn): cần `hooks.sugami.vn` đã qua Cloudflare Tunnel; cấu hình theo docs/pancake.md.
+- Khi có đơn thật đầu tiên: chạy lại `pnpm pancake:probe` để xác nhận mã sàn TikTok (-9) và cách đơn gắn ID tài khoản.
+
+**Việc khác:**
+- P1-13: thử import vào KiotViet các file từ trang KiotViet → Xuất sang KiotViet và trang Phiếu kho; báo KiotViet có nhận không.
+- P1-23: tạo khóa thông báo (`pnpm vapid:generate`), cài app lên điện thoại, thử thông báo (docs/ops/pwa.md). Nên đăng ký UptimeRobot/Healthchecks.io theo dõi `https://erp.sugami.vn/health`.
+- P0-08: **nộp hồ sơ** app Shopee Open Platform và TikTok Shop Partner Center (docs/ops/dang-ky-app-san.md); vẫn nên làm để sau này nối thẳng, không phụ thuộc Pancake.
+- P0-11: cài Docker/Podman trên iMac, để Sugami chạy thật (P1-22).
+- P3-01: tạo IAM user/key và CORS theo docs/ops/s3.md, điền `.env`, chạy `pnpm storage:check`; cho biết region, folder, có CloudFront không.
 - P2-07: gửi 1–2 file Excel mẫu của đơn vị vận chuyển trung gian.
+
+## Các giai đoạn tiếp theo
+
+1. **Hoàn thiện P1** (kho + dữ liệu từ KiotViet): đối chiếu tồn, lịch sử import/export, nhắc việc, sức khỏe dữ liệu, chi tiết đơn, sửa/tạo sản phẩm, nhóm hàng và thương hiệu, nhập/xuất Excel sản phẩm. Kết thúc bằng P1-22: chạy thật trên iMac 1 tuần.
+2. **P4 (Pancake rồi sàn trực tiếp):** P4-P2 tự kéo đơn, P4-P3 đẩy tồn; sau đó TikTok Shop và Shopee trực tiếp khi app được duyệt (P4-02..12), báo cáo lãi gộp theo SKU/kênh/tháng.
+3. **P2 (nguồn hàng Taobao/1688):** nhà cung cấp, đơn vị trung gian, PO, kiện hàng, import Excel trung gian, landed cost, nhận hàng, kiểm kho trên điện thoại, công nợ, in tem.
+4. **P3 (media và content):** thư viện ảnh, xử lý ảnh, content theo kênh, gói ảnh theo chuẩn sàn.
+5. **P5 (thay KiotViet):** xử lý đơn trong Sugami, đổi trả, đơn thủ công, đẩy tồn trực tiếp, 30 ngày chạy không KiotViet.
 
 ## Quyết định đã chốt
 
@@ -47,6 +71,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - 2026-11-22: Đơn vị trung gian không có API, chỉ có file Excel → import Excel (P2-07).
 - 2026-11-22: Stack thực tế: Node 22, pnpm 10, TypeScript 6, Next.js 16, NestJS 12, Prisma 7 (MariaDB adapter), BullMQ 6 + ioredis, Tailwind 4, Vitest 5.
 - 2026-11-22: Claude viết toàn bộ code, commit thẳng lên `main` (không PR); mỗi task cập nhật file này trong commit cuối.
+- 2026-11-22: Mỗi tài khoản sàn trong Pancake là một kênh riêng trong Sugami, dùng đúng "tên gợi nhớ" đặt trong Pancake (SuGaMi Shopee, SuGaMi Shopee MY, SuGaMi Shopee PH, SuGaMi Tiktok); phân biệt theo ID tài khoản vì 3 shop Shopee cùng `marketplace_id` -3; TikTok tạm là -9 (docs/pancake.md).
 - 2026-11-22: Chủ shop chọn **dùng thử Pancake POS 15 ngày** (200k/tháng, đối tác TikTok) làm lớp trung gian thay KiotViet (D11, docs/pancake.md). Trong lúc thử, KiotViet vẫn là bên duy nhất đẩy tồn.
 - 2026-11-22: Chủ shop yêu cầu: đồng bộ/webhook phải chịu được iMac tắt hoặc dịch vụ chết (thiết kế ở docs/03 mục 3.8: quét bù theo con trỏ, chỉ đẩy tồn khi đã kéo hết đơn bị lỡ, giám sát từ bên ngoài); web là PWA có thông báo đẩy cho chủ shop.
 
@@ -75,6 +100,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-23 PWA + thông báo đẩy; thiết kế chịu máy tắt (docs/03 mục 3.8) | 7beb1dd |
 | 2026-11-22 | P1-13 phiếu nhập/kiểm kho trên Sugami + xuất file mẫu KiotViet (phiếu nhập, kiểm kho, sản phẩm mới) | fa4e006 |
 | 2026-11-22 | P4-P1 nối Pancake POS (chỉ đọc): client, ánh xạ sản phẩm/đơn, webhook vào `webhook_events`, `probe` | 43fbac4 |
+| 2026-11-22 | P4-P1 chạy `probe` thật: 4 kênh (Shopee VN/MY/PH, TikTok -9), lệnh ngắn `pnpm pancake:probe`, ghi tài khoản vào docs/pancake.md | 574e537 |
+| 2026-11-22 | Nâng giới hạn turbo để `pnpm dev` chạy với 11 tiến trình | 348f8e9 |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -161,8 +188,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
-| P4-P1 | Pancake: client API, đọc sản phẩm/tồn/đơn, nhận webhook vào `webhook_events`, lệnh `probe` | 🟡 | 43fbac4 | Chờ chạy `probe` trên shop thật |
-| P4-P2 | Pancake: worker xử lý webhook + quét bù theo con trỏ (chạy khi khởi động, mỗi 5 phút), ghi đơn và trừ tồn theo đơn | ⬜ | | Thiết kế chịu máy tắt: docs/03 mục 3.8 |
+| P4-P1 | Pancake: client API, đọc sản phẩm/tồn/đơn, nhận webhook vào `webhook_events`, lệnh `probe` | ✅ | 43fbac4, 574e537 | Đã chạy `probe` trên shop thật (22/11): 4 kênh, 625 listing chưa liên kết, chưa có sản phẩm/đơn |
+| P4-P2 | Pancake: tự kéo đơn 4 kênh theo ID tài khoản (quét bù theo con trỏ khi khởi động, mỗi 5 phút; webhook tùy chọn), tiền tệ riêng MY/PH, trừ tồn theo đơn, thông báo đơn mới | ⬜ | | Thiết kế chịu máy tắt: docs/03 mục 3.8 |
 | P4-P3 | Pancake: đẩy tồn từ Sugami (outbox, chỉ đẩy khi quét bù đơn còn mới), tắt đồng bộ tồn KiotViet | ⬜ | | Sau khi thử 1 SKU đạt |
 | P4-01 | Interface `ChannelAdapter` + chuẩn hóa ExternalProduct/ExternalOrder | ⬜ | | |
 | P4-02 | TikTok Shop: OAuth, lưu/làm mới token, ký request | ⬜ | | |

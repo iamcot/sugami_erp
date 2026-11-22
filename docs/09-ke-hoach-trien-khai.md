@@ -57,6 +57,7 @@ Quy ước:
 | P1-20 | Dashboard cơ bản: doanh thu/đơn hôm nay, 7/30 ngày, theo kênh; việc cần làm | P1-19 | – |
 | P1-21 | Báo cáo sức khỏe dữ liệu: SKU trùng/thiếu, thiếu ảnh, tồn âm | P1-11 | – |
 | P1-22 | Deploy production lên iMac, dùng thật 1 tuần (import/export Excel với KiotViet) | P0-13, P1-13 | 👤 Chủ shop xác nhận dữ liệu khớp |
+| P1-23 | PWA cài lên điện thoại + thông báo đẩy (Web Push): đăng ký thiết bị, API gửi theo người/quyền, nút bật/tắt/thử | P1-01 | Thông báo thử tới được điện thoại thật (iOS 16.4+ mở từ màn hình chính) |
 
 ## P2 — Nguồn hàng Taobao/1688 + kho
 
@@ -97,6 +98,9 @@ Quy ước:
 
 | ID | Task | Phụ thuộc | Hoàn thành khi |
 |----|------|-----------|----------------|
+| P4-P1 | **Pancake POS (dùng thử, D11):** client API, đọc sản phẩm/tồn/đơn, hộp thư webhook, lệnh `pnpm pancake:probe` | P4-01 (interface) | Chạy `probe` trên shop thật, thấy các tài khoản sàn đã nối |
+| P4-P2 | Pancake: tự kéo đơn từ 4 kênh theo ID tài khoản (quét bù theo con trỏ khi khởi động và mỗi 5 phút, webhook tùy chọn), tiền tệ riêng cho MY/PH, trừ tồn Sugami theo đơn, thông báo đẩy khi có đơn mới. Chịu được máy tắt (docs/03 mục 3.8) | P4-P1, P1-23 | 👤 Đơn thật đầu tiên về đúng kênh, tắt máy 1 giờ rồi bật lại không mất đơn |
+| P4-P3 | Pancake: đẩy tồn từ Sugami lên Pancake (outbox, chỉ đẩy sau khi đã kéo hết đơn bị lỡ), tự tạo sản phẩm Pancake theo mã KiotViet và liên kết listing; tắt đồng bộ tồn KiotViet | P4-P2, 👤 thử 1 SKU đạt | 👤 Sửa tồn 1 SKU, Shopee/TikTok cập nhật trong vài phút |
 | P4-01 | Interface `ChannelAdapter` + chuẩn hóa ExternalProduct/ExternalOrder | P0-08 | Có adapter giả lập để test lõi |
 | P4-02 | TikTok Shop: OAuth, lưu/làm mới token, ký request | P0-08 (đã duyệt), P4-01 | Kết nối shop thật |
 | P4-03 | TikTok Shop: đọc sản phẩm, ánh xạ listing ↔ SKU | P4-02 | – |
