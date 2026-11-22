@@ -2,6 +2,7 @@
 
 import { formatVnd } from '@sugami/shared';
 import { Search } from 'lucide-react';
+import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { Badge, PageHeader } from '@/components/ui';
@@ -13,6 +14,7 @@ interface OrderRow {
   code: string;
   externalCode: string | null;
   channel: { code: string; name: string };
+  customer: { code: string | null; name: string | null; phone: string | null } | null;
   status: string;
   shippingStatus: string | null;
   trackingNo: string | null;
@@ -66,6 +68,23 @@ const columns: Column<OrderRow>[] = [
         timeStyle: 'short',
         timeZone: 'Asia/Ho_Chi_Minh',
       }),
+  },
+  {
+    key: 'customer',
+    header: 'Khách hàng',
+    className: 'hidden whitespace-nowrap md:table-cell',
+    render: (o) =>
+      o.customer?.code ? (
+        <Link
+          href={`/customers/${encodeURIComponent(o.customer.code)}`}
+          className="text-brand-700 hover:underline dark:text-brand-50"
+        >
+          <span className="block">{o.customer.name ?? o.customer.code}</span>
+          {o.customer.phone && <span className="block text-xs text-slate-500">{o.customer.phone}</span>}
+        </Link>
+      ) : (
+        <span className="text-slate-400">–</span>
+      ),
   },
   {
     key: 'channel',
@@ -173,7 +192,7 @@ function OrdersList() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Mã đơn, mã Shopee, mã vận đơn, SKU"
+            placeholder="Mã đơn, mã Shopee, vận đơn, SKU, SĐT khách"
             className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
           />
         </label>

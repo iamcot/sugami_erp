@@ -11,7 +11,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
 | P0 — Chuẩn bị & xác minh | 6/13 | Khung dự án và phân tích file KiotViet xong; còn P0-10 chờ duyệt, P0-08 hồ sơ app sàn, P0-11/12/13 iMac |
-| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 11/23 | Import, tồn kho, tổng quan, phiếu kho, PWA đã chạy trên dữ liệu thật; P1-13 chờ thử KiotViet; còn đối chiếu tồn, trung tâm dữ liệu, nhắc việc, sức khỏe dữ liệu |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 11/24 | Import, tồn kho, tổng quan, phiếu kho, PWA đã chạy trên dữ liệu thật; P1-13 chờ thử KiotViet; còn đối chiếu tồn, trung tâm dữ liệu, nhắc việc, sức khỏe dữ liệu |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 1/15 | Đang thử Pancake POS làm lớp trung gian (P4-P1 xong) |
@@ -60,6 +60,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Quyết định đã chốt
 
+- 2026-11-22: Sugami **có quản lý khách hàng** (D15): trang Khách hàng, nối với đơn qua mã khách KiotViet; lưu thông tin như file KiotViet xuất (phần lớn đã bị che), không lưu `Ghi chú`. Thay quyết định "chỉ lưu mã khách" bên dưới.
 - 2026-11-22: Hóa đơn KiotViet chỉ trừ tồn Sugami nếu bán sau thời điểm xuất file tồn đầu kỳ của mã đó; khách hàng chỉ lưu mã KiotViet.
 - 2026-11-22: Hàng vào KiotViet qua phiếu nhập; mã mới tạo trên KiotViet bằng file mẫu import hàng hóa do Sugami xuất (`MauFileSanPham`), import trước phiếu nhập.
 - 2026-11-22: Mã hàng KiotViet là SKU, giữ nguyên; biến thể gom theo `Mã HH Liên quan` (D10). Shop có 1.029 mã hàng (nhiều hơn ước tính ban đầu).
@@ -102,6 +103,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P4-P1 nối Pancake POS (chỉ đọc): client, ánh xạ sản phẩm/đơn, webhook vào `webhook_events`, `probe` | 43fbac4 |
 | 2026-11-22 | P4-P1 chạy `probe` thật: 4 kênh (Shopee VN/MY/PH, TikTok -9), lệnh ngắn `pnpm pancake:probe`, ghi tài khoản vào docs/pancake.md | 574e537 |
 | 2026-11-22 | Nâng giới hạn turbo để `pnpm dev` chạy với 11 tiến trình | 348f8e9 |
+| 2026-11-22 | Format Prettier để CI xanh lại | 79f4778 |
+| 2026-11-22 | P1-24 trang Khách hàng, import file khách KiotViet, liên kết khách với đơn | xem commit `[P1-24]` |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -148,6 +151,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-21 | Báo cáo sức khỏe dữ liệu: SKU trùng/thiếu, thiếu ảnh, tồn âm | ⬜ | | |
 | P1-22 | Deploy production lên iMac, dùng thật 1 tuần | 👤 ⬜ | | |
 | P1-23 | PWA cài lên điện thoại + thông báo đẩy (đăng ký thiết bị, API gửi, nút bật/tắt) | ✅ | 7beb1dd | Chủ shop yêu cầu 2026-11-22; thông báo thật thêm ở P4-P2, P1-17 |
+| P1-24 | Quản lý khách hàng: import Excel khách KiotViet, trang danh sách/chi tiết/sửa, nối khách với đơn | 🟡 | | Code xong, lint/typecheck/build qua; test MySQL chưa chạy; chờ chủ shop nhập file khách thật |
 
 ## P2 — Nguồn hàng Taobao/1688 + kho
 

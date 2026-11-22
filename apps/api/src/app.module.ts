@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
+import { CustomersModule } from './customers/customers.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { InventoryModule } from './inventory/inventory.module.js';
@@ -23,6 +24,7 @@ import { UsersController } from './users/users.controller.js';
     ImportsModule,
     CatalogModule,
     OrdersModule,
+    CustomersModule,
     InventoryModule,
     DashboardModule,
     WebhooksModule,

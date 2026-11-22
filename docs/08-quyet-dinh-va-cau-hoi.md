@@ -29,6 +29,7 @@
 | D12 | Đồng bộ phải **chịu được iMac tắt/dịch vụ chết**: webhook chỉ là tín hiệu, nguồn chính là quét bù theo con trỏ; chỉ đẩy tồn khi đã kéo hết đơn bị lỡ (docs/03 mục 3.8) | Máy ở nhà có thể tắt; Pancake chỉ gửi lại webhook 2 lần |
 | D13 | Web là **PWA** cài lên điện thoại, có **thông báo đẩy** cho chủ shop (Web Push/VAPID) | Không cần làm app riêng; iPhone cần iOS 16.4+ và mở từ màn hình chính |
 | D14 | Mỗi tài khoản sàn trong Pancake là một **kênh riêng** trong Sugami, tên theo "tên gợi nhớ" trong Pancake; phân biệt theo ID tài khoản, tiền tệ lưu riêng cho MY/PH | 3 shop Shopee cùng `marketplace_id` -3; đơn MY/PH không tính bằng VND |
+| D15 | Sugami **có quản lý khách hàng**: trang Khách hàng, nối với đơn qua mã khách KiotViet. Lưu thông tin khách đúng như file KiotViet xuất (phần lớn đã bị che), không lưu `Ghi chú`. Thay quyết định cũ "chỉ lưu mã khách" | Chủ shop yêu cầu 22/11/2026 và gửi file mẫu |
 
 ## 8.3 Câu hỏi còn mở
 
