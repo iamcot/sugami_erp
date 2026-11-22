@@ -113,6 +113,12 @@ export async function importKiotVietCustomers(
     for (const c of chunk) {
       const data = toData(c);
       const old = byCode.get(c.code);
+      // KiotViet only has the marketplace's masked name ("T******u"); never replace a real name or a
+      // Shopee nickname we already learned (or the owner typed) with it.
+      if (old?.name && !old.name.includes('*') && data.name?.includes('*')) {
+        data.name = old.name;
+        data.searchKey = toSearchKey([old.name, c.phone, c.code].filter(Boolean).join(' ')).slice(0, 400);
+      }
       if (!old) {
         summary.customers.created++;
         toCreate.push(data);

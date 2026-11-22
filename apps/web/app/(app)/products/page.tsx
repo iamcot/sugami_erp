@@ -1,10 +1,11 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { Search } from 'lucide-react';
+import { ImageOff, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
+import { useDetail } from '@/components/detail-drawer';
 import { Badge, Button, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useQueryState } from '@/lib/use-query-state';
@@ -16,6 +17,7 @@ interface ProductRow {
   status: 'active' | 'draft' | 'archived';
   category: string | null;
   variantCount: number;
+  image: string | null;
   priceMin: number;
   priceMax: number;
   onHand: number;
@@ -50,16 +52,35 @@ const columns: Column<ProductRow>[] = [
     key: 'name',
     header: 'Sản phẩm',
     sortKey: 'name',
-    className: 'min-w-48',
+    className: 'min-w-64',
     render: (p) => (
-      <div className="min-w-0">
-        <p className="line-clamp-1 font-medium">{p.name}</p>
-        <p className="font-mono text-xs text-slate-500">
-          {p.code}
-          {p.variantCount > 1 && ` · ${p.variantCount} phân loại`}
-        </p>
+      <div className="flex items-center gap-3">
+        {p.image ? (
+          <img
+            src={p.image}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            className="size-10 shrink-0 rounded-lg border border-slate-200 object-cover dark:border-slate-800"
+          />
+        ) : (
+          <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-300 dark:bg-slate-800">
+            <ImageOff className="size-4" />
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="line-clamp-1 font-medium">{p.name}</p>
+          <p className="font-mono text-xs text-slate-500">{p.code}</p>
+        </div>
       </div>
     ),
+  },
+  {
+    key: 'variants',
+    header: 'Biến thể',
+    align: 'right',
+    className: 'whitespace-nowrap tabular-nums',
+    render: (p) => p.variantCount.toLocaleString('vi-VN'),
   },
   {
     key: 'category',
@@ -107,6 +128,7 @@ const columns: Column<ProductRow>[] = [
 ];
 
 function ProductsList() {
+  const { open, selected } = useDetail();
   const [qs, setQs] = useQueryState({ q: '', view: 'all', sort: 'updated', dir: 'desc', page: '1' });
   const [search, setSearch] = useState(qs.q);
   const [res, setRes] = useState<ListResponse | null>(null);
@@ -179,7 +201,8 @@ function ProductsList() {
         columns={columns}
         rows={res?.data ?? []}
         rowKey={(p) => p.id}
-        rowHref={(p) => `/products/${encodeURIComponent(p.code)}`}
+        onRowClick={(p) => open('product', p.code)}
+        isSelected={(p) => selected.product === p.code}
         sort={{ sort: qs.sort, dir: qs.dir as 'asc' | 'desc' }}
         onSort={(s) => setQs({ ...s, page: '1' })}
         page={Number(qs.page)}

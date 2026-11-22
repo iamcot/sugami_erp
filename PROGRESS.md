@@ -108,6 +108,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-24 trang Khách hàng, import file khách KiotViet, liên kết khách với đơn | xem commit `[P1-24]` |
 | 2026-11-22 | P4-P1b nút đẩy sản phẩm và tồn sang Pancake (từng sản phẩm, xem trước) | xem commit `[P4-P1b]` |
 | 2026-11-22 | Thử 1 SKU qua Pancake đạt: tồn đổi từ Sugami lên tới Shopee. Bước tiếp: P4-P3 tự đẩy tồn | – |
+| 2026-11-22 | UI: kéo chuột cuộn ngang bảng, viền cột ghim khi che; bỏ cột ghi chú đơn; sản phẩm mở dạng drawer, hiện biến thể/giá/tồn theo kho/ảnh (URL từ file KiotViet); nhập file khách không ghi đè tên thật bằng tên bị che | xem commit `[UI]` |
 | 2026-11-22 | UI: trang danh sách full-width; chi tiết đơn/khách mở dạng drawer theo URL (`?d=order:MÃ`), giữ nguyên tìm kiếm/trang khi quay lại, Quay lại trong drawer về đúng đơn/khách trước | xem commit `[UI]` |
 | 2026-11-22 | P4-P2: tên khách lấy từ `customer.username` (nickname Shopee); lưu hạn bàn giao, địa chỉ nhận, phí sàn + chi tiết vào đơn, hiện ở danh sách/chi tiết đơn, bổ sung cho đơn KiotViet cũ; đếm dòng hàng chưa liên kết | xem commit `[P4-P2]` |
 | 2026-11-22 | P4-P2 worker tự kéo đơn Pancake (Shopee VN + TikTok), trừ/hoàn tồn, chống trùng với đơn KiotViet, báo đơn mới | xem commit `[P4-P2]` |

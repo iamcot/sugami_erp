@@ -257,13 +257,6 @@ const columns: Column<OrderRow>[] = [
     },
   },
   {
-    key: 'note',
-    header: 'Ghi chú',
-    className: 'min-w-32',
-    render: (o) =>
-      o.note ? <p className="line-clamp-2 max-w-xs text-slate-600 dark:text-slate-400">{o.note}</p> : dash,
-  },
-  {
     key: 'total',
     header: 'Tổng tiền',
     align: 'right',

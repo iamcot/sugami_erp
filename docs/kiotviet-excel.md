@@ -133,3 +133,8 @@ Sugami xuất các mã mới chưa có trên KiotViet: `Loại hàng` = `Hàng h
 ## Còn thiếu
 
 - Một đơn TikTok Shop (nếu có) để biết tiền tố mã hóa đơn.
+
+## Ghi chú bổ sung (2026-11-22)
+
+- Ảnh: cột `Hình ảnh (url1,url2...)` của file hàng hóa được lưu thành `variants.image_urls` (giữ URL gốc của KiotViet, hiển thị trực tiếp, chưa sao chép sang S3). Cần nhập lại file hàng hóa để có ảnh; file không có ảnh thì không xóa ảnh cũ.
+- Nhập lại file khách không ghi đè tên thật hoặc nickname Shopee đã có bằng tên bị che (`T******u`).

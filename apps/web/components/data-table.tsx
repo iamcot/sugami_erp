@@ -3,7 +3,7 @@
 import { cn } from '@sugami/ui';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { type MouseEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
 export interface Column<T> {
   key: string;
@@ -56,13 +56,61 @@ export function DataTable<T>({
   loading?: boolean;
   empty?: ReactNode;
 }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const drag = useRef({ down: false, moved: false, x: 0, left: 0 });
+  // The pinned column hides the cells scrolling under it: show an edge only while that happens.
+  const [covering, setCovering] = useState(false);
+  const measure = useCallback(() => {
+    const el = scroller.current;
+    if (el) setCovering(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+  useEffect(() => {
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [measure, rows, columns.length]);
+
+  const onMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    drag.current = { down: true, moved: false, x: e.clientX, left: scroller.current?.scrollLeft ?? 0 };
+  };
+  const onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d.down || !scroller.current) return;
+    const dx = e.clientX - d.x;
+    if (!d.moved && Math.abs(dx) > 5) d.moved = true;
+    if (d.moved) {
+      scroller.current.scrollLeft = d.left - dx;
+      window.getSelection()?.removeAllRanges();
+    }
+  };
+  const endDrag = () => {
+    drag.current.down = false;
+  };
+
   const pages = total !== undefined && pageSize ? Math.max(1, Math.ceil(total / pageSize)) : 1;
   const alignClass = (a?: Column<T>['align']) =>
     a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left';
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="overflow-x-auto">
+      <div
+        ref={scroller}
+        onScroll={measure}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={endDrag}
+        onMouseLeave={endDrag}
+        // A drag that scrolled the table must not count as a click on the row underneath.
+        onClickCapture={(e) => {
+          if (drag.current.moved) {
+            e.stopPropagation();
+            e.preventDefault();
+            drag.current.moved = false;
+          }
+        }}
+        className="overflow-x-auto"
+      >
         <table className={cn('w-full text-sm', loading && 'opacity-60')}>
           <thead className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900">
             <tr>
@@ -76,7 +124,11 @@ export function DataTable<T>({
                       alignClass(c.align),
                       c.className,
                       c.sticky &&
-                        'sticky right-0 bg-slate-50 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] dark:bg-slate-900',
+                        cn(
+                          'sticky right-0 bg-slate-50 dark:bg-slate-900',
+                          covering &&
+                            'border-l border-slate-300 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.25)] dark:border-slate-600',
+                        ),
                     )}
                   >
                     {c.sortKey && onSort ? (
@@ -141,7 +193,10 @@ export function DataTable<T>({
                           (isSelected?.(r)
                             ? 'bg-brand-50 dark:bg-brand-700/20'
                             : 'bg-white group-hover:bg-slate-50 dark:bg-slate-900 dark:group-hover:bg-slate-800') +
-                            ' sticky right-0 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]',
+                            ' sticky right-0' +
+                            (covering
+                              ? ' border-l border-slate-300 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.25)] dark:border-slate-600'
+                              : ''),
                       )}
                     >
                       {href && i === 0 ? (

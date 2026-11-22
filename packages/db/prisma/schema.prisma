@@ -205,6 +205,8 @@ model Variant {
   /// Weighted average cost, VND. Maintained by inventory receipts only.
   costAvg         BigInt              @default(0) @map("cost_avg")
   weightGrams     Int?                @map("weight_grams")
+  /// Image URLs as the source system gave them (KiotViet file), shown as-is; not copied to storage.
+  imageUrls       Json?               @map("image_urls")
   minStock        Decimal             @default(0) @map("min_stock") @db.Decimal(14, 3)
   reorderQty      Decimal?            @map("reorder_qty") @db.Decimal(14, 3)
   status          VariantStatus       @default(active)

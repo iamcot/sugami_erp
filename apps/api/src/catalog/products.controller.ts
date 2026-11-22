@@ -32,6 +32,7 @@ interface Row {
   status: string;
   category: string | null;
   variant_count: bigint;
+  image: string | null;
   price_min: bigint | null;
   price_max: bigint | null;
   on_hand: Prisma.Decimal | string | null;
@@ -81,14 +82,15 @@ export class ProductsController {
     const whereSql = where.length ? Prisma.sql`WHERE ${Prisma.join(where, ' AND ')}` : Prisma.empty;
     const base = Prisma.sql`
       SELECT p.id, p.code, p.name, p.status, c.name AS category, p.updated_at,
-             COUNT(vs.id) AS variant_count, MIN(vs.price) AS price_min, MAX(vs.price) AS price_max,
+             COUNT(vs.id) AS variant_count, MAX(vs.image) AS image, MIN(vs.price) AS price_min, MAX(vs.price) AS price_max,
              COALESCE(SUM(vs.on_hand), 0) AS on_hand,
              SUM(vs.on_hand < 0) AS negative_skus,
              SUM(vs.on_hand <= vs.min_stock AND vs.min_stock > 0) AS low_skus
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
       LEFT JOIN (
-        SELECT v.id, v.product_id, v.price, v.min_stock, COALESCE(SUM(sl.on_hand), 0) AS on_hand
+        SELECT v.id, v.product_id, v.price, v.min_stock, JSON_UNQUOTE(JSON_EXTRACT(v.image_urls, '$[0]')) AS image,
+               COALESCE(SUM(sl.on_hand), 0) AS on_hand
         FROM variants v LEFT JOIN stock_levels sl ON sl.variant_id = v.id
         GROUP BY v.id
       ) vs ON vs.product_id = p.id
@@ -113,6 +115,7 @@ export class ProductsController {
         status: r.status,
         category: r.category,
         variantCount: n(r.variant_count),
+        image: r.image ?? null,
         priceMin: n(r.price_min),
         priceMax: n(r.price_max),
         onHand: n(r.on_hand),
@@ -180,6 +183,7 @@ export class ProductsController {
           id: v.id,
           sku: v.sku,
           barcode: v.barcode,
+          imageUrls: Array.isArray(v.imageUrls) ? (v.imageUrls as string[]) : [],
           optionValues: v.optionValues,
           price: Number(v.price),
           costAvg: Number(v.costAvg),

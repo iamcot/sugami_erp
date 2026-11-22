@@ -186,6 +186,7 @@ export async function importKiotVietProducts(
         price: BigInt(v.price),
         barcode,
         weightGrams: v.weightGrams,
+        imageUrls: v.imageUrls.length ? v.imageUrls : undefined,
         minStock: D(v.minStock),
         status: v.active ? ('active' as const) : ('inactive' as const),
       };
@@ -204,6 +205,8 @@ export async function importKiotVietProducts(
           existing.price !== data.price ||
           existing.barcode !== barcode ||
           existing.weightGrams !== data.weightGrams ||
+          (v.imageUrls.length > 0 &&
+            JSON.stringify(existing.imageUrls ?? []) !== JSON.stringify(v.imageUrls)) ||
           !existing.minStock.equals(data.minStock) ||
           existing.status !== data.status;
         if (changed) {

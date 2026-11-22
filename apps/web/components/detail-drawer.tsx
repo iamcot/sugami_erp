@@ -6,8 +6,9 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { CustomerDetail } from '@/components/customer-detail';
 import { OrderDetail } from '@/components/order-detail';
+import { ProductDetail } from '@/components/product-detail';
 
-export type DetailType = 'order' | 'customer';
+export type DetailType = 'order' | 'customer' | 'product';
 
 interface DetailApi {
   open: (type: DetailType, code: string) => void;
@@ -21,6 +22,8 @@ const Ctx = createContext<DetailApi>({ open: () => undefined, selected: {} });
 export const useDetail = () => useContext(Ctx);
 
 const PARAM = 'd';
+const TITLE: Record<DetailType, string> = { order: 'Đơn hàng', customer: 'Khách hàng', product: 'Sản phẩm' };
+const PATH: Record<DetailType, string> = { order: 'orders', customer: 'customers', product: 'products' };
 
 /**
  * Detail drawer driven by the URL: each open detail is a repeated `d=type:code` query param, so the
@@ -37,7 +40,7 @@ export function DetailProvider({ children }: { children: ReactNode }) {
       const i = v.indexOf(':');
       return { type: v.slice(0, i) as DetailType, code: v.slice(i + 1) };
     })
-    .filter((d) => (d.type === 'order' || d.type === 'customer') && d.code);
+    .filter((d) => (d.type === 'order' || d.type === 'customer' || d.type === 'product') && d.code);
   const top = stack[stack.length - 1];
 
   const [selected, setSelected] = useState<DetailApi['selected']>({});
@@ -118,13 +121,11 @@ export function DetailProvider({ children }: { children: ReactNode }) {
                   <ArrowLeft className="size-4" /> Quay lại
                 </button>
               ) : (
-                <span className="px-2 text-sm text-slate-500">
-                  {shown.type === 'order' ? 'Đơn hàng' : 'Khách hàng'}
-                </span>
+                <span className="px-2 text-sm text-slate-500">{TITLE[shown.type]}</span>
               )}
               <div className="ml-auto flex items-center gap-1">
                 <Link
-                  href={`/${shown.type === 'order' ? 'orders' : 'customers'}/${encodeURIComponent(shown.code)}`}
+                  href={`/${PATH[shown.type]}/${encodeURIComponent(shown.code)}`}
                   className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <ExternalLink className="size-4" /> Mở trang riêng
@@ -141,8 +142,10 @@ export function DetailProvider({ children }: { children: ReactNode }) {
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
               {shown.type === 'order' ? (
                 <OrderDetail key={shown.code} code={shown.code} embedded />
-              ) : (
+              ) : shown.type === 'customer' ? (
                 <CustomerDetail key={shown.code} code={shown.code} embedded />
+              ) : (
+                <ProductDetail key={shown.code} code={shown.code} embedded />
               )}
             </div>
           </aside>
