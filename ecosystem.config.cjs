@@ -19,6 +19,15 @@ module.exports = {
     node('sugami-api', 'api'),
     node('sugami-worker', 'worker'),
     {
+      // sao lưu DB mỗi đêm 3h sáng (pm2 chạy theo lịch, xong thì nghỉ)
+      name: 'sugami-backup',
+      cwd: root,
+      script: 'scripts/backup.sh',
+      interpreter: 'bash',
+      cron_restart: '0 3 * * *',
+      autorestart: false,
+    },
+    {
       name: 'sugami-web',
       cwd: `${root}/apps/web`,
       script: 'node_modules/next/dist/bin/next',

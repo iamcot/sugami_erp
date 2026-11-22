@@ -38,6 +38,14 @@ Nếu API/worker lên trước MySQL/Redis thì lỗi vài lần rồi pm2 tự 
 | Dừng hết | `pm2 stop all` |
 | Bật lại hết | `pm2 start ecosystem.config.cjs` |
 
+## Sao lưu DB hằng đêm
+
+pm2 chạy `scripts/backup.sh` lúc 3h sáng (tiến trình `sugami-backup`, bình thường ở trạng thái "stopped" giữa các lần chạy). File `.sql.gz` nằm ở `~/sugami-backups`, giữ 14 ngày (đổi bằng `BACKUP_DIR`, `BACKUP_KEEP_DAYS` trong `.env`). Cần `mysqldump` (có sẵn khi cài MySQL; nếu thiếu thì `brew install mysql-client` rồi thêm vào PATH).
+
+- Chạy thử ngay: `bash scripts/backup.sh`, xem log `pm2 logs sugami-backup`.
+- Khôi phục: `gunzip -c file.sql.gz | mysql -u sugami -p sugami`.
+- Khi `.env` có `S3_BUCKET` + khóa S3 và máy có `aws` cli (`brew install awscli`), mỗi bản được đẩy thêm lên `S3_PREFIX/backups/`. Chưa có thì chỉ lưu trên máy: nên chép thư mục này sang ổ ngoài thỉnh thoảng.
+
 ## Cập nhật khi có code mới
 
 ```bash
