@@ -173,7 +173,7 @@ export function feeDetailOf(o: Order): Record<string, number> | undefined {
 export function marketplaceCodeOf(o: Order): string | undefined {
   const sn = o.invoice_info_list?.find((i) => i.order_sn)?.order_sn?.trim();
   if (sn) return sn;
-  if (!o.is_from_ecommerce || o.display_id === null || o.display_id === undefined) return undefined;
+  if (!o.marketplace_id || o.display_id === null || o.display_id === undefined) return undefined;
   const id = String(o.display_id).trim();
   return /\D/.test(id) || id.length >= 12 ? id : undefined;
 }

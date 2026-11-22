@@ -214,7 +214,7 @@ describe('mapping', () => {
   });
 
   it('uses the display id as the marketplace order number when the invoice list has none', () => {
-    const base = { invoice_info_list: [], is_from_ecommerce: true };
+    const base = { invoice_info_list: [] };
     expect(
       toExternalOrder(Order.parse(order({ ...base, display_id: '2611220ND1CP8V' }))).marketplaceCode,
     ).toBe('2611220ND1CP8V');
@@ -222,7 +222,7 @@ describe('mapping', () => {
       toExternalOrder(Order.parse(order({ ...base, display_id: 1418 }))).marketplaceCode,
     ).toBeUndefined();
     expect(
-      toExternalOrder(Order.parse(order({ ...base, is_from_ecommerce: false, display_id: 'AB12CD34EF' })))
+      toExternalOrder(Order.parse(order({ ...base, marketplace_id: null, display_id: 'AB12CD34EF' })))
         .marketplaceCode,
     ).toBeUndefined();
   });
