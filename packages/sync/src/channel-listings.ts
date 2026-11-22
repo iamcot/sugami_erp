@@ -42,6 +42,9 @@ export interface ListingSyncSummary {
 
 const clean = (v: string | null | undefined) => v?.trim() || undefined;
 
+/** Pancake writes the link as "<product code> - <variation number>" (e.g. "SP000017 - 1"); keep the code. */
+export const linkCode = (v: string | null | undefined) => clean(v)?.replace(/\s+-\s+\d+$/, '');
+
 /**
  * Store marketplace listings; each variation is linked to a Sugami variant only when the source system
  * (Pancake) links it to that SKU. Listings are copies; reruns update them in place.
@@ -69,7 +72,7 @@ export async function syncChannelListings(
   const codes = [
     ...new Set(
       listings.flatMap((l) =>
-        l.variations.flatMap((v) => [clean(v.linkedCustomId)].filter((c): c is string => !!c)),
+        l.variations.flatMap((v) => [linkCode(v.linkedCustomId)].filter((c): c is string => !!c)),
       ),
     ),
   ];
@@ -90,7 +93,7 @@ export async function syncChannelListings(
   }
   // The link status comes from Pancake only (its link to a Sugami SKU); Sugami does not guess matches.
   const match = (_l: ListingInput, v: ListingVariationInput) => {
-    const link = clean(v.linkedCustomId);
+    const link = linkCode(v.linkedCustomId);
     if (link && bySku.has(link)) return { id: bySku.get(link)!, by: 'link' as const };
     // Pancake links a listing to a product by its code when the product has a single variation.
     if (link && soleByProductCode.has(link)) return { id: soleByProductCode.get(link)!, by: 'link' as const };
