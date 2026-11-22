@@ -73,10 +73,20 @@ export async function findVariationsBySku(
   skus: string[],
 ): Promise<Map<string, Variation>> {
   const want = new Set(skus);
-  const found = new Map<string, Variation>();
+  const all: Variation[] = [];
+  const perProduct = new Map<string, number>();
   for await (const raw of client.paginate<unknown>('/products/variations')) {
     const v = Variation.parse(raw);
-    const sku = [v.custom_id, v.display_id].find((c): c is string => !!c && want.has(c));
+    if (v.is_removed) continue;
+    all.push(v);
+    perProduct.set(v.product_id, (perProduct.get(v.product_id) ?? 0) + 1);
+  }
+  const found = new Map<string, Variation>();
+  for (const v of all) {
+    // A product imported from a KiotViet row has one variation (display id "1") and carries the
+    // KiotViet code on the product itself, so a single-variation product also answers to that code.
+    const own = perProduct.get(v.product_id) === 1 ? v.product?.display_id : undefined;
+    const sku = [v.custom_id, v.display_id, own].find((c): c is string => !!c && want.has(c));
     if (sku && !found.has(sku)) found.set(sku, v);
   }
   return found;
