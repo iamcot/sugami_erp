@@ -138,7 +138,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
       },
     });
     const r = await syncPancakeOrders(db, [mk(4)], opts());
-    expect(r).toMatchObject({ created: 0, keptFromKiotViet: 1 });
+    expect(r).toMatchObject({ created: 0, enriched: 1 });
     expect(await db.order.count({ where: { externalCode: `SN${run}4` } })).toBe(1);
     expect(await onHand()).toBe(10);
   });
@@ -167,7 +167,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
     expect(await onHand()).toBe(8);
   });
 
-  it('rescan looks back ignoring the cursor and never writes', async () => {
+  it('rescan preview looks back ignoring the cursor and writes nothing', async () => {
     const seen: (Date | undefined)[] = [];
     const source = {
       pullOrders: async function* (since?: Date) {
@@ -177,12 +177,52 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
       pullProducts: async function* () {},
     };
     const before = await db.syncCursor.findUniqueOrThrow({ where: { key: 'pancake:orders' } });
-    const r = await runPancakeOrderSync(db, source, { warehouseCode: wh, ignoreCursor: true, sinceDays: 30 });
+    const r = await runPancakeOrderSync(db, source, {
+      warehouseCode: wh,
+      ignoreCursor: true,
+      dryRun: true,
+      sinceDays: 30,
+    });
     expect(r).toMatchObject({ dryRun: true, created: 1 });
     expect(seen[0]!.getTime()).toBeLessThan(Date.now() - 29 * 86_400_000);
     expect(await db.order.count({ where: { code: `PCT${run}6` } })).toBe(0);
     expect((await db.syncCursor.findUniqueOrThrow({ where: { key: 'pancake:orders' } })).cursor).toEqual(
       before.cursor,
     );
+  });
+
+  it('enriches an order KiotViet imported: carrier, tracking, and its customer learns the nickname', async () => {
+    const channel = await db.channel.findUniqueOrThrow({ where: { code: 'shopee' } });
+    const kv = await db.customer.create({ data: { kiotvietCode: `KHSPE${run}7`, name: 'T******u' } });
+    await db.order.create({
+      data: {
+        code: `HDSPE_SN${run}7`,
+        kiotvietInvoiceCode: `HDSPE_SN${run}7`,
+        externalCode: `SN${run}7`,
+        channelId: channel.id,
+        warehouseId,
+        customerId: kv.id,
+        status: 'confirmed',
+        carrier: 'SHOPEE',
+        orderedAt: new Date(Date.now() - 60_000),
+        total: 300000,
+        source: 'kiotviet_excel',
+      },
+    });
+    const o = mk(7, { carrier: 'SPX', trackingNo: `SPX${run}`, customer: { name: `Nick${run}` } });
+    const r = await syncPancakeOrders(db, [o], opts());
+    expect(r).toMatchObject({ created: 0, enriched: 1, customers: { created: 0, linked: 1 } });
+    expect(await onHand()).toBe(8);
+    const after = await db.order.findUniqueOrThrow({ where: { code: `HDSPE_SN${run}7` } });
+    expect(after).toMatchObject({ carrier: 'SPX', trackingNo: `SPX${run}`, status: 'confirmed' });
+    expect(await db.customer.findUniqueOrThrow({ where: { id: kv.id } })).toMatchObject({
+      externalKey: `shopee:nick${run.toLowerCase()}`,
+      name: `Nick${run}`,
+      kiotvietCode: `KHSPE${run}7`,
+    });
+    const again = await syncPancakeOrders(db, [o], opts());
+    expect(again).toMatchObject({ enriched: 0, keptFromKiotViet: 1 });
+    await db.order.deleteMany({ where: { code: `HDSPE_SN${run}7` } });
+    await db.customer.deleteMany({ where: { id: kv.id } });
   });
 });

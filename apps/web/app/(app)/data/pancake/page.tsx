@@ -14,6 +14,8 @@ interface Summary {
   updated: number;
   unchanged: number;
   keptFromKiotViet: number;
+  enriched: number;
+  customers: { created: number; linked: number };
   stock: { applied: number; beforeSnapshot: number; reversed: number };
   unknownSkus: string[];
   newOrders: { code: string; channel: string; total: number }[];
@@ -47,7 +49,7 @@ export default function PancakePage() {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dryRun, sinceDays, rescan: rescan && dryRun }),
+        body: JSON.stringify({ dryRun, sinceDays, rescan }),
       });
       const body = (await r.json().catch(() => ({}))) as Summary & { message?: string };
       if (!r.ok) throw new Error(body.message ?? `Lỗi ${r.status}`);
@@ -80,22 +82,16 @@ export default function PancakePage() {
         </label>
         <label className="flex h-9 items-center gap-2 text-sm">
           <input type="checkbox" checked={rescan} onChange={(e) => setRescan(e.target.checked)} />
-          Quét lại từ {sinceDays} ngày trước (bỏ qua con trỏ, chỉ xem trước)
+          Quét lại từ {sinceDays} ngày trước (bỏ qua con trỏ, dùng để cập nhật đơn cũ)
         </label>
         <Button disabled={busy} onClick={() => run(true)}>
           <RefreshCw className="size-4" /> Xem trước
         </Button>
         <Button
           variant="secondary"
-          disabled={busy || !res?.dryRun || rescan}
+          disabled={busy || !res?.dryRun}
           onClick={() => run(false)}
-          title={
-            rescan
-              ? 'Bỏ chọn quét lại để chạy thật'
-              : res?.dryRun
-                ? undefined
-                : 'Xem trước trước khi chạy thật'
-          }
+          title={res?.dryRun ? undefined : 'Xem trước trước khi chạy thật'}
         >
           Chạy thật
         </Button>
@@ -116,7 +112,17 @@ export default function PancakePage() {
             <Stat
               label="Đã có từ KiotViet"
               value={fmt(res.keptFromKiotViet)}
-              hint="Không tạo lại, không trừ tồn lần nữa"
+              hint="Giữ nguyên, không trừ tồn lần nữa"
+            />
+            <Stat
+              label="Đơn KiotViet được bổ sung"
+              value={fmt(res.enriched)}
+              hint="Thêm đơn vị vận chuyển, mã vận đơn, khách"
+            />
+            <Stat
+              label="Khách"
+              value={`${fmt(res.customers.created)} mới`}
+              hint={`${fmt(res.customers.linked)} đơn/khách được gắn`}
             />
             <Stat
               label="Bỏ qua"

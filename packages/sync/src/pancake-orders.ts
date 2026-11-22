@@ -34,8 +34,10 @@ export interface OrderSyncSummary {
   created: number;
   updated: number;
   unchanged: number;
-  /** Orders that KiotViet already imported: Pancake only cancels them, nothing else changes. */
+  /** Orders already imported from KiotViet: kept as they are (status, stock); Pancake adds carrier, tracking and buyer, and applies cancellations. */
   keptFromKiotViet: number;
+  /** Orders from KiotViet that gained carrier, tracking number or buyer from Pancake. */
+  enriched: number;
   stock: { applied: number; beforeSnapshot: number; reversed: number };
   /** Customers created from order buyers (nickname) and orders attached to a customer. */
   customers: { created: number; linked: number };
@@ -67,6 +69,7 @@ export async function syncPancakeOrders(
     updated: 0,
     unchanged: 0,
     keptFromKiotViet: 0,
+    enriched: 0,
     stock: { applied: 0, beforeSnapshot: 0, reversed: 0 },
     customers: { created: 0, linked: 0 },
     unknownSkus: [],
@@ -109,7 +112,11 @@ export async function syncPancakeOrders(
     ...(await findMany(marketplaceCodes, (chunk) =>
       db.order.findMany({
         where: { externalCode: { in: chunk } },
-        include: { lines: true, channel: { select: { code: true } } },
+        include: {
+          lines: true,
+          channel: { select: { code: true } },
+          customer: { select: { id: true, externalKey: true, name: true } },
+        },
       }),
     )),
     ...(await findMany(
@@ -117,7 +124,11 @@ export async function syncPancakeOrders(
       (chunk) =>
         db.order.findMany({
           where: { code: { in: chunk } },
-          include: { lines: true, channel: { select: { code: true } } },
+          include: {
+            lines: true,
+            channel: { select: { code: true } },
+            customer: { select: { id: true, externalKey: true, name: true } },
+          },
         }),
     )),
   ];
@@ -267,9 +278,47 @@ export async function syncPancakeOrders(
     // Order already known. One imported from KiotViet keeps KiotViet's data; only a cancellation is applied.
     const fromKiotViet = prev.kiotvietInvoiceCode !== null;
     const cancelNow = o.status === 'cancelled' && prev.status !== 'cancelled';
-    if (fromKiotViet && !cancelNow) {
-      summary.keptFromKiotViet++;
-      return;
+    if (fromKiotViet) {
+      // KiotViet's status and stock stay as they are; Pancake adds what KiotViet does not have.
+      const patch: Prisma.OrderUncheckedUpdateInput = {};
+      if (fields.carrier && fields.carrier !== prev.carrier) patch.carrier = fields.carrier;
+      if (fields.trackingNo && fields.trackingNo !== prev.trackingNo) patch.trackingNo = fields.trackingNo;
+      const key = keyOf(o);
+      let enrichedCustomer = false;
+      if (o.customer && key) {
+        const c = prev.customer;
+        if (!c) {
+          const buyerId = await customerId(o);
+          if (buyerId) patch.customerId = buyerId;
+          enrichedCustomer = true;
+        } else if (!c.externalKey && !customerByKey.has(key)) {
+          // A KiotViet customer (KHSPE...) learns its Shopee nickname.
+          summary.customers.linked++;
+          enrichedCustomer = true;
+          customerByKey.set(key, c.id);
+          if (!opts.dryRun)
+            await db.customer.update({
+              where: { id: c.id },
+              data: {
+                externalKey: key,
+                ...(!c.name || c.name.includes('*')
+                  ? {
+                      name: o.customer.name.slice(0, 191),
+                      searchKey: toSearchKey(o.customer.name).slice(0, 400),
+                    }
+                  : {}),
+              },
+            });
+        }
+      }
+      if (Object.keys(patch).length || enrichedCustomer) {
+        summary.enriched++;
+        if (!opts.dryRun && Object.keys(patch).length)
+          await db.order.update({ where: { id: prev.id }, data: patch });
+      } else if (!cancelNow) {
+        summary.keptFromKiotViet++;
+      }
+      if (!cancelNow) return;
     }
     // A Pancake order without a customer yet gets its buyer.
     if (!fromKiotViet && prev.customerId === null && o.customer) {
@@ -345,7 +394,7 @@ export interface RunOptions {
   dryRun?: boolean;
   /** First run only: how far back to look (default 14 days). */
   sinceDays?: number;
-  /** Preview only: look back `sinceDays` ignoring the saved cursor. Never moves the cursor. */
+  /** Look back `sinceDays` ignoring the saved cursor, to update older orders. */
   ignoreCursor?: boolean;
   now?: () => Date;
 }
@@ -380,7 +429,7 @@ export async function runPancakeOrderSync(
   }
   const summary = await syncPancakeOrders(db, orders, {
     warehouseId: warehouse.id,
-    dryRun: opts.ignoreCursor ? true : (opts.dryRun ?? false),
+    dryRun: opts.dryRun ?? false,
     skuByVariationId,
   });
   if (!summary.dryRun && summary.errors.length === 0) {

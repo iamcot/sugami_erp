@@ -29,7 +29,7 @@ Shopee / TikTok ⇄ Pancake POS ⇄ Sugami
 | `fee_marketplace` | phí sàn | |
 | `status` | trạng thái đơn | Bảng `ORDER_STATUS` trong `packages/channels/pancake/src/mapping.ts` |
 
-Không đọc thông tin khách (tên, SĐT, địa chỉ) vào Sugami.
+Từ đơn chỉ đọc tên người mua (nickname Shopee, bỏ qua nếu bị che) và SĐT nếu không bị che; không đọc địa chỉ. Khách khóa theo `kênh:nickname` (`customers.external_key`).
 
 ## Tài khoản sàn đã nối (2026-11-22)
 
