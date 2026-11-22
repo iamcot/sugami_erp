@@ -9,8 +9,16 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { PancakeAdapter, PancakeClient, PancakeError, type PushProductInput } from '@sugami/channels-pancake';
-import { runPancakeOrderSync } from '@sugami/sync';
+import {
+  imagesBySku,
+  type Listing,
+  PancakeAdapter,
+  PancakeClient,
+  PancakeError,
+  pullListings,
+  type PushProductInput,
+} from '@sugami/channels-pancake';
+import { runPancakeOrderSync, syncListingImages } from '@sugami/sync';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
@@ -21,6 +29,12 @@ const Body_ = z.object({
   /** Preview only (default). Nothing is written to Pancake unless this is false. */
   dryRun: z.boolean().default(true),
   warehouseId: z.string().trim().min(1).max(64).optional(),
+});
+
+const ImagesBody = z.object({
+  dryRun: z.boolean().default(true),
+  /** Also replace images that came from the KiotViet file. */
+  replace: z.boolean().default(false),
 });
 
 const SyncBody = z.object({
@@ -136,5 +150,25 @@ export class PancakeController {
         range,
       }),
     );
+  }
+
+  /** Fill product images from the marketplace listings Pancake pulled (matched by seller SKU). Preview by default. */
+  @Post('sync-images')
+  @HttpCode(200)
+  @RequirePermissions('catalog.write')
+  syncImages(@Body() raw: unknown) {
+    const { dryRun, replace } = parseInput(ImagesBody, raw ?? {});
+    return this.guard(async () => {
+      const listings: Listing[] = [];
+      for await (const l of pullListings(this.client())) listings.push(l);
+      return {
+        listings: listings.length,
+        ...(await syncListingImages(
+          this.prisma.client,
+          { bySku: imagesBySku(listings) },
+          { dryRun, replace },
+        )),
+      };
+    });
   }
 }

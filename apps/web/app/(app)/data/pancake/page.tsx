@@ -3,6 +3,7 @@
 import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { KiotVietTabs } from '@/components/kiotviet-tabs';
+import { PancakeImages } from '@/components/pancake-images';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 
 interface Summary {
@@ -74,6 +75,7 @@ export default function PancakePage() {
         description="Đồng bộ đơn từ Pancake (Shopee VN, TikTok). Worker tự chạy mỗi 5 phút; trang này để xem trước hoặc chạy ngay."
       />
       <KiotVietTabs />
+      <PancakeImages />
       <Card className="mb-4 flex flex-wrap items-end gap-3 p-4">
         <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
           {(

@@ -84,3 +84,9 @@ pnpm pancake:probe
 - Đơn cũ bán trước lần nhập tồn đầu của SKU thì không trừ tồn (cùng quy tắc nhập KiotViet); đơn trùng mã sàn với hóa đơn KiotViet chỉ được bổ sung thông tin (ĐVVC, địa chỉ, phí sàn, khách), giữ trạng thái và tồn của KiotViet.
 - Có thể chọn **Khoảng ngày** (từ ngày – đến ngày, giờ Việt Nam) thay vì lùi từ hiện tại, để nạp đúng giai đoạn Pancake đã kéo từ sàn; chạy khoảng ngày không đổi con trỏ đồng bộ hằng ngày.
 - Giới hạn: Pancake chỉ có đơn từ lúc shop nối sàn vào Pancake.
+
+## Ảnh sản phẩm từ tin đăng sàn
+
+- Pancake giữ các tin đăng Shopee/TikTok (`GET /marketplace/products`): mỗi tin có `variations[]` với `sku`, `images`, `price`, `quantity`.
+- Tab "Đơn từ Pancake" → "Ảnh sản phẩm từ sàn": nối ảnh vào biến thể theo SKU người bán (= mã hàng KiotViet). Ưu tiên shop Việt Nam (bỏ qua hậu tố PH/MY khi trùng SKU). Mặc định chỉ điền cho biến thể chưa có ảnh; tick "Thay cả ảnh đã có" để ghi đè ảnh từ file KiotViet.
+- Chỉ lưu URL ảnh của sàn (chưa sao chép sang S3).

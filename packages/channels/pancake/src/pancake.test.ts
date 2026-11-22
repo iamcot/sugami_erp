@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PancakeAdapter, webhookType } from './adapter.js';
 import { PancakeClient, PancakeError } from './client.js';
+import { imagesBySku, Listing } from './listings.js';
 import { groupVariations, parseDeadline, parsePancakeTime, toExternalOrder } from './mapping.js';
 import { Order, Variation } from './schemas.js';
 
@@ -348,5 +349,21 @@ describe('push to Pancake', () => {
     const bad = makeClient(() => json({ success: false, message: 'Invalid warehouse' }, 400)).client;
     await expect(setStock(bad, 'v-1', 'x', 1)).rejects.toThrow(/Invalid warehouse/);
     await expect(setStock(bad, 'v-1', 'x', 1)).rejects.not.toThrow(/secret-key/);
+  });
+});
+
+describe('marketplace listing images', () => {
+  it('maps seller SKUs to images, Vietnam shop first, single-variation listings fall back to the listing SKU', () => {
+    const l = (shop: string, over: Record<string, unknown>) =>
+      Listing.parse({ id: shop, marketplace_shop_name: shop, ...over });
+    const map = imagesBySku([
+      l('SuGaMi - PH', { variations: [{ id: 'a', sku: 'SP1', images: ['https://ph/1.jpg'] }] }),
+      l('SuGaMi', { variations: [{ id: 'b', sku: 'SP1', images: ['https://vn/1.jpg', 'bad'] }] }),
+      l('SuGaMi', { sku: 'SP2', variations: [{ id: 'c', sku: '', images: ['https://vn/2.jpg'] }] }),
+      l('SuGaMi', { variations: [{ id: 'd', sku: 'SP3', images: [] }] }),
+    ]);
+    expect(map.get('SP1')?.images).toEqual(['https://vn/1.jpg']);
+    expect(map.get('SP2')?.images).toEqual(['https://vn/2.jpg']);
+    expect(map.has('SP3')).toBe(false);
   });
 });
