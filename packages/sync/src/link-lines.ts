@@ -95,7 +95,18 @@ export async function linkUnlinkedLines(
 
   const candidates = await db.orderLine.findMany({
     where: { ...unlinkedWhere, name: { startsWith: input.key } },
-    include: { order: { select: { id: true, code: true, status: true, orderedAt: true, warehouseId: true, stockAppliedAt: true } } },
+    include: {
+      order: {
+        select: {
+          id: true,
+          code: true,
+          status: true,
+          orderedAt: true,
+          warehouseId: true,
+          stockAppliedAt: true,
+        },
+      },
+    },
   });
   const lines = candidates.filter((l) => lineKey(l.name) === input.key);
   const result: LinkResult = {
@@ -140,6 +151,46 @@ export async function linkUnlinkedLines(
         await tx.order.update({ where: { id: l.order.id }, data: { stockAppliedAt: new Date() } });
     });
     if (takesStock) result.stockApplied++;
+  }
+  return result;
+}
+
+export interface AutoLinkResult {
+  groups: number;
+  linked: { key: string; sku: string; lines: number }[];
+}
+
+/**
+ * Unlinked order lines whose marketplace code is a listing option (or a single-option listing) that Pancake has
+ * linked to a Sugami variant: link them without anyone picking the SKU. Same stock rules as a manual link.
+ */
+export async function autoLinkFromListings(db: PrismaClient): Promise<AutoLinkResult> {
+  const groups = await listUnlinkedLines(db);
+  const result: AutoLinkResult = { groups: groups.length, linked: [] };
+  for (const g of groups) {
+    const hits = await db.channelListingVariant.findMany({
+      where: {
+        variantId: { not: null },
+        OR: [
+          { externalId: g.key },
+          { sku: g.key },
+          { listing: { OR: [{ externalId: g.key }, { sku: g.key }] } },
+        ],
+      },
+      select: {
+        variantId: true,
+        externalId: true,
+        sku: true,
+        listing: { select: { externalId: true, sku: true } },
+      },
+    });
+    const exact = hits.filter((h) => h.externalId === g.key || h.sku === g.key);
+    const pool = exact.length ? exact : hits;
+    const variantIds = [...new Set(pool.map((h) => h.variantId!))];
+    // Only when the code points to exactly one Sugami variant.
+    if (variantIds.length !== 1) continue;
+    const r = await linkUnlinkedLines(db, { key: g.key, variantId: variantIds[0]! });
+    result.linked.push({ key: g.key, sku: r.sku, lines: r.lines });
   }
   return result;
 }

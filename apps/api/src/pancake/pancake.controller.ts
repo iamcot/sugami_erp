@@ -24,6 +24,7 @@ import {
   type PushProductInput,
 } from '@sugami/channels-pancake';
 import {
+  autoLinkFromListings,
   linkUnlinkedLines,
   type PancakeVariantInput,
   listUnlinkedLines,
@@ -355,8 +356,11 @@ export class PancakeController {
       const marketplaces = Object.fromEntries(
         Object.entries(counts).map(([k, c]) => [k, `${c.listings} tin/${c.linked} nối`]),
       );
+      // Order lines Pancake could not link: link them now through the listings Pancake linked.
+      const autoLinked = dryRun ? null : await autoLinkFromListings(this.prisma.client);
       return {
         ...summary,
+        autoLinked,
         marketplaces,
         pancake,
         skippedOtherCountry: listings.length - vn.length,

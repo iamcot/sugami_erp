@@ -245,6 +245,7 @@ function ProductsList() {
         unmatched: number;
         withLink: number;
         marketplaces: Record<string, string>;
+        autoLinked: { groups: number; linked: { key: string; sku: string; lines: number }[] } | null;
         unmatchedLinks: string[];
         pancake: {
           onPancake: number;
@@ -254,7 +255,7 @@ function ProductsList() {
         };
       }>('/pancake/sync-listings', { method: 'POST', json: { dryRun: false } });
       setSyncMsg(
-        `Đã đồng bộ: ${r.pancake.onPancake} biến thể có trên Pancake, ${r.listings} tin đăng sàn (${r.matched.link} biến thể sàn đã nối trên Pancake, ${r.unmatched} chưa nối). Tin đăng có liên kết trên Pancake: ${r.withLink}. Theo mã sàn Pancake: ${Object.entries(
+        `Đã đồng bộ: ${r.pancake.onPancake} biến thể có trên Pancake, ${r.listings} tin đăng sàn (${r.matched.link} biến thể sàn đã nối trên Pancake, ${r.unmatched} chưa nối). Tin đăng có liên kết trên Pancake: ${r.withLink}. Dòng đơn chưa liên kết tự nối được: ${r.autoLinked ? r.autoLinked.linked.reduce((a, x) => a + x.lines, 0) : 0} dòng (${r.autoLinked?.linked.map((x) => x.sku).join(', ') || 'không có'}). Theo mã sàn Pancake: ${Object.entries(
           r.marketplaces,
         )
           .map(([k, v]) => `${k} → ${v}`)
