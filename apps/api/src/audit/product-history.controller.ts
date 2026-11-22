@@ -14,6 +14,8 @@ export type HistoryEntry =
       entityType: string;
       entityId: string;
       sku: string | null;
+      /** Variant option text, e.g. "Đỏ / Lớn". */
+      option: string | null;
       user: { id: string; name: string } | null;
       diff: unknown;
     }
@@ -22,6 +24,7 @@ export type HistoryEntry =
       at: string;
       type: string;
       sku: string;
+      option: string | null;
       warehouse: string;
       qtyDelta: string;
       balanceAfter: string;
@@ -41,10 +44,18 @@ export class ProductHistoryController {
     const db = this.prisma.client;
     const product = await db.product.findUnique({
       where: { id },
-      select: { id: true, variants: { select: { id: true, sku: true } } },
+      select: { id: true, variants: { select: { id: true, sku: true, optionValues: true } } },
     });
     if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
     const skuById = new Map(product.variants.map((v) => [v.id, v.sku]));
+    const optionById = new Map(
+      product.variants.map((v) => [
+        v.id,
+        Array.isArray(v.optionValues) && v.optionValues.length
+          ? (v.optionValues as string[]).join(' / ')
+          : null,
+      ]),
+    );
     const variantIds = [...skuById.keys()];
 
     const [logs, movements] = await Promise.all([
@@ -77,6 +88,7 @@ export class ProductHistoryController {
         entityType: l.entityType,
         entityId: l.entityId,
         sku: l.entityType === 'variant' ? (skuById.get(l.entityId) ?? null) : null,
+        option: l.entityType === 'variant' ? (optionById.get(l.entityId) ?? null) : null,
         user: l.user,
         diff: l.diff,
       })),
@@ -85,6 +97,7 @@ export class ProductHistoryController {
         at: m.occurredAt.toISOString(),
         type: m.type,
         sku: skuById.get(m.variantId) ?? '',
+        option: optionById.get(m.variantId) ?? null,
         warehouse: m.warehouse.code,
         qtyDelta: m.qtyDelta.toString(),
         balanceAfter: m.balanceAfter.toString(),

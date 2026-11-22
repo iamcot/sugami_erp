@@ -56,6 +56,7 @@ type HistoryEntry =
       entityType: string;
       sku: string | null;
       user: { name: string } | null;
+      option: string | null;
       diff: Record<string, { from: unknown; to: unknown }> | null;
     }
   | {
@@ -63,6 +64,7 @@ type HistoryEntry =
       at: string;
       type: string;
       sku: string;
+      option: string | null;
       warehouse: string;
       qtyDelta: string;
       balanceAfter: string;
@@ -319,19 +321,24 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
               <span className="w-28 shrink-0 tabular-nums text-slate-500">{dt(h.at)}</span>
               {h.kind === 'stock' ? (
                 <span>
-                  <span className="font-mono text-xs">{h.sku}</span> · {MOVE_LABEL[h.type] ?? h.type}{' '}
+                  <span className="font-mono text-xs">{h.sku}</span>
+                  {h.option && <span className="font-medium"> ({h.option})</span>} ·{' '}
+                  {MOVE_LABEL[h.type] ?? h.type}{' '}
                   <span className={Number(h.qtyDelta) < 0 ? 'text-rose-600' : 'text-emerald-600'}>
                     {Number(h.qtyDelta) > 0 ? '+' : ''}
                     {Number(h.qtyDelta).toLocaleString('vi-VN')}
                   </span>{' '}
-                  → {Number(h.balanceAfter).toLocaleString('vi-VN')}
+                  → tồn {Number(h.balanceAfter).toLocaleString('vi-VN')}
                   {h.note && <span className="text-slate-500"> · {h.note}</span>}
                 </span>
               ) : (
                 <span>
                   {ACTION_LABEL[h.action] ?? h.action}{' '}
                   {h.entityType === 'variant' ? (
-                    <span className="font-mono text-xs">{h.sku ?? 'mã hàng'}</span>
+                    <>
+                      <span className="font-mono text-xs">{h.sku ?? 'mã hàng'}</span>
+                      {h.option && <span className="font-medium"> ({h.option})</span>}
+                    </>
                   ) : (
                     'sản phẩm'
                   )}
