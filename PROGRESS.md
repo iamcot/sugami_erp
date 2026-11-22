@@ -11,7 +11,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
 | P0 — Chuẩn bị & xác minh | 4/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
-| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 0/22 | |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 2/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 0/12 | |
@@ -21,7 +21,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Đang làm
 
 - P0-10 chờ duyệt giao diện.
-- Tiếp theo: P1-01 đăng nhập, P1-06 schema catalog, P1-14 schema kho (không phụ thuộc file Excel).
+- Đang làm: P1-01 đăng nhập, P1-02 phân quyền.
 
 ## Bị chặn / chờ chủ shop
 
@@ -52,6 +52,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P0-04 Prisma 7 + MySQL: users/roles/audit_logs, collation 0900_ai_ci, seed | 2c78005 |
 | 2026-11-22 | P0-03 CI GitHub Actions (MySQL + Redis services) | 2a53d81 |
 | 2026-11-22 | Ảnh lưu trên AWS S3 có sẵn của shop | 3d62b98 |
+| 2026-11-22 | P1-06 + P1-14 schema sản phẩm, kho và sổ kho (test trên MySQL) | aaf6f99 |
 | 2026-11-22 | P0-10 prototype giao diện 5 màn hình (dữ liệu mẫu) | 84065e7 |
 | 2026-11-22 | P0-06 client KiotViet + script probe chỉ đọc (chưa chạy với store thật) | e3c0d6e |
 
@@ -82,7 +83,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-03 | Audit log: middleware ghi thay đổi giá, tồn, xóa | ⬜ | | |
 | P1-04 | Layout app | ⬜ | | |
 | P1-05 | Bộ component bảng dữ liệu dùng chung | ⬜ | | |
-| P1-06 | Schema catalog | ⬜ | | |
+| P1-06 | Schema catalog | ✅ | aaf6f99 | |
 | P1-07 | API + màn hình nhóm hàng, thương hiệu | ⬜ | | |
 | P1-08 | API + màn hình danh sách sản phẩm (bảng + lưới ảnh), tìm không dấu | ⬜ | | |
 | P1-09 | Chi tiết sản phẩm | ⬜ | | |
@@ -90,7 +91,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-11 | Import Excel hàng hóa + tồn từ KiotViet | ⬜ | | |
 | P1-12 | Import Excel hóa đơn/đặt hàng KiotViet → đơn hàng | ⬜ | | |
 | P1-13 | Export Excel phiếu nhập/kiểm kho theo mẫu import KiotViet | ⬜ | | |
-| P1-14 | Schema kho: warehouse, stock_level, stock_movement | ⬜ | | |
+| P1-14 | Schema kho: warehouse, stock_level, stock_movement | ✅ | aaf6f99 | |
 | P1-15 | Đối chiếu tồn file KiotViet ↔ sổ kho Sugami | ⬜ | | |
 | P1-16 | Trung tâm dữ liệu: lịch sử import/export | ⬜ | | |
 | P1-17 | Nhắc việc đồng bộ Excel trên dashboard | ⬜ | | |
