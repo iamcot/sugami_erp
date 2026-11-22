@@ -614,9 +614,9 @@ model Order {
   warehouseId         String      @map("warehouse_id") @db.Char(36)
   status              OrderStatus @default(new)
   /// Raw delivery status text from the source (e.g. "Giao thành công").
-  shippingStatus      String?     @map("shipping_status") @db.VarChar(64)
-  carrier             String?     @db.VarChar(64)
-  trackingNo          String?     @map("tracking_no") @db.VarChar(64)
+  shippingStatus      String?     @map("shipping_status") @db.VarChar(255)
+  carrier             String?     @db.VarChar(255)
+  trackingNo          String?     @map("tracking_no") @db.VarChar(255)
   /// All amounts in VND.
   subtotal            BigInt      @default(0)
   discount            BigInt      @default(0)
