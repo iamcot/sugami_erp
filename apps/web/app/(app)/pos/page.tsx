@@ -1065,33 +1065,42 @@ export default function PosPage() {
                 )}
 
                 {!retail && (
-                  <div className="space-y-1">
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        className={line}
-                        placeholder="Tên người nhận"
-                        value={p.receiver.name}
-                        onChange={(e) => patch({ receiver: { ...p.receiver, name: e.target.value } })}
-                      />
-                      <input
-                        className={line}
-                        placeholder="Số điện thoại"
-                        value={p.receiver.phone}
-                        onChange={(e) => patch({ receiver: { ...p.receiver, phone: e.target.value } })}
-                      />
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-x-6">
+                      <label className="text-xs text-slate-500">
+                        Tên người nhận
+                        <input
+                          className={line}
+                          placeholder="Nhập tên"
+                          value={p.receiver.name}
+                          onChange={(e) => patch({ receiver: { ...p.receiver, name: e.target.value } })}
+                        />
+                      </label>
+                      <label className="text-xs text-slate-500">
+                        Số điện thoại
+                        <input
+                          className={line}
+                          placeholder="Nhập số điện thoại"
+                          value={p.receiver.phone}
+                          onChange={(e) => patch({ receiver: { ...p.receiver, phone: e.target.value } })}
+                        />
+                      </label>
                     </div>
-                    <input
-                      className={line}
-                      placeholder="Địa chỉ chi tiết (số nhà, ngõ, đường)"
-                      value={p.receiver.address}
-                      onChange={(e) => patch({ receiver: { ...p.receiver, address: e.target.value } })}
-                    />
+                    <label className="block text-xs text-slate-500">
+                      Địa chỉ chi tiết
+                      <input
+                        className={line}
+                        placeholder="Số nhà, ngõ, đường"
+                        value={p.receiver.address}
+                        onChange={(e) => patch({ receiver: { ...p.receiver, address: e.target.value } })}
+                      />
+                    </label>
                     <AreaSelect
                       province={p.receiver.area}
                       ward={p.receiver.ward}
                       onChange={(v) => patch({ receiver: { ...p.receiver, area: v.province, ward: v.ward } })}
                     />
-                    <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                       <label className="text-xs text-slate-500">
                         Đối tác giao hàng
                         <input
@@ -1109,6 +1118,7 @@ export default function PosPage() {
                         Mã vận đơn
                         <input
                           className={line}
+                          placeholder="Nhập mã vận đơn"
                           value={p.trackingNo}
                           onChange={(e) => patch({ trackingNo: e.target.value })}
                         />
