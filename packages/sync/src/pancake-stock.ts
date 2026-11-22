@@ -259,7 +259,18 @@ export async function reconcileWithPancake(
       out.failed.push({ sku: skus.get(r.variantId) ?? r.variantId, message: (e as Error).message });
     }
   }
-  for (const r of refs)
-    if (!bad.has(r.variationId)) await remember(db, r.variationId, sellable.get(r.variantId) ?? 0);
+  // one update per distinct quantity (a handful) instead of one per variant (~1000 round trips)
+  const byQty = new Map<number, string[]>();
+  for (const r of refs) {
+    if (bad.has(r.variationId)) continue;
+    const q = sellable.get(r.variantId) ?? 0;
+    byQty.set(q, [...(byQty.get(q) ?? []), r.variationId]);
+  }
+  for (const [qty, ids] of byQty)
+    for (let i = 0; i < ids.length; i += 500)
+      await db.externalRef.updateMany({
+        where: { provider: 'pancake', entityType: 'variant', externalId: { in: ids.slice(i, i + 500) } },
+        data: { hash: String(qty) },
+      });
   return out;
 }
