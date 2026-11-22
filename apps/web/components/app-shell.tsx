@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ReactNode, Suspense } from 'react';
+import { type ReactNode, Suspense, useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 import { DetailProvider } from './detail-drawer';
 import { PwaBootstrap } from './app-settings';
 import { UserMenu } from './user-menu';
@@ -109,7 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <span className="hidden items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-white/90 sm:flex">
-            <RefreshCw className="size-3.5" /> Đồng bộ 2 phút trước
+            <RefreshCw className="size-3.5" /> <SyncAge />
           </span>
           <button className="relative rounded-lg p-2 text-white hover:bg-white/20" aria-label="Thông báo">
             <Bell className="size-5" />
@@ -142,4 +143,30 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
     </div>
   );
+}
+
+/** Real age of the last Pancake order pull, refreshed every minute. */
+function SyncAge() {
+  const [at, setAt] = useState<string | null | undefined>(undefined);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const load = () =>
+      api<{ ordersSyncedAt: string | null }>('/pancake/sync-status').then(
+        (r) => setAt(r.ordersSyncedAt),
+        () => {},
+      );
+    void load();
+    const t = setInterval(() => {
+      tick((n) => n + 1);
+      void load();
+    }, 60_000);
+    return () => clearInterval(t);
+  }, []);
+  if (at === undefined) return <>Đồng bộ …</>;
+  if (!at) return <>Chưa đồng bộ</>;
+  const m = Math.max(0, Math.round((Date.now() - Date.parse(at)) / 60_000));
+  if (m < 1) return <>Vừa đồng bộ</>;
+  if (m < 60) return <>Đồng bộ {m} phút trước</>;
+  if (m < 1440) return <>Đồng bộ {Math.floor(m / 60)} giờ trước</>;
+  return <>Đồng bộ {Math.floor(m / 1440)} ngày trước</>;
 }

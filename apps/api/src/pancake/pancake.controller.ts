@@ -401,6 +401,14 @@ export class PancakeController {
     };
   }
 
+  /** When Pancake orders were last pulled (header "Đồng bộ ... trước"). */
+  @Get('sync-status')
+  @RequirePermissions('orders.read')
+  async syncStatus() {
+    const c = await this.prisma.client.syncCursor.findUnique({ where: { key: 'pancake:orders' } });
+    return { ordersSyncedAt: c?.cursor.toISOString() ?? null };
+  }
+
   /** State of the automatic stock push: on/off, last pass, how many variants wait for a push. */
   @Get('stock-push/status')
   @RequirePermissions('catalog.read')
