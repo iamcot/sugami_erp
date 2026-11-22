@@ -62,12 +62,34 @@ for await (const v of client.paginate<Record<string, unknown>>('/products/variat
       JSON.stringify({
         marketplace_id: l.marketplace_id,
         shop: l.marketplace_shop_name,
-        top: Object.fromEntries(Object.entries(top).filter(([k]) => /id|sku|link|code/i.test(k))),
+        top: Object.fromEntries(
+          Object.entries(top).map(([k, x]) => [k, typeof x === 'string' ? x.slice(0, 80) : x]),
+        ),
         variations: vars.map((v) =>
           Object.fromEntries(Object.entries(v).filter(([k]) => /id|sku|link|code|name/i.test(k))),
         ),
       }),
     );
+  }
+}
+
+// The Pancake product behind a code: how does it identify itself? (product data only)
+{
+  const code = process.env.PROBE_PRODUCT ?? 'SP000017';
+  for await (const v of client.paginate<Record<string, unknown>>('/products/variations')) {
+    const pr = (v.product ?? {}) as Record<string, unknown>;
+    if (pr.display_id !== code) continue;
+    console.log(
+      'sản phẩm Pancake',
+      code,
+      JSON.stringify({
+        variation: { id: v.id, display_id: v.display_id, custom_id: v.custom_id, product_id: v.product_id },
+        product: Object.fromEntries(
+          Object.entries(pr).map(([k, x]) => [k, typeof x === 'string' ? x.slice(0, 80) : x]),
+        ),
+      }),
+    );
+    break;
   }
 }
 
