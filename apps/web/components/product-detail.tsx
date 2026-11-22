@@ -96,6 +96,19 @@ const FIELD_LABEL: Record<string, string> = {
 };
 const ACTION_LABEL: Record<string, string> = { create: 'Tạo', update: 'Sửa', delete: 'Xóa' };
 
+type ProductListing = Product['listings'][number];
+
+/** One entry per marketplace listing, with this product's linked options underneath. */
+function groupListings(rows: ProductListing[]) {
+  const groups = new Map<string, ProductListing & { options: ProductListing[] }>();
+  for (const l of rows) {
+    const g = groups.get(l.id) ?? { ...l, options: [] };
+    g.options.push(l);
+    groups.set(l.id, g);
+  }
+  return [...groups.values()].sort((a, b) => (a.platform ?? '').localeCompare(b.platform ?? ''));
+}
+
 const dt = (iso: string) =>
   new Date(iso).toLocaleString('vi-VN', {
     dateStyle: 'short',
@@ -256,50 +269,56 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
             Đang đăng trên sàn ({new Set(product.listings.map((l) => l.id)).size} tin)
           </div>
           <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
-            {[...product.listings]
-              .sort((a, b) => (a.platform ?? '').localeCompare(b.platform ?? ''))
-              .map((l) => (
-                <li key={`${l.id}-${l.variantId}-${l.option}`}>
-                  <button
-                    onClick={() => open('listing', l.id)}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                  >
-                    {l.imageUrl && (
-                      <img
-                        src={l.imageUrl}
-                        alt=""
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        className="size-9 shrink-0 rounded border border-slate-200 object-cover dark:border-slate-800"
-                      />
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5">
-                        {l.platform === 'shopee' && <ShopeeIcon className="size-4 shrink-0" />}
-                        {l.platform === 'tiktok' && <TikTokIcon className="size-4 shrink-0" />}
-                        <span className="line-clamp-1">{l.name}</span>
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        {[
-                          l.platform === 'shopee' ? 'Shopee' : l.platform === 'tiktok' ? 'TikTok' : null,
-                          l.option,
-                          l.marketplaceSku,
-                          product.variants.find((v) => v.id === l.variantId)?.sku &&
-                            `→ ${product.variants.find((v) => v.id === l.variantId)?.sku}`,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
+            {groupListings(product.listings).map((g) => (
+              <li key={g.id}>
+                <button
+                  onClick={() => open('listing', g.id)}
+                  className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                >
+                  {g.imageUrl && (
+                    <img
+                      src={g.imageUrl}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="size-9 shrink-0 rounded border border-slate-200 object-cover dark:border-slate-800"
+                    />
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      {g.platform === 'shopee' && <ShopeeIcon className="size-4 shrink-0" />}
+                      {g.platform === 'tiktok' && <TikTokIcon className="size-4 shrink-0" />}
+                      <span className="line-clamp-1">{g.name}</span>
                     </span>
-                    <span className="shrink-0 text-right tabular-nums">
-                      {l.price === null ? '–' : formatVnd(l.price)}
-                      {l.quantity !== null && (
-                        <span className="block text-xs text-slate-500">tồn sàn {l.quantity}</span>
-                      )}
+                    <span className="text-xs text-slate-500">
+                      {g.platform === 'shopee' ? 'Shopee' : g.platform === 'tiktok' ? 'TikTok' : g.shop} ·{' '}
+                      {g.options.length} biến thể của sản phẩm này trong tin
                     </span>
-                  </button>
-                </li>
-              ))}
+                  </span>
+                </button>
+                <ul className="mb-2 ml-16 mr-4 divide-y divide-slate-100 rounded-md border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+                  {g.options.map((l) => {
+                    const sku = product.variants.find((v) => v.id === l.variantId)?.sku;
+                    return (
+                      <li key={`${l.variantId}-${l.option}`} className="flex items-center gap-3 px-3 py-1.5">
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-1">{l.option ?? '–'}</span>
+                          <span className="font-mono text-xs text-slate-500">
+                            {[l.marketplaceSku, sku && `→ ${sku}`].filter(Boolean).join(' ')}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-right tabular-nums">
+                          {l.price === null ? '–' : formatVnd(l.price)}
+                          {l.quantity !== null && (
+                            <span className="block text-xs text-slate-500">tồn sàn {l.quantity}</span>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
           </ul>
         </Card>
       )}
