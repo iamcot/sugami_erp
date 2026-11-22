@@ -12,6 +12,93 @@ interface Sum {
   orders: number;
   revenue: number;
 }
+interface Health {
+  unlinkedLines: number;
+  notOnPancake: number;
+  listingUnlinked: number;
+  listingUnresolved: number;
+  noImage: number;
+  zeroCost: number;
+  ordersSyncedAt: string | null;
+  stockPushOn: boolean;
+  stockPushAt: string | null;
+}
+interface Check {
+  ok: boolean;
+  tone: 'danger' | 'warn';
+  text: string;
+  href?: string;
+}
+const minutesAgo = (iso: string) => Math.round((Date.now() - Date.parse(iso)) / 60_000);
+
+/** One line per thing worth watching; ok lines say what is fine, others say what to fix. */
+function healthChecks(d: Dashboard): Check[] {
+  const h = d.health;
+  const synced = h.ordersSyncedAt ? minutesAgo(h.ordersSyncedAt) : null;
+  return [
+    {
+      ok: synced !== null && synced <= 20,
+      tone: 'danger',
+      text:
+        synced === null
+          ? 'Chưa đồng bộ đơn từ Pancake'
+          : synced <= 20
+            ? `Đơn từ Pancake cập nhật ${synced} phút trước`
+            : `Đơn từ Pancake đã ${synced} phút chưa cập nhật, kiểm tra worker`,
+      href: '/settings',
+    },
+    {
+      ok: d.todo.negativeSkus === 0,
+      tone: 'danger',
+      text: d.todo.negativeSkus ? `${d.todo.negativeSkus} SKU tồn âm, cần kiểm kho` : 'Không có SKU tồn âm',
+      href: '/products?view=negative',
+    },
+    {
+      ok: h.unlinkedLines === 0,
+      tone: 'danger',
+      text: h.unlinkedLines
+        ? `${h.unlinkedLines} dòng đơn 30 ngày chưa nối sản phẩm (tồn chưa bị trừ)`
+        : 'Mọi dòng đơn đã nối sản phẩm',
+      href: '/orders',
+    },
+    {
+      ok: h.listingUnlinked === 0,
+      tone: 'warn',
+      text: h.listingUnlinked
+        ? `${h.listingUnlinked} biến thể tin đăng sàn chưa nối (${h.listingUnresolved} cần xác nhận tay)`
+        : 'Mọi tin đăng sàn đã nối sản phẩm',
+      href: '/products',
+    },
+    {
+      ok: h.notOnPancake === 0,
+      tone: 'warn',
+      text: h.notOnPancake
+        ? `${h.notOnPancake} biến thể chưa có trên Pancake (không đẩy được tồn)`
+        : 'Mọi biến thể đã có trên Pancake',
+      href: '/products?link=no_pancake',
+    },
+    {
+      ok: h.stockPushOn,
+      tone: 'warn',
+      text: h.stockPushOn
+        ? `Tự đẩy tồn đang bật${h.stockPushAt ? `, lần cuối ${minutesAgo(h.stockPushAt)} phút trước` : ''}`
+        : 'Tự đẩy tồn đang tắt',
+      href: '/settings',
+    },
+    {
+      ok: h.zeroCost === 0,
+      tone: 'warn',
+      text: h.zeroCost ? `${h.zeroCost} SKU còn tồn nhưng chưa có giá vốn` : 'Mọi SKU còn tồn đều có giá vốn',
+      href: '/products',
+    },
+    {
+      ok: h.noImage === 0,
+      tone: 'warn',
+      text: h.noImage ? `${h.noImage} sản phẩm đang bán chưa có ảnh` : 'Mọi sản phẩm đang bán đều có ảnh',
+      href: '/media',
+    },
+  ];
+}
 interface Dashboard {
   today: Sum;
   last7: Sum;
@@ -20,6 +107,7 @@ interface Dashboard {
   stock: { value: number; units: number };
   series: { date: string; orders: number; byChannel: Record<string, number> }[];
   todo: { negativeSkus: number; outOfStockActive: number; zeroPrice: number };
+  health: Health;
   lastInvoiceImport: { importedAt: string; latestOrderAt: string } | null;
 }
 
@@ -123,6 +211,7 @@ export default function DashboardPage() {
           </Link>
         </Card>
       )}
+      {d && <HealthCard checks={healthChecks(d)} />}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {(kpis.length ? kpis : Array.from({ length: 4 }, () => null)).map((k, i) => (
           <Card key={k?.label ?? i} className="p-4">
@@ -236,5 +325,32 @@ export default function DashboardPage() {
         </Card>
       )}
     </>
+  );
+}
+
+function HealthCard({ checks }: { checks: Check[] }) {
+  const bad = checks.filter((c) => !c.ok);
+  const danger = bad.some((c) => c.tone === 'danger');
+  return (
+    <Card className="mb-4 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="font-medium">Sức khỏe shop</h2>
+        <Badge tone={bad.length === 0 ? 'success' : danger ? 'danger' : 'warn'}>
+          {bad.length === 0 ? 'Ổn' : `${bad.length} việc cần xem`}
+        </Badge>
+      </div>
+      <ul className="mt-3 grid gap-x-6 gap-y-1 text-sm md:grid-cols-2">
+        {checks.map((c) => (
+          <li key={c.text}>
+            <Link href={c.href ?? '#'} className="flex items-center gap-2 py-1 hover:text-brand-600">
+              <span
+                className={`size-2 shrink-0 rounded-full ${c.ok ? 'bg-emerald-500' : c.tone === 'danger' ? 'bg-rose-500' : 'bg-amber-500'}`}
+              />
+              <span className={c.ok ? 'text-slate-500' : ''}>{c.text}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }

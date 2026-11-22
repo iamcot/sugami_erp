@@ -27,7 +27,7 @@ export class DashboardController {
     const d30 = new Date(today.getTime() - 29 * DAY);
     const active: Prisma.OrderWhereInput = { status: { notIn: ['cancelled', 'returned'] } };
 
-    const [orders, margin, stock, todo, lastImport] = await Promise.all([
+    const [orders, margin, stock, todo, lastImport, health] = await Promise.all([
       db.order.findMany({
         where: { ...active, orderedAt: { gte: d30 < from ? d30 : from } },
         select: { orderedAt: true, total: true, channel: { select: { code: true } } },
@@ -55,6 +55,7 @@ export class DashboardController {
         orderBy: { createdAt: 'desc' },
         select: { createdAt: true, orderedAt: true },
       }),
+      this.healthCounts(d30),
     ]);
 
     const sum = (since: Date) => {
@@ -88,12 +89,48 @@ export class DashboardController {
       stock: { value: n(stock[0]?.value), units: n(stock[0]?.units) },
       series,
       todo: { negativeSkus: n(t?.negative), outOfStockActive: n(t?.out_active), zeroPrice: n(t?.zero_price) },
+      health,
       lastInvoiceImport: lastImport
         ? {
             importedAt: lastImport.createdAt.toISOString(),
             latestOrderAt: lastImport.orderedAt.toISOString(),
           }
         : null,
+    };
+  }
+
+  /** Plain counts behind the "Sức khỏe shop" card; the page decides tone and wording. */
+  private async healthCounts(since: Date) {
+    const db = this.prisma.client;
+    const [row, cursors] = await Promise.all([
+      db.$queryRaw<Record<string, unknown>[]>`
+        SELECT
+          (SELECT COUNT(*) FROM order_lines l JOIN orders o ON o.id = l.order_id
+            WHERE l.variant_id IS NULL AND o.status NOT IN ('cancelled', 'returned') AND o.ordered_at >= ${since}) AS unlinked_lines,
+          (SELECT COUNT(*) FROM variants v JOIN products p ON p.id = v.product_id AND p.status = 'active'
+            WHERE NOT EXISTS (SELECT 1 FROM external_refs r WHERE r.provider = 'pancake' AND r.entity_type = 'variant' AND r.entity_id = v.id)) AS not_on_pancake,
+          (SELECT COUNT(*) FROM channel_listing_variants WHERE variant_id IS NULL) AS listing_unlinked,
+          (SELECT COUNT(*) FROM channel_listing_variants WHERE linked_by = 'unresolved') AS listing_unresolved,
+          (SELECT COUNT(*) FROM products p WHERE p.status = 'active'
+            AND NOT EXISTS (SELECT 1 FROM product_media m WHERE m.product_id = p.id)) AS no_image,
+          (SELECT COUNT(*) FROM (SELECT v.id FROM variants v JOIN products p ON p.id = v.product_id AND p.status = 'active'
+            LEFT JOIN stock_levels sl ON sl.variant_id = v.id WHERE v.cost_avg = 0 GROUP BY v.id HAVING COALESCE(SUM(sl.on_hand), 0) > 0) c) AS zero_cost`,
+      db.syncCursor.findMany({
+        where: { key: { in: ['pancake:orders', 'pancake:stock-push:on', 'pancake:stock-push:last'] } },
+      }),
+    ]);
+    const r = row[0] ?? {};
+    const at = (k: string) => cursors.find((c) => c.key === k)?.cursor.toISOString() ?? null;
+    return {
+      unlinkedLines: n(r.unlinked_lines),
+      notOnPancake: n(r.not_on_pancake),
+      listingUnlinked: n(r.listing_unlinked),
+      listingUnresolved: n(r.listing_unresolved),
+      noImage: n(r.no_image),
+      zeroCost: n(r.zero_cost),
+      ordersSyncedAt: at('pancake:orders'),
+      stockPushOn: at('pancake:stock-push:on') !== null,
+      stockPushAt: at('pancake:stock-push:last'),
     };
   }
 }

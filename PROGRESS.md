@@ -232,3 +232,4 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P5-06 | Xuất & lưu trữ toàn bộ dữ liệu KiotViet | ⬜ | | |
 | P5-07 | 30 ngày vận hành không KiotViet, gỡ adapter khỏi lịch chạy | ⬜ | | |
 | 2026-11-23 | P4/P6: trang Sản phẩm gom kho + liên kết Pancake/Shopee/TikTok (nhãn đã nối/tổng biến thể, drawer tin đăng, xác nhận tay tin Pancake không nói rõ sản phẩm), tự nối dòng đơn chưa có SKU qua tin đăng đã nối, hạn bàn giao đơn POS, đổi thứ tự menu, lịch sử hiện tên biến thể | main |
+| 2026-11-23 | P1-21: thẻ "Sức khỏe shop" trên Tổng quan (đơn Pancake cập nhật, tồn âm, dòng đơn chưa nối, tin đăng chưa nối, biến thể chưa có trên Pancake, tự đẩy tồn, thiếu giá vốn/ảnh), mỗi dòng bấm tới chỗ sửa | main |
