@@ -75,7 +75,15 @@ export const Order = z.looseObject({
     })
     .nullish(),
   shipping_address: z
-    .looseObject({ full_address: str, province_name: str, district_name: str, commune_name: str })
+    .looseObject({
+      full_address: str,
+      address: str,
+      province_name: str,
+      district_name: str,
+      commune_name: str,
+      phone_number: str,
+      full_name: str,
+    })
     .nullish(),
   advanced_platform_fee: z.record(z.string(), z.unknown()).nullish(),
   items: z.array(OrderItem).default([]),

@@ -30,6 +30,7 @@ interface Order {
   trackingNo: string | null;
   shipByAt: string | null;
   shipAddress: string | null;
+  shipPhone: string | null;
   shipProvince: string | null;
   platformFee: number;
   feeDetail: Record<string, number> | null;
@@ -271,6 +272,7 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
             />
             <Row label="Trạng thái giao" value={order.shippingStatus ?? '–'} />
             <Row label="Hạn bàn giao" value={dt(order.shipByAt)} />
+            <Row label="SĐT nhận" value={order.shipPhone ?? '–'} />
             <div className="mt-1 text-sm">
               <p className="text-slate-500">Địa chỉ nhận</p>
               <p className="mt-0.5">

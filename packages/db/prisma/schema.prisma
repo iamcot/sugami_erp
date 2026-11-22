@@ -622,6 +622,8 @@ model Order {
   /// Handover deadline set by the marketplace.
   shipByAt            DateTime?   @map("ship_by_at")
   shipAddress         String?     @map("ship_address") @db.VarChar(500)
+  /// Recipient phone for this order, possibly masked by the marketplace (e.g. 0****53).
+  shipPhone           String?     @map("ship_phone") @db.VarChar(32)
   shipProvince        String?     @map("ship_province") @db.VarChar(128)
   /// Marketplace fee total (VND) and its breakdown by name.
   platformFee         BigInt      @default(0) @map("platform_fee")

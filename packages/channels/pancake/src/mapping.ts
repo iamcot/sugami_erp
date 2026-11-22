@@ -134,6 +134,27 @@ export function parseDeadline(v: number | string | null | undefined): Date | und
   return Number.isNaN(d.getTime()) || y < 2000 || y > 2100 ? undefined : d;
 }
 
+/** Delivery address as Pancake shows it (Shopee masks the start of it, the ward and province stay readable). */
+export function shipAddressOf(o: Order): string | undefined {
+  const a = o.shipping_address;
+  if (!a) return undefined;
+  const full = a.full_address?.trim();
+  if (full) return full;
+  const parts = [a.address, a.commune_name, a.district_name, a.province_name]
+    .map((p) => p?.trim())
+    .filter((p): p is string => !!p);
+  return parts.length ? parts.join(', ') : undefined;
+}
+
+/** Recipient phone for the order only (kept masked as Shopee gives it, e.g. "0****53"); never written to customers. */
+export function shipPhoneOf(o: Order): string | undefined {
+  return (
+    [o.shipping_address?.phone_number, o.bill_phone_number, ...(o.customer?.phone_numbers ?? [])]
+      .map((p) => p?.replace(/[\s.()-]/g, ''))
+      .find((p): p is string => !!p) || undefined
+  );
+}
+
 /** Fee breakdown: only numeric entries, e.g. { commission_fee: 12000, service_fee: 3000 }. */
 export function feeDetailOf(o: Order): Record<string, number> | undefined {
   const out: Record<string, number> = {};
@@ -161,7 +182,8 @@ export function toExternalOrder(o: Order): ExternalOrder {
     orderedAt: parsePancakeTime(o.inserted_at),
     shipByAt:
       parseDeadline(o.additional_info?.ship_by_date) ?? parseDeadline(o.additional_info?.delivery_deadline),
-    shipAddress: o.shipping_address?.full_address?.trim() || undefined,
+    shipAddress: shipAddressOf(o),
+    shipPhone: shipPhoneOf(o),
     shipProvince: o.shipping_address?.province_name?.trim() || undefined,
     feeDetail: feeDetailOf(o),
     total: o.total_price ?? 0,

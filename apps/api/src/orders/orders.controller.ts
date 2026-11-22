@@ -105,6 +105,7 @@ export class OrdersController {
         trackingNo: o.trackingNo,
         shipByAt: o.shipByAt?.toISOString() ?? null,
         shipAddress: o.shipAddress,
+        shipPhone: o.shipPhone,
         shipProvince: o.shipProvince,
         note: o.internalNote,
         updatedAt: o.updatedAt.toISOString(),

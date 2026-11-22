@@ -193,6 +193,20 @@ describe('mapping', () => {
     expect(o.shipByAt).toEqual(new Date(1795000000 * 1000));
     expect(o.shipAddress).toBe('12 Lê Lợi, Quận 1');
     expect(o.shipProvince).toBe('TP. Hồ Chí Minh');
+    const masked = toExternalOrder(
+      Order.parse(
+        order({
+          shipping_address: {
+            address: '******ường',
+            commune_name: 'Phường Gia Định',
+            province_name: 'TP. HCM',
+          },
+          bill_phone_number: '0****53',
+        }),
+      ),
+    );
+    expect(masked.shipAddress).toBe('******ường, Phường Gia Định, TP. HCM');
+    expect(masked.shipPhone).toBe('0****53');
     expect(o.feeDetail).toEqual({ commission_fee: 12000, service_fee: 3000 });
     expect(parseDeadline(1795000000000)).toEqual(new Date(1795000000000));
     expect(parseDeadline('garbage')).toBeUndefined();

@@ -27,6 +27,7 @@ interface OrderRow {
   trackingNo: string | null;
   shipByAt: string | null;
   shipAddress: string | null;
+  shipPhone: string | null;
   shipProvince: string | null;
   note: string | null;
   updatedAt: string;
@@ -129,11 +130,26 @@ function ChannelIcon({ channel }: { channel: OrderRow['channel'] }) {
   );
 }
 
-/** Order code: internal code as a label (PC + number), the marketplace order number as the main text. Click copies it. */
+/** "HDSPE_261121TUHU8PVC" → label "HDSPE" + "261121TUHU8PVC"; "PC1418" → "PC" + "1418". */
+const splitCode = (code: string) => {
+  const m = /^([A-Za-z]{2,6})_?(\d.*)$/.exec(code);
+  return m ? { prefix: m[1]!, rest: m[2]! } : { prefix: null, rest: code };
+};
+
+const Label = ({ children }: { children: string }) => (
+  <span className="rounded bg-slate-100 px-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+    {children}
+  </span>
+);
+
+/**
+ * Order code: the marketplace order number is the main text; the system's own code (PC… from Pancake,
+ * HDSPE_… invoice from KiotViet) sits below with its prefix as a label. Click copies the main code.
+ */
 function OrderCode({ o }: { o: OrderRow }) {
   const [copied, setCopied] = useState(false);
-  const main = o.externalCode ?? o.code;
-  const m = /^([A-Za-z_]+?)(\d+)$/.exec(o.code);
+  const own = splitCode(o.code);
+  const main = o.externalCode ?? own.rest;
   return (
     <div className="flex items-center gap-2">
       <ChannelIcon channel={o.channel} />
@@ -147,20 +163,15 @@ function OrderCode({ o }: { o: OrderRow }) {
               setTimeout(() => setCopied(false), 1500);
             });
           }}
-          className="font-mono text-xs font-medium hover:text-brand-600"
+          className="flex items-center gap-1 font-mono text-xs font-medium hover:text-brand-600"
         >
+          {!o.externalCode && own.prefix && <Label>{own.prefix}</Label>}
           {copied ? 'Đã sao chép ✓' : main}
         </button>
         {o.externalCode && (
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
-            {m ? (
-              <>
-                <span className="rounded bg-slate-100 px-1 font-semibold dark:bg-slate-800">{m[1]}</span>
-                {m[2]}
-              </>
-            ) : (
-              o.code
-            )}
+          <p className="mt-0.5 flex items-center gap-1 font-mono text-xs text-slate-500">
+            {own.prefix && <Label>{own.prefix}</Label>}
+            {own.rest}
           </p>
         )}
       </div>
@@ -238,7 +249,7 @@ const columns: Column<OrderRow>[] = [
     key: 'phone',
     header: 'SĐT',
     className: 'whitespace-nowrap tabular-nums',
-    render: (o) => o.customer?.phone ?? dash,
+    render: (o) => o.shipPhone ?? o.customer?.phone ?? dash,
   },
   {
     key: 'address',

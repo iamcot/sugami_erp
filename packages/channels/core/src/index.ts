@@ -72,6 +72,8 @@ export interface ExternalOrder {
   /** Ship-by / handover deadline set by the marketplace. */
   shipByAt?: Date;
   shipAddress?: string;
+  /** Recipient phone as the source shows it; may be masked. */
+  shipPhone?: string;
   shipProvince?: string;
   /** Platform fee breakdown by name, VND. */
   feeDetail?: Record<string, number>;

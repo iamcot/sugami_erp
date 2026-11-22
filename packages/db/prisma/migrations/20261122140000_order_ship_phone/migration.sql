@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD COLUMN `ship_phone` VARCHAR(32) NULL;

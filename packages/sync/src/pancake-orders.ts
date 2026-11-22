@@ -211,6 +211,7 @@ export async function syncPancakeOrders(
       trackingNo: o.trackingNo?.slice(0, 255) ?? null,
       shipByAt: o.shipByAt ?? null,
       shipAddress: o.shipAddress?.slice(0, 500) ?? null,
+      shipPhone: o.shipPhone?.slice(0, 32) ?? null,
       shipProvince: o.shipProvince?.slice(0, 128) ?? null,
       platformFee: big(o.platformFee ?? 0),
       feeDetail: o.feeDetail ?? Prisma.DbNull,
@@ -298,6 +299,7 @@ export async function syncPancakeOrders(
         patch.shipByAt = fields.shipByAt;
       if (fields.shipAddress && fields.shipAddress !== prev.shipAddress)
         patch.shipAddress = fields.shipAddress;
+      if (fields.shipPhone && fields.shipPhone !== prev.shipPhone) patch.shipPhone = fields.shipPhone;
       if (fields.shipProvince && fields.shipProvince !== prev.shipProvince)
         patch.shipProvince = fields.shipProvince;
       if (fields.platformFee > 0n && fields.platformFee !== prev.platformFee) {
@@ -355,6 +357,7 @@ export async function syncPancakeOrders(
       prev.trackingNo !== fields.trackingNo ||
       prev.shipByAt?.getTime() !== fields.shipByAt?.getTime() ||
       prev.shipAddress !== fields.shipAddress ||
+      prev.shipPhone !== fields.shipPhone ||
       prev.shipProvince !== fields.shipProvince ||
       prev.platformFee !== fields.platformFee;
     if (!changed) {
