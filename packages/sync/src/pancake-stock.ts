@@ -233,8 +233,9 @@ export async function reconcileWithPancake(
     db,
     refs.map((r) => r.variantId),
   );
+  // a variation with no stock record on Pancake counts as 0, so "Sugami 0 vs –" is not a difference
   const diffs = refs.filter(
-    (r) => (pancakeStock.get(r.variationId) ?? null) !== (sellable.get(r.variantId) ?? 0),
+    (r) => (pancakeStock.get(r.variationId) ?? 0) !== (sellable.get(r.variantId) ?? 0),
   );
   const out = {
     onPancake: refs.length,
