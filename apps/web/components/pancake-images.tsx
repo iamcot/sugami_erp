@@ -10,6 +10,7 @@ interface Result {
   listingSkus: number;
   matched: number;
   matchedByBarcode: number;
+  matchedByOrders: number;
   updated: number;
   keptExisting: number;
   unknownSkus: string[];

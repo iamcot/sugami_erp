@@ -1,5 +1,6 @@
 import type { ExternalOrder, ExternalProduct } from '@sugami/channels-core';
 import { toSearchKey } from '@sugami/shared';
+import { learnSkuMap, lineKey, loadSkuMap, pairLines } from './sku-map.js';
 import { applyMovements, type MovementInput, Prisma, type PrismaClient, withLedgerTx } from '@sugami/db';
 
 export const PANCAKE_ORDER_CURSOR = 'pancake:orders';
@@ -46,6 +47,8 @@ export interface OrderSyncSummary {
   unknownSkus: string[];
   /** Order lines with no SKU: the listing is not linked to a Pancake product, so no stock is deducted. */
   unlinkedLines: number;
+  /** Marketplace codes learned from orders that exist in KiotViet too (code → Sugami variant). */
+  skuMap: { learned: number; conflicts: number; ambiguous: number };
   newOrders: NewOrder[];
   /** Orders that failed; the cursor does not move while there are any. */
   errors: { code: string; message: string }[];
@@ -78,6 +81,7 @@ export async function syncPancakeOrders(
     customers: { created: 0, linked: 0 },
     unknownSkus: [],
     unlinkedLines: 0,
+    skuMap: { learned: 0, conflicts: 0, ambiguous: 0 },
     newOrders: [],
     errors: [],
   };
@@ -95,6 +99,32 @@ export async function syncPancakeOrders(
       });
   }
   if (!wanted.length) return summary;
+
+  // Lines Pancake could not link get their SKU from codes learned earlier (marketplace code → variant).
+  const lineKeys = [
+    ...new Set(
+      wanted.flatMap((o) =>
+        o.lines
+          .filter((l) => !l.sku)
+          .map((l) => lineKey(l.name))
+          .filter((k): k is string => !!k),
+      ),
+    ),
+  ];
+  const skuMap = await loadSkuMap(db, lineKeys);
+  if (skuMap.size) {
+    const mapped = await db.variant.findMany({
+      where: { id: { in: [...new Set(skuMap.values())] } },
+      select: { id: true, sku: true },
+    });
+    const skuById = new Map(mapped.map((v) => [v.id, v.sku]));
+    for (const o of wanted)
+      for (const l of o.lines) {
+        const k = !l.sku ? lineKey(l.name) : undefined;
+        const sku = k ? skuById.get(skuMap.get(k) ?? '') : undefined;
+        if (sku) l.sku = sku;
+      }
+  }
 
   const skus = [...new Set(wanted.flatMap((o) => o.lines.map((l) => l.sku)))];
   const variants = await findMany(skus, (chunk) =>
@@ -291,6 +321,21 @@ export async function syncPancakeOrders(
 
     // Order already known. One imported from KiotViet keeps KiotViet's data; only a cancellation is applied.
     const fromKiotViet = prev.kiotvietInvoiceCode !== null;
+    // The same order on both sides tells which Sugami variant a marketplace code stands for.
+    const unlinked = o.lines
+      .filter((l) => !l.externalVariantId)
+      .map((l) => ({ key: lineKey(l.name), quantity: l.quantity }))
+      .filter((l): l is { key: string; quantity: number } => !!l.key);
+    const knownLines = prev.lines
+      .filter((l) => l.variantId)
+      .map((l) => ({ variantId: l.variantId!, quantity: Number(l.qty) }));
+    if (unlinked.length && knownLines.length) {
+      const { pairs, ambiguous } = pairLines(unlinked, knownLines);
+      summary.skuMap.ambiguous += ambiguous;
+      const r = await learnSkuMap(db, pairs, skuMap, opts.dryRun);
+      summary.skuMap.learned += r.learned;
+      summary.skuMap.conflicts += r.conflicts;
+    }
     const cancelNow = o.status === 'cancelled' && prev.status !== 'cancelled';
     if (fromKiotViet) {
       // KiotViet's status and stock stay as they are; Pancake adds what KiotViet does not have.
@@ -432,6 +477,11 @@ function mergeSummaries(a: OrderSyncSummary, b: OrderSyncSummary): OrderSyncSumm
     },
     unknownSkus: [...new Set([...a.unknownSkus, ...b.unknownSkus])].sort(),
     unlinkedLines: a.unlinkedLines + b.unlinkedLines,
+    skuMap: {
+      learned: a.skuMap.learned + b.skuMap.learned,
+      conflicts: a.skuMap.conflicts + b.skuMap.conflicts,
+      ambiguous: a.skuMap.ambiguous + b.skuMap.ambiguous,
+    },
     newOrders: [...a.newOrders, ...b.newOrders].slice(0, NEW_ORDERS_KEPT),
     errors: [...a.errors, ...b.errors],
   };

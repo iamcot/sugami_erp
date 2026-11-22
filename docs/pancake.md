@@ -90,3 +90,9 @@ pnpm pancake:probe
 - Pancake giữ các tin đăng Shopee/TikTok (`GET /marketplace/products`): mỗi tin có `variations[]` với `sku`, `images`, `price`, `quantity`.
 - Tab "Đơn từ Pancake" → "Ảnh sản phẩm từ sàn": nối ảnh vào biến thể theo SKU người bán (= mã hàng KiotViet). Ưu tiên shop Việt Nam (bỏ qua hậu tố PH/MY khi trùng SKU). Mặc định chỉ điền cho biến thể chưa có ảnh; tick "Thay cả ảnh đã có" để ghi đè ảnh từ file KiotViet.
 - Bước 2: nút "Lưu ảnh về kho (S3)" (`POST /api/media/mirror-variant-images`) tải ảnh từ URL gốc (chỉ https, host công khai, tối đa 20 MB, tối đa 6 ảnh/biến thể) vào lớp `storage` (S3, prefix `sugami/`), tạo `media_assets` + `product_media`. Cùng một file dùng cho nhiều biến thể chỉ lưu một lần (SHA-256). Làm theo lô 40 biến thể, chạy lại an toàn; biến thể đã có ảnh trong kho thì bỏ qua. Giao diện ưu tiên ảnh trong kho, chưa có thì dùng URL gốc.
+
+## Mã sàn ↔ mã Sugami (học từ đơn)
+
+- Dòng đơn Pancake chưa liên kết sản phẩm chỉ có tên bắt đầu bằng mã của sàn (`207086204498 - …`). Khi cùng một đơn có ở KiotViet (dòng đã biết mã hàng) và ở Pancake, Sugami ghép hai phía: một dòng mỗi bên thì chắc chắn; nhiều dòng thì chỉ ghép khi số lượng là duy nhất, còn lại tính là "chưa chắc".
+- Lưu ở `external_refs` (provider `pancake_sku`, entity `variant`). Đơn mới có mã đó được gán đúng mã hàng (trừ tồn đúng SKU); ảnh sản phẩm từ tin đăng cũng dùng bảng này.
+- Mã đã map sang biến thể khác thì giữ mã đầu tiên và tính là "mâu thuẫn".

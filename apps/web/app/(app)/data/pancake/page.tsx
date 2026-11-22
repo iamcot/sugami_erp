@@ -20,6 +20,7 @@ interface Summary {
   stock: { applied: number; beforeSnapshot: number; reversed: number };
   unknownSkus: string[];
   unlinkedLines: number;
+  skuMap: { learned: number; conflicts: number; ambiguous: number };
   newOrders: { code: string; channel: string; total: number }[];
   errors: { code: string; message: string }[];
 }
@@ -198,6 +199,11 @@ export default function PancakePage() {
               label="Dòng hàng chưa liên kết"
               value={fmt(res.unlinkedLines)}
               hint="Tin đăng chưa nối sản phẩm Pancake, không trừ tồn"
+            />
+            <Stat
+              label="Mã sàn ↔ mã Sugami"
+              value={`${fmt(res.skuMap.learned)} mới`}
+              hint={`học từ đơn có ở cả KiotViet và Pancake · ${fmt(res.skuMap.ambiguous)} dòng chưa chắc · ${fmt(res.skuMap.conflicts)} mâu thuẫn`}
             />
           </div>
           {res.newOrders.length > 0 && (

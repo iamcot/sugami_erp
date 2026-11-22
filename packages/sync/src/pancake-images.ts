@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@sugami/db';
+import { loadSkuMap } from './sku-map.js';
 
 export interface ListingImageSource {
   /** SKU → image URLs from marketplace listings. */
@@ -13,6 +14,8 @@ export interface ImageSyncSummary {
   matched: number;
   /** Of those, matched by barcode instead of the SKU. */
   matchedByBarcode: number;
+  /** Matched through a code learned from orders. */
+  matchedByOrders: number;
   /** Matched variants that got images (they had none). */
   updated: number;
   /** Matched variants that already had images and were left alone (unless `replace`). */
@@ -36,6 +39,7 @@ export async function syncListingImages(
     listingSkus: skus.length,
     matched: 0,
     matchedByBarcode: 0,
+    matchedByOrders: 0,
     updated: 0,
     keptExisting: 0,
     unknownSkus: [],
@@ -43,7 +47,29 @@ export async function syncListingImages(
   const known = new Set<string>();
   for (let i = 0; i < skus.length; i += 400) {
     const chunk = skus.slice(i, i + 400);
-    // The seller SKU on the marketplace is either the KiotViet code or the barcode.
+    // The seller SKU on the marketplace is the KiotViet code, the barcode, or a code learned from orders.
+    const learned = await loadSkuMap(db, chunk);
+    for (const [key, variantId] of learned) {
+      const v = await db.variant.findUnique({
+        where: { id: variantId },
+        select: { id: true, sku: true, barcode: true, imageUrls: true },
+      });
+      if (!v || source.bySku.has(v.sku)) continue;
+      known.add(key);
+      summary.matched++;
+      summary.matchedByOrders++;
+      const has = Array.isArray(v.imageUrls) && v.imageUrls.length > 0;
+      if (has && !opts.replace) {
+        summary.keptExisting++;
+        continue;
+      }
+      summary.updated++;
+      if (!opts.dryRun)
+        await db.variant.update({
+          where: { id: v.id },
+          data: { imageUrls: source.bySku.get(key)!.images.slice(0, 9) as Prisma.InputJsonValue },
+        });
+    }
     const variants = await db.variant.findMany({
       where: { OR: [{ sku: { in: chunk } }, { barcode: { in: chunk } }] },
       select: { id: true, sku: true, barcode: true, imageUrls: true },
