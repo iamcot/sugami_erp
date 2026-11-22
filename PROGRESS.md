@@ -70,7 +70,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-08 danh sách sản phẩm/đơn hàng trên dữ liệu thật, chi tiết sản phẩm có lịch sử, bảng dữ liệu dùng chung | 5e7493e |
 | 2026-11-22 | P1-18/P1-20 API tồn kho theo SKU × kho và API tổng quan (chưa có giao diện) | 83dc4cc |
 | 2026-11-22 | P1-18/P1-20 trang Tồn kho và Tổng quan với số liệu thật | 8ee9509 |
-| 2026-11-22 | P1-23 PWA + thông báo đẩy; thiết kế chịu máy tắt (docs/03 mục 3.8) | (commit này) |
+| 2026-11-22 | P1-23 PWA + thông báo đẩy; thiết kế chịu máy tắt (docs/03 mục 3.8) | 7beb1dd |
 | 2026-11-22 | P4-P1 nối Pancake POS (chỉ đọc): client, ánh xạ sản phẩm/đơn, webhook vào `webhook_events`, `probe` | 43fbac4 |
 
 ## P0 — Chuẩn bị & xác minh
@@ -117,7 +117,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-20 | Dashboard cơ bản | ✅ | 8ee9509 | Doanh thu hôm nay/7 ngày, lãi gộp 30 ngày, giá trị tồn, việc cần làm |
 | P1-21 | Báo cáo sức khỏe dữ liệu: SKU trùng/thiếu, thiếu ảnh, tồn âm | ⬜ | | |
 | P1-22 | Deploy production lên iMac, dùng thật 1 tuần | 👤 ⬜ | | |
-| P1-23 | PWA cài lên điện thoại + thông báo đẩy (đăng ký thiết bị, API gửi, nút bật/tắt) | ✅ | (commit này) | Chủ shop yêu cầu 2026-11-22; thông báo thật thêm ở P4-P2, P1-17 |
+| P1-23 | PWA cài lên điện thoại + thông báo đẩy (đăng ký thiết bị, API gửi, nút bật/tắt) | ✅ | 7beb1dd | Chủ shop yêu cầu 2026-11-22; thông báo thật thêm ở P4-P2, P1-17 |
 
 ## P2 — Nguồn hàng Taobao/1688 + kho
 
