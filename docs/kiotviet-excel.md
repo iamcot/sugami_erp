@@ -83,9 +83,13 @@ Phí ship/thuế từ trung gian đã phân bổ vào giá vốn ở Sugami → 
 
 Sheet `StockTakeTemplate`, 2 cột: `Mã hàng` (chuỗi), `Số lượng` (số nguyên, định dạng `#,##0`). `Số lượng` là **tồn thực tế sau kiểm**, không phải số chênh lệch: KiotViet tự tính chênh lệch và cân bằng kho. Sugami xuất tồn hiện tại theo sổ kho cho các mã cần chỉnh.
 
-## Sản phẩm mới
+## 7. Mẫu import hàng hóa — `MauFileSanPham.xlsx` (P1-13, sản phẩm mới Sugami → KiotViet)
 
-Shop không dùng mẫu import hàng hóa của KiotViet: hàng vào KiotViet qua phiếu nhập (mục 5). Phiếu nhập chỉ nhận mã đã có trên KiotViet, nên khi xuất phiếu Sugami liệt kê các mã chưa từng có trong file danh sách hàng hóa KiotViet gần nhất, để tạo tay trên KiotViet trước.
+Sheet `ProductTemplate`, 26 cột, **cùng tên và thứ tự với file danh sách hàng hóa** (mục 1) nhưng bỏ `KH đặt`, `Dự kiến hết hàng`, `Thời gian tạo`:
+
+`Loại hàng`, `Nhóm hàng(3 Cấp)`, `Mã hàng`, `Mã vạch`, `Tên hàng`, `Tên hàng trên hóa đơn điện tử`, `Thương hiệu`, `Giá bán`, `Giá vốn`, `Tồn kho`, `Tồn nhỏ nhất`, `Tồn lớn nhất`, `ĐVT`, `Mã ĐVT Cơ bản`, `Quy đổi`, `Thuộc tính`, `Mã HH Liên quan`, `Hình ảnh (url1,url2...)`, `Trọng lượng`, `Tích điểm`, `Đang kinh doanh`, `Được bán trực tiếp`, `Mô tả`, `Mẫu ghi chú`, `Vị trí`, `Hàng thành phần`.
+
+Sugami xuất các mã mới chưa có trên KiotViet: `Loại hàng` = `Hàng hóa`, `Tồn kho` = 0 (tồn vào KiotViet qua phiếu nhập), `Quy đổi` = 1, `Đang kinh doanh` = 1, `Được bán trực tiếp` = 1, `Thuộc tính` dạng `Tên:Giá trị|…`, `Mã HH Liên quan` = mã cha. Mẫu có ví dụ `Vị trí` ngăn bằng `|`.
 
 ## Còn thiếu
 

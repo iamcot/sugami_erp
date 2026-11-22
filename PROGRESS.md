@@ -10,7 +10,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
-| P0 — Chuẩn bị & xác minh | 5/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
+| P0 — Chuẩn bị & xác minh | 6/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
 | P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 5/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
@@ -33,7 +33,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Quyết định đã chốt
 
-- 2026-11-22: Không dùng mẫu import hàng hóa KiotViet. Hàng vào KiotViet qua phiếu nhập; mã mới phải tạo tay trên KiotViet trước, Sugami cảnh báo khi xuất phiếu có mã KiotViet chưa có.
+- 2026-11-22: Hàng vào KiotViet qua phiếu nhập; mã mới tạo trên KiotViet bằng file mẫu import hàng hóa do Sugami xuất (`MauFileSanPham`), import trước phiếu nhập.
 - 2026-11-22: Mã hàng KiotViet là SKU, giữ nguyên; biến thể gom theo `Mã HH Liên quan` (D10). Shop có 1.029 mã hàng (nhiều hơn ước tính ban đầu).
 - 2026-11-22: Chạy trên KiotViet trước, dài hạn thay KiotViet; Sugami tự giữ sổ kho từ đầu.
 - 2026-11-22: Server là iMac của shop, Docker Compose, Cloudflare Tunnel. Tên miền **sugami.vn**: `erp.sugami.vn` (giao diện), `hooks.sugami.vn` (webhook).
@@ -70,7 +70,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P0-02 | Docker Compose dev | ✅ | 726704e | |
 | P0-03 | CI GitHub Actions: lint, typecheck, test, build trên mỗi PR | ✅ | 2a53d81 | |
 | P0-04 | Prisma schema khung (user, role, audit_log) + migration đầu + seed | ✅ | 2c78005 | |
-| P0-05 | Xuất file Excel mẫu từ KiotViet (hàng hóa + tồn, hóa đơn, phiếu nhập, NCC, mẫu import) | 👤 ✅ | | Đủ file (22/11); shop đưa hàng vào KiotViet bằng phiếu nhập, không dùng mẫu import hàng hóa |
+| P0-05 | Xuất file Excel mẫu từ KiotViet (hàng hóa + tồn, hóa đơn, phiếu nhập, NCC, mẫu import) | 👤 ✅ | | Đủ file (22/11): danh sách hàng hóa, hóa đơn, phiếu nhập, NCC, mẫu nhập hàng, kiểm kho, hàng hóa |
 | P0-06 | Script probe KiotViet Public API | ⏸ | e3c0d6e | Tạm ngưng: gói hiện tại không có API |
 | P0-07 | Phân tích file Excel KiotViet (`docs/kiotviet-excel.md`) | ✅ | 117ab2d | |
 | P0-08 | Đăng ký app Shopee Open Platform và TikTok Shop Partner Center | 👤 ⬜ | | |
