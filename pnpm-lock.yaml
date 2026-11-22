@@ -289,6 +289,9 @@ importers:
       '@sugami/db':
         specifier: workspace:*
         version: link:../db
+      '@sugami/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       '@sugami/channels-pancake':
         specifier: workspace:*

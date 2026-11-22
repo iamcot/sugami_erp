@@ -17,6 +17,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
     code: `PCT${run}${n}`,
     marketplaceCode: `SN${run}${n}`,
     saleChannel: 'shopee',
+    customer: { name: `Buyer${run}` },
     status: 'confirmed',
     currency: 'VND',
     orderedAt: new Date(Date.now() - 60_000),
@@ -62,6 +63,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
   afterAll(async () => {
     if (db) {
       await db.order.deleteMany({ where: { code: { startsWith: `PCT${run}` } } });
+      await db.customer.deleteMany({ where: { externalKey: `shopee:buyer${run.toLowerCase()}` } });
       await db.order.deleteMany({ where: { externalCode: { startsWith: `SN${run}` } } });
       await db.stockMovement.deleteMany({ where: { warehouseId } });
       await db.stockLevel.deleteMany({ where: { warehouseId } });
@@ -88,6 +90,12 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
     expect(o).toMatchObject({ source: 'pancake', externalCode: `SN${run}1`, channel: { code: 'shopee' } });
     expect(o.lines[0]).toMatchObject({ sku, variantId });
     expect(Number(o.total)).toBe(300000);
+    const buyer = await db.customer.findUniqueOrThrow({
+      where: { externalKey: `shopee:buyer${run.toLowerCase()}` },
+    });
+    expect(buyer.name).toBe(`Buyer${run}`);
+    expect(o.customerId).toBe(buyer.id);
+    expect(real.customers).toEqual({ created: 1, linked: 1 });
   });
 
   it('is idempotent and gives stock back when the order is cancelled', async () => {

@@ -152,7 +152,7 @@ describe('mapping', () => {
     expect(p!.modifiedAt?.toISOString()).toBe('2026-11-20T03:00:00.123Z');
   });
 
-  it('maps an order: channel, marketplace code, status, discounts; no customer data', () => {
+  it('maps an order: channel, marketplace code, status, discounts, buyer name and phone only', () => {
     const o = toExternalOrder(Order.parse(order()));
     expect(o).toMatchObject({
       externalId: '1418',
@@ -168,7 +168,12 @@ describe('mapping', () => {
       { externalVariantId: 'v-1', sku: 'SP000001', name: 'Xe đua mini - Đỏ', quantity: 2, unitPrice: 140000 },
       { externalVariantId: 'v-2', sku: 'SP000002', name: 'Búp bê', quantity: 1, unitPrice: 90000 },
     ]);
-    expect(JSON.stringify(o)).not.toContain('0900000000');
+    expect(o.customer).toEqual({ name: 'Không được đọc', phone: '0900000000' });
+    expect(JSON.stringify(o)).not.toContain('Hà Nội');
+    expect(
+      toExternalOrder(Order.parse(order({ bill_full_name: 'T******u', bill_phone_number: '0****53' })))
+        .customer,
+    ).toBeUndefined();
   });
 
   it('labels unknown marketplaces and rejects unknown statuses', () => {

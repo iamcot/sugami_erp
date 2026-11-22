@@ -62,6 +62,8 @@ export interface ExternalOrder {
   currency?: string;
   orderedAt: Date;
   total: number;
+  /** Buyer as the source system shows it (Shopee shows the buyer's nickname). */
+  customer?: { name: string; phone?: string };
   shippingFee?: number;
   platformFee?: number;
   lines: ExternalOrderLine[];

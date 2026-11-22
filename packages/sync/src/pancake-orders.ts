@@ -1,4 +1,5 @@
 import type { ExternalOrder, ExternalProduct } from '@sugami/channels-core';
+import { toSearchKey } from '@sugami/shared';
 import { applyMovements, type MovementInput, Prisma, type PrismaClient, withLedgerTx } from '@sugami/db';
 
 export const PANCAKE_ORDER_CURSOR = 'pancake:orders';
@@ -36,6 +37,8 @@ export interface OrderSyncSummary {
   /** Orders that KiotViet already imported: Pancake only cancels them, nothing else changes. */
   keptFromKiotViet: number;
   stock: { applied: number; beforeSnapshot: number; reversed: number };
+  /** Customers created from order buyers (nickname) and orders attached to a customer. */
+  customers: { created: number; linked: number };
   unknownSkus: string[];
   newOrders: NewOrder[];
   /** Orders that failed; the cursor does not move while there are any. */
@@ -65,6 +68,7 @@ export async function syncPancakeOrders(
     unchanged: 0,
     keptFromKiotViet: 0,
     stock: { applied: 0, beforeSnapshot: 0, reversed: 0 },
+    customers: { created: 0, linked: 0 },
     unknownSkus: [],
     newOrders: [],
     errors: [],
@@ -133,6 +137,50 @@ export async function syncPancakeOrders(
   };
   const unknown = new Set<string>();
 
+  // Buyers: customers are keyed by sales channel + nickname ("shopee:candy532").
+  const keyOf = (o: ExternalOrder) =>
+    o.customer ? `${o.saleChannel}:${o.customer.name.toLowerCase()}`.slice(0, 191) : null;
+  const keys = [...new Set(wanted.map(keyOf).filter((k): k is string => !!k))];
+  const customerByKey = new Map<string, string>(
+    (
+      await findMany(keys, (chunk) =>
+        db.customer.findMany({
+          where: { externalKey: { in: chunk } },
+          select: { id: true, externalKey: true },
+        }),
+      )
+    ).map((c) => [c.externalKey!, c.id]),
+  );
+  /** Customer id for the order's buyer, created if new (a placeholder id in a preview). */
+  const customerId = async (o: ExternalOrder): Promise<string | null> => {
+    const key = keyOf(o);
+    if (!key || !o.customer) return null;
+    let id = customerByKey.get(key);
+    if (!id) {
+      summary.customers.created++;
+      id = opts.dryRun
+        ? `dry:${key}`
+        : (
+            await db.customer.create({
+              data: {
+                externalKey: key,
+                name: o.customer.name.slice(0, 191),
+                searchKey: toSearchKey([o.customer.name, o.customer.phone].filter(Boolean).join(' ')).slice(
+                  0,
+                  400,
+                ),
+                phone: o.customer.phone?.slice(0, 32) ?? null,
+                tags: [CHANNELS[o.saleChannel!]?.name ?? o.saleChannel!],
+                kvCreatedAt: null,
+              },
+            })
+          ).id;
+      customerByKey.set(key, id);
+    }
+    summary.customers.linked++;
+    return id;
+  };
+
   const handle = async (o: ExternalOrder): Promise<void> => {
     for (const l of o.lines) if (!variantBySku.has(l.sku)) unknown.add(l.sku);
     const prev =
@@ -166,12 +214,14 @@ export async function syncPancakeOrders(
       });
       if (opts.dryRun) return;
       const chId = await channelId(o.saleChannel!);
+      const buyerId = await customerId(o);
       await withLedgerTx(db, async (tx) => {
         const order = await tx.order.create({
           data: {
             code: o.code,
             channelId: chId,
             externalCode: o.marketplaceCode ?? null,
+            customerId: buyerId,
             warehouseId: opts.warehouseId,
             orderedAt: o.orderedAt,
             source: 'pancake',
@@ -218,6 +268,12 @@ export async function syncPancakeOrders(
     if (fromKiotViet && !cancelNow) {
       summary.keptFromKiotViet++;
       return;
+    }
+    // A Pancake order without a customer yet gets its buyer.
+    if (!fromKiotViet && prev.customerId === null && o.customer) {
+      const buyerId = await customerId(o);
+      if (buyerId && !opts.dryRun)
+        await db.order.update({ where: { id: prev.id }, data: { customerId: buyerId } });
     }
     const changed =
       prev.status !== fields.status || prev.total !== fields.total || prev.shippingFee !== fields.shippingFee;

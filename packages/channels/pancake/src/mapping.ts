@@ -107,7 +107,15 @@ const unitPrice = (item: Order['items'][number]) => {
   return Math.max(0, Math.round(item.is_discount_percent ? price * (1 - d / 100) : price - d));
 };
 
-/** Pancake order → channel-neutral order. No customer data is copied. */
+/** Buyer name/phone of an order; empty or masked names ("T******u") cannot identify a buyer and are dropped. */
+export function buyerOf(o: Order): { name: string; phone?: string } | undefined {
+  const name = o.bill_full_name?.trim();
+  if (!name || name.includes('*')) return undefined;
+  const phone = o.bill_phone_number?.replace(/[\s.()-]/g, '');
+  return { name, ...(phone && !phone.includes('*') && phone.length >= 6 ? { phone } : {}) };
+}
+
+/** Pancake order → channel-neutral order. Only the buyer's name and phone are copied, no address. */
 export function toExternalOrder(o: Order): ExternalOrder {
   const status = ORDER_STATUS[o.status];
   if (!status) throw new Error(`Unknown Pancake order status ${o.status} on order ${o.id}`);
@@ -118,6 +126,7 @@ export function toExternalOrder(o: Order): ExternalOrder {
     saleChannel: channelOfOrder(o),
     status,
     currency: o.order_currency ?? undefined,
+    customer: buyerOf(o),
     orderedAt: parsePancakeTime(o.inserted_at),
     total: o.total_price ?? 0,
     shippingFee: o.shipping_fee ?? undefined,

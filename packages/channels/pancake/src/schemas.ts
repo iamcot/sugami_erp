@@ -1,7 +1,7 @@
 /**
  * Lenient zod schemas for the Pancake fields Sugami reads. Unknown fields pass through, missing
  * optional fields are fine: the docs show only part of each object (Order has 119 attributes).
- * Customer details (names, phones, addresses) are deliberately not read.
+ * The buyer name and phone are read only for customer records (Shopee shows the buyer's nickname).
  */
 import { z } from 'zod';
 
@@ -62,6 +62,8 @@ export const Order = z.looseObject({
   shipping_fee: int,
   fee_marketplace: int,
   order_currency: str,
+  bill_full_name: str,
+  bill_phone_number: str,
   items: z.array(OrderItem).default([]),
   invoice_info_list: z.array(z.looseObject({ order_sn: str })).nullish(),
   partner: z.looseObject({ extend_code: str, partner_name: str, partner_status: str }).nullish(),

@@ -560,6 +560,8 @@ model Channel {
 model Customer {
   id             String    @id @default(uuid(7)) @db.Char(36)
   kiotvietCode   String?   @unique @map("kiotviet_code") @db.VarChar(64)
+  /// Marketplace buyer key for customers created from orders, e.g. "shopee:candy532" (lowercase nickname).
+  externalKey    String?   @unique @map("external_key") @db.VarChar(191)
   name           String?   @db.VarChar(191)
   /// Lowercase, accent-free name + phone + code, for search.
   searchKey      String?   @map("search_key") @db.VarChar(400)

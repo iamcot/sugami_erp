@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "@sugami/channels-core": "workspace:*",
-    "@sugami/db": "workspace:*"
+    "@sugami/db": "workspace:*",
+    "@sugami/shared": "workspace:*"
   },
   "devDependencies": {
     "@sugami/channels-pancake": "workspace:*",
