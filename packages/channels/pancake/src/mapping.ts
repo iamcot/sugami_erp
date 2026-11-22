@@ -175,13 +175,18 @@ export function feeDetailOf(o: Order): Record<string, number> | undefined {
  * the option shown apart ("Xanh đen đậm"); that option text is appended so the variant is not lost.
  */
 export function lineName(i: {
-  variation_info?: { name?: string | null; fields?: { value?: string | number | null }[] | null } | null;
+  variation_info?: {
+    name?: string | null;
+    detail?: string | null;
+    fields?: { value?: string | number | null }[] | null;
+  } | null;
 }): string {
   const base = (i.variation_info?.name ?? '').trim();
-  const option = (i.variation_info?.fields ?? [])
+  const fromFields = (i.variation_info?.fields ?? [])
     .map((f) => String(f.value ?? '').trim())
     .filter(Boolean)
     .join(' / ');
+  const option = fromFields || (i.variation_info?.detail ?? '').trim();
   if (!option || base.toLowerCase().includes(option.toLowerCase())) return base;
   return `${base.slice(0, 200)} - ${option}`;
 }

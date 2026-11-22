@@ -52,6 +52,8 @@ export const OrderItem = z.looseObject({
       fields: z
         .array(z.looseObject({ name: str, value: z.union([z.string(), z.number()]).nullish() }))
         .nullish(),
+      /** Option text of quick-added (unlinked) lines, e.g. "Xanh đen đậm"; fields is null there. */
+      detail: str,
     })
     .nullish(),
 });

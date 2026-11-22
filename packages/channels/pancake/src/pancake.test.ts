@@ -395,6 +395,12 @@ describe('lineName', () => {
       }),
     ).toBe('176 - Bình nước Eco Bottle - Xanh đen đậm');
   });
+  it('uses detail for quick-added lines whose fields are null', async () => {
+    const { lineName } = await import('./mapping.js');
+    expect(
+      lineName({ variation_info: { name: '176 - Bình nước', detail: 'Xanh đen đậm', fields: null } }),
+    ).toBe('176 - Bình nước - Xanh đen đậm');
+  });
   it('leaves the name alone when it already has the option or there is none', async () => {
     const { lineName } = await import('./mapping.js');
     expect(lineName({ variation_info: { name: 'Bình - Xanh', fields: [{ value: 'xanh' }] } })).toBe(
