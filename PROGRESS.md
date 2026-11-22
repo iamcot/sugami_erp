@@ -10,7 +10,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
-| P0 — Chuẩn bị & xác minh | 4/13 | Khung dự án xong; chờ thông tin KiotViet và iMac |
+| P0 — Chuẩn bị & xác minh | 4/13 | Khung dự án xong; P0-06 chờ chạy probe trên iMac |
 | P1 — Nền tảng + catalog + kết nối KiotViet | 0/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
@@ -24,7 +24,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Bị chặn / chờ chủ shop
 
-- P0-05: cần client_id/client_secret/tên gian hàng KiotViet (gửi riêng, không dán vào chat công khai hay commit).
+- P0-05/P0-06: điền client_id/client_secret/tên gian hàng KiotViet vào `.env` trên iMac, chạy `pnpm kiotviet:probe`, gửi file `kiotviet-probe-report.json` (hướng dẫn: docs/ops/dev-setup.md mục 5).
 - P0-08: đăng ký app Shopee Open Platform và TikTok Shop Partner Center.
 - P0-11: cài Docker trên iMac.
 - P3-01: tạo IAM user/access key chỉ có quyền trên bucket (prefix `sugami/`), điền vào `.env` trên iMac; cho biết region và có CloudFront không.
@@ -49,6 +49,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P0-02 Docker Compose (Redis; MySQL native), bỏ MinIO, docs/ops/dev-setup.md | 726704e |
 | 2026-11-22 | P0-04 Prisma 7 + MySQL: users/roles/audit_logs, collation 0900_ai_ci, seed | 2c78005 |
 | 2026-11-22 | P0-03 CI GitHub Actions (MySQL + Redis services) | 2a53d81 |
+| 2026-11-22 | Ảnh lưu trên AWS S3 có sẵn của shop | 3d62b98 |
+| 2026-11-22 | P0-06 client KiotViet + script probe chỉ đọc (chưa chạy với store thật) | e3c0d6e |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -59,7 +61,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P0-03 | CI GitHub Actions: lint, typecheck, test, build trên mỗi PR | ✅ | 2a53d81 | |
 | P0-04 | Prisma schema khung (user, role, audit_log) + migration đầu + seed | ✅ | 2c78005 | |
 | P0-05 | Cung cấp client_id/client_secret/tên gian hàng KiotViet | 👤 ⬜ | | |
-| P0-06 | Script `scripts/kiotviet-probe.ts` | ⬜ | | |
+| P0-06 | Script `scripts/kiotviet-probe.ts` | 🟡 | e3c0d6e | Script xong, chờ chạy trên iMac với thông tin KiotViet |
 | P0-07 | Báo cáo xác minh KiotViet `docs/kiotviet-verification.md` | ⬜ | | |
 | P0-08 | Đăng ký app Shopee Open Platform và TikTok Shop Partner Center | 👤 ⬜ | | |
 | P0-09 | Rà soát SKU | ⬜ | | |
