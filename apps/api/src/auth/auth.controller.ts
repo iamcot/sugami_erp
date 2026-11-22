@@ -1,6 +1,7 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { parseInput } from '../common/validation.js';
 import { AuthService } from './auth.service.js';
 import { type AuthUser, SESSION_COOKIE } from './auth.types.js';
 import { CurrentUser, Public } from './decorators.js';
@@ -10,12 +11,6 @@ const ChangePasswordBody = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(8, 'Mật khẩu mới tối thiểu 8 ký tự'),
 });
-
-function parse<T>(schema: z.ZodType<T>, body: unknown): T {
-  const r = schema.safeParse(body);
-  if (!r.success) throw new BadRequestException(r.error.issues.map((i) => i.message).join('; '));
-  return r.data;
-}
 
 const cookieOptions = (expires?: Date) => ({
   httpOnly: true,
@@ -33,7 +28,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   async login(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const { email, password } = parse(LoginBody, body);
+    const { email, password } = parseInput(LoginBody, body);
     const { token, expiresAt } = await this.auth.login(email, password, {
       userAgent: req.headers['user-agent'],
       ip: req.ip,
@@ -58,7 +53,7 @@ export class AuthController {
   @Post('change-password')
   @HttpCode(204)
   async changePassword(@CurrentUser() user: AuthUser, @Body() body: unknown) {
-    const { currentPassword, newPassword } = parse(ChangePasswordBody, body);
+    const { currentPassword, newPassword } = parseInput(ChangePasswordBody, body);
     await this.auth.changePassword(user, currentPassword, newPassword);
   }
 }

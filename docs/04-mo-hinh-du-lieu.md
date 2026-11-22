@@ -127,6 +127,15 @@ audit_log           (id, user_id, action, entity_type, entity_id, diff jsonb, at
 user / role / permission / user_warehouse
 ```
 
+### Nhật ký thay đổi (audit_log)
+
+- Ghi tự động qua Prisma extension `withAudit` (`packages/db/src/audit.ts`) cho `product`, `variant`, `category`, `brand`, `warehouse`: tạo, sửa, xóa (kể cả `updateMany`/`deleteMany`).
+- `diff` chỉ chứa trường thay đổi dạng `{ field: { from, to } }`; bỏ `created_at`, `updated_at`, `search_key`, `cost_avg` (giá vốn do sổ kho tính, lịch sử nằm ở `stock_movement`). Sửa mà không đổi gì thì không ghi.
+- Người sửa lấy từ phiên đăng nhập (interceptor API → `runAsActor`).
+- Tồn kho không ghi vào `audit_log`: `stock_movement` là lịch sử tồn.
+- Bản ghi tạo lồng (nested create) chỉ ghi dòng cha. Audit ghi ngay sau khi lệnh thành công, ngoài transaction bao quanh, nên không sửa các bảng trên trong transaction dài.
+- Xem lịch sử một sản phẩm: `GET /api/products/:id/history` (gộp thay đổi của sản phẩm, biến thể và biến động kho).
+
 ## 4.7 Quan hệ chính
 
 - `product 1–n variant`; `variant` là đơn vị của kho, giá, đơn hàng, listing.

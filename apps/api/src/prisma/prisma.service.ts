@@ -1,12 +1,13 @@
 import { Injectable, type OnModuleDestroy } from '@nestjs/common';
-import { createPrismaClient, type PrismaClient } from '@sugami/db';
+import { createPrismaClient, type PrismaClient, withAudit } from '@sugami/db';
 
-/** One shared Prisma client for the API process. */
+/** One shared Prisma client for the API process; writes to audited models land in audit_logs. */
 @Injectable()
 export class PrismaService implements OnModuleDestroy {
-  readonly client: PrismaClient = createPrismaClient();
+  private readonly base: PrismaClient = createPrismaClient();
+  readonly client: PrismaClient = withAudit(this.base);
 
   async onModuleDestroy(): Promise<void> {
-    await this.client.$disconnect();
+    await this.base.$disconnect();
   }
 }
