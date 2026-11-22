@@ -53,7 +53,9 @@ export class InventoryController {
     const q = parseInput(ListQuery, rawQuery);
     const conds: Prisma.Sql[] = [Prisma.sql`p.status <> 'archived'`];
     if (q.q) {
-      conds.push(Prisma.sql`(p.search_key LIKE ${`%${toSearchKey(q.q)}%`} OR v.sku LIKE ${`%${q.q}%`} OR v.barcode = ${q.q})`);
+      conds.push(
+        Prisma.sql`(p.search_key LIKE ${`%${toSearchKey(q.q)}%`} OR v.sku LIKE ${`%${q.q}%`} OR v.barcode = ${q.q})`,
+      );
     }
     const select = (having: Prisma.Sql) => Prisma.sql`
       SELECT v.id, v.sku, v.option_values, v.min_stock, v.cost_avg, p.code AS product_code, p.name AS product_name,
@@ -69,16 +71,25 @@ export class InventoryController {
     const dir = q.dir === 'desc' ? Prisma.sql`DESC` : Prisma.sql`ASC`;
     const db = this.prisma.client;
     const [rows, totals, viewCount, warehouses] = await Promise.all([
-      db.$queryRaw<Row[]>`${base} ORDER BY ${SORT[q.sort]} ${dir}, v.sku ASC LIMIT ${q.pageSize} OFFSET ${(q.page - 1) * q.pageSize}`,
+      db.$queryRaw<
+        Row[]
+      >`${base} ORDER BY ${SORT[q.sort]} ${dir}, v.sku ASC LIMIT ${q.pageSize} OFFSET ${(q.page - 1) * q.pageSize}`,
       db.$queryRaw<Record<string, unknown>[]>`
         SELECT COUNT(*) AS skus, COALESCE(SUM(GREATEST(on_hand, 0)), 0) AS units, COALESCE(SUM(stock_value), 0) AS value,
                COALESCE(SUM(on_hand < 0), 0) AS negative, COALESCE(SUM(on_hand <= 0), 0) AS \`out\`
         FROM (${select(Prisma.empty)}) t`,
       db.$queryRaw<{ n: unknown }[]>`SELECT COUNT(*) AS n FROM (${base}) t`,
-      db.warehouse.findMany({ where: { isActive: true }, orderBy: { code: 'asc' }, select: { id: true, code: true, name: true } }),
+      db.warehouse.findMany({
+        where: { isActive: true },
+        orderBy: { code: 'asc' },
+        select: { id: true, code: true, name: true },
+      }),
     ]);
     const levels = rows.length
-      ? await db.stockLevel.findMany({ where: { variantId: { in: rows.map((r) => r.id) } }, select: { variantId: true, warehouseId: true, onHand: true } })
+      ? await db.stockLevel.findMany({
+          where: { variantId: { in: rows.map((r) => r.id) } },
+          select: { variantId: true, warehouseId: true, onHand: true },
+        })
       : [];
     const byVariant = new Map<string, Record<string, number>>();
     const whCode = new Map(warehouses.map((w) => [w.id, w.code]));
@@ -103,7 +114,13 @@ export class InventoryController {
         byWarehouse: byVariant.get(r.id) ?? {},
       })),
       total: n(viewCount[0]?.n),
-      totals: { skus: n(t.skus), units: n(t.units), value: n(t.value), negative: n(t.negative), out: n(t.out) },
+      totals: {
+        skus: n(t.skus),
+        units: n(t.units),
+        value: n(t.value),
+        negative: n(t.negative),
+        out: n(t.out),
+      },
       page: q.page,
       pageSize: q.pageSize,
     };

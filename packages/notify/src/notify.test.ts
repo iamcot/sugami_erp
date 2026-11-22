@@ -12,7 +12,11 @@ describe('notify helpers', () => {
 
   it('reads VAPID config from env, with a default subject', () => {
     expect(vapidFromEnv({})).toBeNull();
-    expect(vapidFromEnv({ VAPID_PUBLIC_KEY: 'a', VAPID_PRIVATE_KEY: 'b' })).toEqual({ publicKey: 'a', privateKey: 'b', subject: 'https://erp.sugami.vn' });
+    expect(vapidFromEnv({ VAPID_PUBLIC_KEY: 'a', VAPID_PRIVATE_KEY: 'b' })).toEqual({
+      publicKey: 'a',
+      privateKey: 'b',
+      subject: 'https://erp.sugami.vn',
+    });
     expect(endpointHash('x')).toHaveLength(64);
   });
 
@@ -21,7 +25,10 @@ describe('notify helpers', () => {
     ecdh.generateKeys();
     const keys = webpush.generateVAPIDKeys();
     const req = webpush.generateRequestDetails(
-      { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys: { p256dh: ecdh.getPublicKey('base64url'), auth: randomBytes(16).toString('base64url') } },
+      {
+        endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
+        keys: { p256dh: ecdh.getPublicKey('base64url'), auth: randomBytes(16).toString('base64url') },
+      },
       JSON.stringify({ title: 'Đơn mới' }),
       { vapidDetails: { subject: 'https://erp.sugami.vn', ...keys }, TTL: 60 },
     );

@@ -46,7 +46,8 @@ const ListQuery = z.object({
 });
 
 const n = (v: unknown) => Number(v ?? 0);
-const vnDate = (d: Date) => new Date(d.getTime() + 7 * 3_600_000).toISOString().slice(2, 10).replace(/-/g, '');
+const vnDate = (d: Date) =>
+  new Date(d.getTime() + 7 * 3_600_000).toISOString().slice(2, 10).replace(/-/g, '');
 const xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /**
@@ -76,7 +77,10 @@ export class StockDocumentsController {
         orderBy: { createdAt: 'desc' },
         skip: (q.page - 1) * q.pageSize,
         take: q.pageSize,
-        include: { warehouse: { select: { code: true, name: true } }, lines: { select: { quantity: true, unitCost: true } } },
+        include: {
+          warehouse: { select: { code: true, name: true } },
+          lines: { select: { quantity: true, unitCost: true } },
+        },
       }),
       this.db.stockDocument.count({ where }),
     ]);
@@ -137,7 +141,9 @@ export class StockDocumentsController {
   @RequirePermissions('inventory.write')
   async create(@Body() body: unknown, @CurrentUser() user: AuthUser) {
     const input = parseInput(Input, body);
-    const warehouse = await this.db.warehouse.findUnique({ where: { code: input.warehouseCode ?? 'KHO-CHINH' } });
+    const warehouse = await this.db.warehouse.findUnique({
+      where: { code: input.warehouseCode ?? 'KHO-CHINH' },
+    });
     if (!warehouse || !warehouse.isActive) throw new BadRequestException('Không tìm thấy kho');
     const lines = await this.resolveLines(input.type, input.lines);
     const code = await this.nextCode(input.type);
@@ -164,7 +170,10 @@ export class StockDocumentsController {
     const lines = await this.resolveLines(d.type as (typeof TYPES)[number], input.lines);
     await this.db.$transaction([
       this.db.stockDocumentLine.deleteMany({ where: { documentId: d.id } }),
-      this.db.stockDocument.update({ where: { id: d.id }, data: { reason: input.reason || null, lines: { create: lines } } }),
+      this.db.stockDocument.update({
+        where: { id: d.id },
+        data: { reason: input.reason || null, lines: { create: lines } },
+      }),
     ]);
     if (input.confirm) await this.confirm(code, user);
     return this.get(code);
@@ -198,10 +207,16 @@ export class StockDocumentsController {
     const file =
       d.type === 'receipt'
         ? await purchaseOrderFile(
-            d.lines.map((l) => ({ sku: l.variant.sku, name: l.variant.product.name, unitCost: n(l.unitCost), quantity: n(l.quantity) })),
+            d.lines.map((l) => ({
+              sku: l.variant.sku,
+              name: l.variant.product.name,
+              unitCost: n(l.unitCost),
+              quantity: n(l.quantity),
+            })),
           )
         : await stockTakeFile(d.lines.map((l) => ({ sku: l.variant.sku, quantity: n(l.quantity) })));
-    if (!d.exportedToKiotvietAt) await this.db.stockDocument.update({ where: { id: d.id }, data: { exportedToKiotvietAt: new Date() } });
+    if (!d.exportedToKiotvietAt)
+      await this.db.stockDocument.update({ where: { id: d.id }, data: { exportedToKiotvietAt: new Date() } });
     const name = `${d.type === 'receipt' ? 'NhapHang' : 'KiemKho'}_${d.code}.xlsx`;
     return new StreamableFile(file, { disposition: `attachment; filename="${name}"`, type: xlsx });
   }
@@ -211,7 +226,16 @@ export class StockDocumentsController {
   @RequirePermissions('catalog.read')
   async newProducts() {
     const rows = await this.newProductRows();
-    return { total: rows.length, data: rows.map((r) => ({ sku: r.sku, name: r.name, price: r.price, cost: r.cost, parentSku: r.parentSku ?? null })) };
+    return {
+      total: rows.length,
+      data: rows.map((r) => ({
+        sku: r.sku,
+        name: r.name,
+        price: r.price,
+        cost: r.cost,
+        parentSku: r.parentSku ?? null,
+      })),
+    };
   }
 
   @Get('exports/kiotviet/new-products.xlsx')
@@ -221,7 +245,10 @@ export class StockDocumentsController {
     const rows = await this.newProductRows();
     if (rows.length === 0) throw new NotFoundException('Không có sản phẩm mới cần đưa sang KiotViet');
     const stamp = vnDate(new Date());
-    return new StreamableFile(await productTemplateFile(rows), { disposition: `attachment; filename="SanPhamMoi_${stamp}.xlsx"`, type: xlsx });
+    return new StreamableFile(await productTemplateFile(rows), {
+      disposition: `attachment; filename="SanPhamMoi_${stamp}.xlsx"`,
+      type: xlsx,
+    });
   }
 
   // ---- helpers ----
@@ -231,10 +258,14 @@ export class StockDocumentsController {
       where: { code },
       include: {
         warehouse: true,
-        lines: { orderBy: { id: 'asc' }, include: { variant: { include: { product: { select: { name: true } } } } } },
+        lines: {
+          orderBy: { id: 'asc' },
+          include: { variant: { include: { product: { select: { name: true } } } } },
+        },
       },
     });
-    if (!d || !(TYPES as readonly string[]).includes(d.type)) throw new NotFoundException(`Không có phiếu ${code}`);
+    if (!d || !(TYPES as readonly string[]).includes(d.type))
+      throw new NotFoundException(`Không có phiếu ${code}`);
     return d;
   }
 
@@ -249,13 +280,19 @@ export class StockDocumentsController {
 
   private async resolveLines(type: (typeof TYPES)[number], lines: z.infer<typeof Line>[]) {
     const skus = [...new Set(lines.map((l) => l.sku))];
-    const variants = await this.db.variant.findMany({ where: { sku: { in: skus } }, select: { id: true, sku: true } });
+    const variants = await this.db.variant.findMany({
+      where: { sku: { in: skus } },
+      select: { id: true, sku: true },
+    });
     const bySku = new Map(variants.map((v) => [v.sku, v.id]));
     const unknown = skus.filter((s) => !bySku.has(s));
     if (unknown.length) throw new BadRequestException(`Không có mã hàng: ${unknown.slice(0, 20).join(', ')}`);
-    if (type === 'receipt' && lines.some((l) => l.unitCost === undefined)) throw new BadRequestException('Phiếu nhập cần đơn giá cho mọi dòng');
-    if (type === 'count' && lines.some((l) => !Number.isInteger(l.quantity))) throw new BadRequestException('Số đếm phải là số nguyên');
-    if (type === 'count' && skus.length !== lines.length) throw new BadRequestException('Mỗi mã hàng chỉ đếm một dòng');
+    if (type === 'receipt' && lines.some((l) => l.unitCost === undefined))
+      throw new BadRequestException('Phiếu nhập cần đơn giá cho mọi dòng');
+    if (type === 'count' && lines.some((l) => !Number.isInteger(l.quantity)))
+      throw new BadRequestException('Số đếm phải là số nguyên');
+    if (type === 'count' && skus.length !== lines.length)
+      throw new BadRequestException('Mỗi mã hàng chỉ đếm một dòng');
     return lines.map((l) => ({
       variantId: bySku.get(l.sku)!,
       quantity: new Prisma.Decimal(l.quantity),
@@ -266,7 +303,11 @@ export class StockDocumentsController {
   /** NH261122-001: type prefix, Vietnam date, sequence of the day. */
   private async nextCode(type: (typeof TYPES)[number]) {
     const prefix = `${PREFIX[type]}${vnDate(new Date())}-`;
-    const last = await this.db.stockDocument.findFirst({ where: { code: { startsWith: prefix } }, orderBy: { code: 'desc' }, select: { code: true } });
+    const last = await this.db.stockDocument.findFirst({
+      where: { code: { startsWith: prefix } },
+      orderBy: { code: 'desc' },
+      select: { code: true },
+    });
     const seq = last ? Number(last.code.slice(prefix.length)) + 1 : 1;
     return `${prefix}${String(seq).padStart(3, '0')}`;
   }
@@ -332,7 +373,9 @@ export class StockDocumentsController {
         price: Number(r.price),
         cost: Number(r.cost_avg),
         minStock: n(r.min_stock),
-        attributes: values.map((v, i): [string, string] => [names[i] ?? `Thuộc tính ${i + 1}`, v]).filter(([, v]) => v !== ''),
+        attributes: values
+          .map((v, i): [string, string] => [names[i] ?? `Thuộc tính ${i + 1}`, v])
+          .filter(([, v]) => v !== ''),
         parentSku: parent ?? null,
         weightGrams: r.weight_grams,
         description: r.description,

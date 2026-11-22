@@ -1,5 +1,12 @@
 import { createHash } from 'node:crypto';
-import { Controller, ForbiddenException, HttpCode, Post, Req, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Controller,
+  ForbiddenException,
+  HttpCode,
+  Post,
+  Req,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import { verifyPancakeWebhook, webhookType } from '@sugami/channels-pancake';
 import type { Prisma } from '@sugami/db';
@@ -28,7 +35,12 @@ export class WebhooksController {
     const deliveryId = createHash('sha256').update(raw).digest('hex');
     try {
       await this.prisma.client.webhookEvent.create({
-        data: { provider: 'pancake', eventType: webhookType(body), deliveryId, body: body as Prisma.InputJsonValue },
+        data: {
+          provider: 'pancake',
+          eventType: webhookType(body),
+          deliveryId,
+          body: body as Prisma.InputJsonValue,
+        },
       });
     } catch (err) {
       if ((err as { code?: string }).code !== 'P2002') throw err;

@@ -45,7 +45,12 @@ const columns: Column<Row>[] = [
       </div>
     ),
   },
-  { key: 'at', header: 'Ngày tạo', className: 'hidden whitespace-nowrap text-slate-600 md:table-cell', render: (d) => fmtDateTime(d.createdAt) },
+  {
+    key: 'at',
+    header: 'Ngày tạo',
+    className: 'hidden whitespace-nowrap text-slate-600 md:table-cell',
+    render: (d) => fmtDateTime(d.createdAt),
+  },
   {
     key: 'lines',
     header: 'Số mã / SL',
@@ -53,14 +58,25 @@ const columns: Column<Row>[] = [
     className: 'whitespace-nowrap tabular-nums',
     render: (d) => `${d.lineCount} / ${d.units.toLocaleString('vi-VN')}`,
   },
-  { key: 'value', header: 'Giá trị', align: 'right', className: 'hidden whitespace-nowrap tabular-nums sm:table-cell', render: (d) => (d.value === null ? '–' : formatVnd(d.value)) },
+  {
+    key: 'value',
+    header: 'Giá trị',
+    align: 'right',
+    className: 'hidden whitespace-nowrap tabular-nums sm:table-cell',
+    render: (d) => (d.value === null ? '–' : formatVnd(d.value)),
+  },
   {
     key: 'status',
     header: 'Trạng thái',
     render: (d) => (
       <div className="flex flex-wrap gap-1">
         <Badge tone={STATUS_LABEL[d.status].tone}>{STATUS_LABEL[d.status].label}</Badge>
-        {d.status === 'confirmed' && (d.exportedToKiotvietAt ? <Badge tone="brand">Đã xuất KiotViet</Badge> : <Badge tone="warn">Chưa xuất</Badge>)}
+        {d.status === 'confirmed' &&
+          (d.exportedToKiotvietAt ? (
+            <Badge tone="brand">Đã xuất KiotViet</Badge>
+          ) : (
+            <Badge tone="warn">Chưa xuất</Badge>
+          ))}
       </div>
     ),
   },
@@ -78,10 +94,13 @@ function DocumentsList() {
     if (qs.tab === 'pending') params.set('notExported', '1');
     setLoading(true);
     api<{ data: Row[]; total: number }>(`/stock-documents?${params}`)
-      .then((r) => {
-        setRes(r);
-        setError(null);
-      }, (e: Error) => setError(e.message))
+      .then(
+        (r) => {
+          setRes(r);
+          setError(null);
+        },
+        (e: Error) => setError(e.message),
+      )
       .finally(() => setLoading(false));
   }, [qs.tab, qs.page]);
 
@@ -93,10 +112,14 @@ function DocumentsList() {
         actions={
           <>
             <Link href="/inventory/documents/new?type=count">
-              <Button variant="secondary"><ClipboardCheck className="size-4" /> Kiểm kho</Button>
+              <Button variant="secondary">
+                <ClipboardCheck className="size-4" /> Kiểm kho
+              </Button>
             </Link>
             <Link href="/inventory/documents/new?type=receipt">
-              <Button><PackagePlus className="size-4" /> Nhập hàng</Button>
+              <Button>
+                <PackagePlus className="size-4" /> Nhập hàng
+              </Button>
             </Link>
           </>
         }
@@ -123,7 +146,9 @@ function DocumentsList() {
         total={res?.total}
         onPage={(p) => setQs({ page: String(p) })}
         loading={loading}
-        empty={qs.tab === 'pending' ? 'Mọi phiếu đã xác nhận đều đã xuất sang KiotViet.' : 'Chưa có phiếu nào.'}
+        empty={
+          qs.tab === 'pending' ? 'Mọi phiếu đã xác nhận đều đã xuất sang KiotViet.' : 'Chưa có phiếu nào.'
+        }
       />
     </>
   );

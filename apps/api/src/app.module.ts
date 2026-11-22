@@ -15,7 +15,20 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { UsersController } from './users/users.controller.js';
 
 @Module({
-  imports: [PrismaModule, AuthModule, AuditModule, MediaModule, ImportsModule, CatalogModule, OrdersModule, InventoryModule, DashboardModule, WebhooksModule, PushModule, StockDocumentsModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    AuditModule,
+    MediaModule,
+    ImportsModule,
+    CatalogModule,
+    OrdersModule,
+    InventoryModule,
+    DashboardModule,
+    WebhooksModule,
+    PushModule,
+    StockDocumentsModule,
+  ],
   controllers: [HealthController, UsersController],
 })
 export class AppModule {}

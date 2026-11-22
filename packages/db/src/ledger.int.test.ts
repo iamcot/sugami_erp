@@ -119,7 +119,9 @@ describe.skipIf(!hasDb)('stock ledger (MySQL)', () => {
     const same = await doc('count', [{ qty: 30 }]);
     await confirmStockDocument(prisma, same.id);
     expect(await prisma.stockMovement.count({ where: { documentId: same.id } })).toBe(0);
-    expect((await prisma.stockDocument.findUniqueOrThrow({ where: { id: same.id } })).status).toBe('confirmed');
+    expect((await prisma.stockDocument.findUniqueOrThrow({ where: { id: same.id } })).status).toBe(
+      'confirmed',
+    );
     const back = await doc('count', [{ qty: 35 }]);
     await confirmStockDocument(prisma, back.id);
     expect(await level(wh1)).toBe(35);

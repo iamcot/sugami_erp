@@ -37,7 +37,9 @@ function InventoryList() {
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
-    api<InventoryResponse>(`/inventory?${new URLSearchParams({ ...qs, pageSize: '50' })}`, { signal: ctrl.signal })
+    api<InventoryResponse>(`/inventory?${new URLSearchParams({ ...qs, pageSize: '50' })}`, {
+      signal: ctrl.signal,
+    })
       .then((r) => {
         setRes(r);
         setError(null);
@@ -69,18 +71,16 @@ function InventoryList() {
         </div>
       ),
     },
-    ...warehouses.map(
-      (w): Column<InventoryRow> => ({
-        key: `wh-${w.code}`,
-        header: w.name,
-        align: 'right',
-        className: 'hidden tabular-nums md:table-cell',
-        render: (r) => {
-          const q = r.byWarehouse[w.code] ?? 0;
-          return <span className={stockTone(q)}>{qtyText(q)}</span>;
-        },
-      }),
-    ),
+    ...warehouses.map((w): Column<InventoryRow> => ({
+      key: `wh-${w.code}`,
+      header: w.name,
+      align: 'right',
+      className: 'hidden tabular-nums md:table-cell',
+      render: (r) => {
+        const q = r.byWarehouse[w.code] ?? 0;
+        return <span className={stockTone(q)}>{qtyText(q)}</span>;
+      },
+    })),
     {
       key: 'stock',
       header: warehouses.length ? 'Tổng tồn' : 'Tồn',
@@ -112,7 +112,11 @@ function InventoryList() {
         { label: 'Số SKU', value: qtyText(t.skus) },
         { label: 'Tổng tồn', value: qtyText(t.units) },
         { label: 'Giá trị tồn (giá vốn)', value: formatVnd(t.value) },
-        { label: 'Tồn âm / hết hàng', value: `${qtyText(t.negative)} / ${qtyText(t.out)}`, tone: t.negative > 0 ? 'text-rose-600' : '' },
+        {
+          label: 'Tồn âm / hết hàng',
+          value: `${qtyText(t.negative)} / ${qtyText(t.out)}`,
+          tone: t.negative > 0 ? 'text-rose-600' : '',
+        },
       ]
     : [];
 

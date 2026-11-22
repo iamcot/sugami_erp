@@ -10,12 +10,16 @@ export interface BeforeInstallPromptEvent extends Event {
 
 export const isStandalone = () =>
   typeof window !== 'undefined' &&
-  (window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true);
+  (window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as { standalone?: boolean }).standalone === true);
 
 export const isIos = () => typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
 export const pushSupported = () =>
-  typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  typeof window !== 'undefined' &&
+  'serviceWorker' in navigator &&
+  'PushManager' in window &&
+  'Notification' in window;
 
 export async function registerServiceWorker() {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null;
@@ -45,14 +49,18 @@ export async function enablePush(): Promise<void> {
   const { publicKey } = await api<{ publicKey: string | null }>('/push/config');
   if (!publicKey) throw new Error('Máy chủ chưa cấu hình thông báo (VAPID).');
   const permission = await Notification.requestPermission();
-  if (permission !== 'granted') throw new Error('Bạn chưa cho phép thông báo. Mở cài đặt trình duyệt để bật lại.');
+  if (permission !== 'granted')
+    throw new Error('Bạn chưa cho phép thông báo. Mở cài đặt trình duyệt để bật lại.');
   const reg = (await navigator.serviceWorker.getRegistration('/')) ?? (await registerServiceWorker());
   if (!reg) throw new Error('Không đăng ký được service worker.');
   await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {
     try {
-      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) });
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: base64UrlToBytes(publicKey),
+      });
     } catch {
       throw new Error(
         isIos() && !isStandalone()
@@ -67,6 +75,8 @@ export async function enablePush(): Promise<void> {
 export async function disablePush(): Promise<void> {
   const sub = await currentSubscription();
   if (!sub) return;
-  await api('/push/subscriptions', { method: 'DELETE', json: { endpoint: sub.endpoint } }).catch(() => undefined);
+  await api('/push/subscriptions', { method: 'DELETE', json: { endpoint: sub.endpoint } }).catch(
+    () => undefined,
+  );
   await sub.unsubscribe();
 }

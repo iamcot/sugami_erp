@@ -48,8 +48,20 @@ const order = (over: Partial<Record<string, unknown>> = {}) => ({
   bill_phone_number: '0900000000',
   invoice_info_list: [{ order_sn: '251121ABCDEF' }],
   items: [
-    { variation_id: 'v-1', quantity: 2, discount_each_product: 10000, is_discount_percent: false, variation_info: { name: 'Xe đua mini - Đỏ', display_id: 'SP000001', retail_price: 150000 } },
-    { variation_id: 'v-2', quantity: 1, discount_each_product: 10, is_discount_percent: true, variation_info: { name: 'Búp bê', display_id: 'SP000002', retail_price: 100000 } },
+    {
+      variation_id: 'v-1',
+      quantity: 2,
+      discount_each_product: 10000,
+      is_discount_percent: false,
+      variation_info: { name: 'Xe đua mini - Đỏ', display_id: 'SP000001', retail_price: 150000 },
+    },
+    {
+      variation_id: 'v-2',
+      quantity: 1,
+      discount_each_product: 10,
+      is_discount_percent: true,
+      variation_info: { name: 'Búp bê', display_id: 'SP000002', retail_price: 100000 },
+    },
   ],
   ...over,
 });
@@ -63,7 +75,7 @@ describe('PancakeClient', () => {
       return json({ success: true, data: [{ n: page }], total_pages: 2 });
     });
     const items = [];
-    for await (const x of client.paginate('/orders', { 'filter_status': ['1', '2'] }, 1)) items.push(x);
+    for await (const x of client.paginate('/orders', { filter_status: ['1', '2'] }, 1)) items.push(x);
     expect(items).toEqual([{ n: 1 }, { n: 2 }]);
     expect(seen[0]!.pathname).toBe('/api/v1/shops/123/orders');
     expect(seen[0]!.searchParams.get('api_key')).toBe('secret-key');
@@ -72,13 +84,17 @@ describe('PancakeClient', () => {
 
   it('retries 429 and 5xx, then succeeds', async () => {
     let calls = 0;
-    const { client } = makeClient(() => (++calls < 3 ? json({ success: false, error_code: 106 }, 429) : json({ success: true, data: [] })));
+    const { client } = makeClient(() =>
+      ++calls < 3 ? json({ success: false, error_code: 106 }, 429) : json({ success: true, data: [] }),
+    );
     await client.get('/orders');
     expect(calls).toBe(3);
   });
 
   it('throws PancakeError with error_code and never leaks the key', async () => {
-    const { client } = makeClient(() => json({ success: false, message: 'Invalid api_key', error_code: 105 }, 403));
+    const { client } = makeClient(() =>
+      json({ success: false, message: 'Invalid api_key', error_code: 105 }, 403),
+    );
     const err = (await client.get('/orders').catch((e: unknown) => e)) as PancakeError;
     expect(err).toBeInstanceOf(PancakeError);
     expect(err.errorCode).toBe(105);
@@ -94,7 +110,13 @@ describe('PancakeClient', () => {
     const fetchMock = vi.fn(async () => {
       throw new TypeError('fetch failed https://pos.pages.fm/api/v1/shops/1?api_key=secret-key');
     });
-    const client = new PancakeClient({ apiKey: 'secret-key', shopId: '1', fetch: fetchMock as unknown as typeof fetch, sleep: async () => {}, retryDelaysMs: [] });
+    const client = new PancakeClient({
+      apiKey: 'secret-key',
+      shopId: '1',
+      fetch: fetchMock as unknown as typeof fetch,
+      sleep: async () => {},
+      retryDelaysMs: [],
+    });
     const err = (await client.get('/x').catch((e: unknown) => e)) as Error;
     expect(err.message).not.toContain('secret-key');
   });
@@ -110,7 +132,14 @@ describe('mapping', () => {
   it('groups variations into products with on-hand stock per warehouse', () => {
     const products = groupVariations([
       Variation.parse(variation()),
-      Variation.parse(variation({ id: 'v-2', display_id: 'SP000002', fields: [{ name: 'Màu', value: 'Xanh' }], is_hidden: true })),
+      Variation.parse(
+        variation({
+          id: 'v-2',
+          display_id: 'SP000002',
+          fields: [{ name: 'Màu', value: 'Xanh' }],
+          is_hidden: true,
+        }),
+      ),
       Variation.parse(variation({ id: 'v-3', product_id: 'p-2', is_removed: true })),
     ]);
     expect(products).toHaveLength(1);
@@ -146,7 +175,9 @@ describe('mapping', () => {
     expect(toExternalOrder(Order.parse(order({ marketplace_id: '-99' }))).saleChannel).toBe('pancake:-99');
     expect(toExternalOrder(Order.parse(order({ marketplace_id: '-9' }))).saleChannel).toBe('tiktok');
     expect(toExternalOrder(Order.parse(order({ marketplace_id: null }))).saleChannel).toBe('store');
-    expect(() => toExternalOrder(Order.parse(order({ status: 99 })))).toThrow('Unknown Pancake order status 99');
+    expect(() => toExternalOrder(Order.parse(order({ status: 99 })))).toThrow(
+      'Unknown Pancake order status 99',
+    );
   });
 });
 
@@ -186,7 +217,9 @@ describe('PancakeAdapter', () => {
 
   it('infers webhook types', () => {
     expect(webhookType(order())).toBe('orders');
-    expect(webhookType({ data: { variation_id: 'v', warehouse_id: 'w', remain_quantity: 1 } })).toBe('variations_warehouses');
+    expect(webhookType({ data: { variation_id: 'v', warehouse_id: 'w', remain_quantity: 1 } })).toBe(
+      'variations_warehouses',
+    );
     expect(webhookType({ type: 'auto_call', order_id: 1 })).toBe('auto_call');
     expect(webhookType({ data: { product_id: 'p', retail_price: 1 } })).toBe('products');
     expect(webhookType({ foo: 1 })).toBe('unknown');

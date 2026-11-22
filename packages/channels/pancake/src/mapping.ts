@@ -54,7 +54,8 @@ export const variationSku = (v: { display_id?: string | null; barcode?: string |
 
 export function toExternalVariant(v: Variation): ExternalVariant {
   const stock: Record<string, number> = {};
-  for (const w of v.variations_warehouses ?? []) stock[w.warehouse_id] = w.actual_remain_quantity ?? w.remain_quantity ?? 0;
+  for (const w of v.variations_warehouses ?? [])
+    stock[w.warehouse_id] = w.actual_remain_quantity ?? w.remain_quantity ?? 0;
   return {
     externalId: v.id,
     sku: variationSku(v),
@@ -114,7 +115,11 @@ export function toExternalOrder(o: Order): ExternalOrder {
     shippingFee: o.shipping_fee ?? undefined,
     platformFee: o.fee_marketplace ?? undefined,
     lines: o.items.map((i) => ({
-      sku: variationSku({ display_id: i.variation_info?.display_id, barcode: i.variation_info?.barcode, id: i.variation_id ?? undefined }),
+      sku: variationSku({
+        display_id: i.variation_info?.display_id,
+        barcode: i.variation_info?.barcode,
+        id: i.variation_id ?? undefined,
+      }),
       name: i.variation_info?.name ?? '',
       quantity: i.quantity,
       unitPrice: i.is_bonus_product ? 0 : unitPrice(i),

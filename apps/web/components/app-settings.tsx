@@ -44,7 +44,10 @@ export function AppSettings() {
 
   useEffect(() => {
     setCanInstall(Boolean(installEvent));
-    currentSubscription().then((s) => setSubscribed(Boolean(s)), () => setSubscribed(false));
+    currentSubscription().then(
+      (s) => setSubscribed(Boolean(s)),
+      () => setSubscribed(false),
+    );
   }, []);
 
   const run = async (fn: () => Promise<string | void>) => {
@@ -78,35 +81,56 @@ export function AppSettings() {
       )}
       {!standalone && ios && (
         <p className="px-3 py-2 text-xs text-slate-500">
-          iPhone: bấm nút Chia sẻ rồi chọn &quot;Thêm vào MH chính&quot;, mở Sugami từ màn hình chính để bật thông báo.
+          iPhone: bấm nút Chia sẻ rồi chọn &quot;Thêm vào MH chính&quot;, mở Sugami từ màn hình chính để bật
+          thông báo.
         </p>
       )}
       {pushSupported() && subscribed === false && (
-        <button className={item} disabled={busy} onClick={() => run(async () => {
-          await enablePush();
-          setSubscribed(true);
-          return 'Đã bật thông báo trên thiết bị này.';
-        })}>
+        <button
+          className={item}
+          disabled={busy}
+          onClick={() =>
+            run(async () => {
+              await enablePush();
+              setSubscribed(true);
+              return 'Đã bật thông báo trên thiết bị này.';
+            })
+          }
+        >
           <Bell className="size-4" /> Bật thông báo
         </button>
       )}
       {subscribed && (
         <>
-          <button className={item} disabled={busy} onClick={() => run(async () => {
-            const r = await api<{ sent: number }>('/push/test', { method: 'POST' });
-            return r.sent ? 'Đã gửi, chờ vài giây.' : 'Không gửi được, thử tắt rồi bật lại.';
-          })}>
+          <button
+            className={item}
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                const r = await api<{ sent: number }>('/push/test', { method: 'POST' });
+                return r.sent ? 'Đã gửi, chờ vài giây.' : 'Không gửi được, thử tắt rồi bật lại.';
+              })
+            }
+          >
             <Send className="size-4" /> Gửi thông báo thử
           </button>
-          <button className={item} disabled={busy} onClick={() => run(async () => {
-            await disablePush();
-            setSubscribed(false);
-          })}>
+          <button
+            className={item}
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                await disablePush();
+                setSubscribed(false);
+              })
+            }
+          >
             <BellOff className="size-4" /> Tắt thông báo
           </button>
         </>
       )}
-      {!pushSupported() && !ios && <p className="px-3 py-2 text-xs text-slate-500">Trình duyệt này không hỗ trợ thông báo.</p>}
+      {!pushSupported() && !ios && (
+        <p className="px-3 py-2 text-xs text-slate-500">Trình duyệt này không hỗ trợ thông báo.</p>
+      )}
       {msg && <p className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400">{msg}</p>}
     </div>
   );

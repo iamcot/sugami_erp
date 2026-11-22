@@ -50,8 +50,23 @@ describe('KiotViet import files', () => {
 
   it('writes new products that our own KiotViet list parser reads back', async () => {
     const buf = await productTemplateFile([
-      { sku: 'SP900001', name: 'Xe đua', category: 'Bé chơi', price: 150000, cost: 90000, attributes: [['MÀU', 'Đỏ']] },
-      { sku: 'SP900002', name: 'Xe đua', category: 'Bé chơi', price: 150000, cost: 90000, attributes: [['MÀU', 'Xanh: nhạt']], parentSku: 'SP900001' },
+      {
+        sku: 'SP900001',
+        name: 'Xe đua',
+        category: 'Bé chơi',
+        price: 150000,
+        cost: 90000,
+        attributes: [['MÀU', 'Đỏ']],
+      },
+      {
+        sku: 'SP900002',
+        name: 'Xe đua',
+        category: 'Bé chơi',
+        price: 150000,
+        cost: 90000,
+        attributes: [['MÀU', 'Xanh: nhạt']],
+        parentSku: 'SP900001',
+      },
     ]);
     expect(await sheetName(buf)).toEqual(['ProductTemplate']);
     const { headers } = await readFirstSheet(buf);
