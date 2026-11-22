@@ -9,6 +9,7 @@ Hệ thống quản lý shop đồ chơi: kho & xuất nhập tồn, nguồn hà
 ## Khởi tạo app lần đầu
 
 Chi tiết hơn (cấu hình MySQL, chạy trong Docker): [`docs/ops/dev-setup.md`](docs/ops/dev-setup.md).
+Chạy thật trên iMac (pm2, tự bật khi mở máy): [`docs/ops/chay-that.md`](docs/ops/chay-that.md).
 
 ### 1. Cài phần mềm (macOS)
 
