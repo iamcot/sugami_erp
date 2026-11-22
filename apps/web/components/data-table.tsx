@@ -12,6 +12,8 @@ export interface Column<T> {
   sortKey?: string;
   align?: 'left' | 'right' | 'center';
   className?: string;
+  /** Pin the column to the right edge while the table scrolls sideways. */
+  sticky?: boolean;
   render: (row: T) => ReactNode;
 }
 
@@ -70,6 +72,8 @@ export function DataTable<T>({
                       'whitespace-nowrap px-4 py-2.5 font-medium',
                       alignClass(c.align),
                       c.className,
+                      c.sticky &&
+                        'sticky right-0 bg-slate-50 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] dark:bg-slate-900',
                     )}
                   >
                     {c.sortKey && onSort ? (
@@ -115,13 +119,22 @@ export function DataTable<T>({
                 <tr
                   key={rowKey(r)}
                   className={cn(
-                    'hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                    'group hover:bg-slate-50 dark:hover:bg-slate-800/50',
                     onRowClick && 'cursor-pointer',
                   )}
                   onClick={onRowClick ? () => onRowClick(r) : undefined}
                 >
                   {columns.map((c, i) => (
-                    <td key={c.key} className={cn('px-4 py-2.5', alignClass(c.align), c.className)}>
+                    <td
+                      key={c.key}
+                      className={cn(
+                        'px-4 py-2.5',
+                        alignClass(c.align),
+                        c.className,
+                        c.sticky &&
+                          'sticky right-0 bg-white shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-slate-50 dark:bg-slate-900 dark:group-hover:bg-slate-800',
+                      )}
+                    >
                       {href && i === 0 ? (
                         <Link href={href} className="block hover:text-brand-600">
                           {c.render(r)}

@@ -19,11 +19,21 @@ const ListQuery = z.object({
   q: z.string().trim().max(64).optional(),
   channel: z.string().trim().max(32).optional(),
   status: z.enum(STATUSES).optional(),
+  group: z.enum(['waiting', 'shipping', 'done', 'returned', 'other']).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
 });
+
+/** Status groups of the orders list: waiting to pack, shipping, finished, returned, other (cancelled). */
+const GROUPS: Record<string, OrderStatus[]> = {
+  waiting: ['new', 'confirmed', 'packing'],
+  shipping: ['shipped'],
+  done: ['delivered', 'completed'],
+  returned: ['returned'],
+  other: ['cancelled'],
+};
 
 @Controller('orders')
 export class OrdersController {
@@ -47,6 +57,7 @@ export class OrdersController {
         : {}),
       ...(q.channel ? { channel: { code: q.channel } } : {}),
       ...(q.status ? { status: q.status as OrderStatus } : {}),
+      ...(q.group ? { status: { in: GROUPS[q.group] } } : {}),
       ...(q.from || q.to
         ? { orderedAt: { ...(q.from ? { gte: q.from } : {}), ...(q.to ? { lt: q.to } : {}) } }
         : {}),
@@ -66,7 +77,7 @@ export class OrdersController {
       }),
       db.order.count({ where }),
       db.order.aggregate({
-        where: { ...where, status: q.status ?? { not: 'cancelled' } },
+        where: { ...where, status: q.status ?? (q.group ? { in: GROUPS[q.group] } : { not: 'cancelled' }) },
         _sum: { total: true },
         _count: true,
       }),

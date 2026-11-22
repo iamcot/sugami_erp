@@ -38,6 +38,48 @@ const CHANNELS = [
   ['store', 'Bán trực tiếp'],
 ] as const;
 
+const GROUPS = [
+  ['', 'Tất cả'],
+  ['waiting', 'Chờ đóng'],
+  ['shipping', 'Đang giao'],
+  ['done', 'Đã xong'],
+  ['returned', 'Hoàn hàng'],
+  ['other', 'Khác'],
+] as const;
+
+const RANGES = [
+  ['', 'Tất cả'],
+  ['today', 'Hôm nay'],
+  ['week', 'Tuần này'],
+  ['month', 'Tháng này'],
+  ['custom', 'Tùy chọn'],
+] as const;
+
+const DAY = 86_400_000;
+const VN = 7 * 3_600_000;
+/** YYYY-MM-DD of an instant in Vietnam time. */
+const vnDate = (t: number) => new Date(t + VN).toISOString().slice(0, 10);
+const startOf = (day: string) => new Date(`${day}T00:00:00+07:00`);
+
+/** [from, to) of the chosen range as ISO instants; empty strings = unbounded. */
+function rangeBounds(range: string, from: string, to: string): { from: string; to: string } {
+  const now = Date.now();
+  const today = startOf(vnDate(now)).getTime();
+  const end = new Date(today + DAY).toISOString();
+  if (range === 'today') return { from: new Date(today).toISOString(), to: end };
+  if (range === 'week') {
+    const dow = (new Date(today + VN).getUTCDay() + 6) % 7; // Monday = 0
+    return { from: new Date(today - dow * DAY).toISOString(), to: end };
+  }
+  if (range === 'month') return { from: startOf(`${vnDate(now).slice(0, 8)}01`).toISOString(), to: end };
+  if (range === 'custom')
+    return {
+      from: from ? startOf(from).toISOString() : '',
+      to: to ? new Date(startOf(to).getTime() + DAY).toISOString() : '',
+    };
+  return { from: '', to: '' };
+}
+
 const STATUS: Record<string, { label: string; tone: 'neutral' | 'brand' | 'success' | 'warn' | 'danger' }> = {
   new: { label: 'Mới', tone: 'brand' },
   confirmed: { label: 'Đã xác nhận', tone: 'brand' },
@@ -156,6 +198,8 @@ const columns: Column<OrderRow>[] = [
   {
     key: 'status',
     header: 'Trạng thái',
+    sticky: true,
+    className: 'whitespace-nowrap',
     render: (o) => (
       <Badge tone={STATUS[o.status]?.tone ?? 'neutral'}>{STATUS[o.status]?.label ?? o.status}</Badge>
     ),
@@ -164,7 +208,15 @@ const columns: Column<OrderRow>[] = [
 
 function OrdersList() {
   const { open } = useDetail();
-  const [qs, setQs] = useQueryState({ q: '', channel: '', status: '', page: '1' });
+  const [qs, setQs] = useQueryState({
+    q: '',
+    channel: '',
+    group: '',
+    range: '',
+    from: '',
+    to: '',
+    page: '1',
+  });
   const [search, setSearch] = useState(qs.q);
   const [res, setRes] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,7 +232,12 @@ function OrdersList() {
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
-    const params = new URLSearchParams(Object.entries({ ...qs, pageSize: '50' }).filter(([, v]) => v !== ''));
+    const { range, from, to, ...rest } = qs;
+    const params = new URLSearchParams(
+      Object.entries({ ...rest, ...rangeBounds(range, from, to), pageSize: '50' }).filter(
+        ([, v]) => v !== '',
+      ),
+    );
     api<ListResponse>(`/orders?${params}`, { signal: ctrl.signal })
       .then((r) => {
         setRes(r);
@@ -191,7 +248,7 @@ function OrdersList() {
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [qs.q, qs.channel, qs.status, qs.page]);
+  }, [qs.q, qs.channel, qs.group, qs.range, qs.from, qs.to, qs.page]);
 
   return (
     <>
@@ -215,18 +272,6 @@ function OrdersList() {
             </button>
           ))}
         </div>
-        <select
-          value={qs.status}
-          onChange={(e) => setQs({ status: e.target.value, page: '1' })}
-          className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
-        >
-          <option value="">Mọi trạng thái</option>
-          {Object.entries(STATUS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.label}
-            </option>
-          ))}
-        </select>
         <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm md:ml-auto md:max-w-xs dark:border-slate-800 dark:bg-slate-900">
           <Search className="size-4 shrink-0 text-slate-400" />
           <input
@@ -236,6 +281,49 @@ function OrdersList() {
             className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
           />
         </label>
+      </div>
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+        <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+          {RANGES.map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setQs({ range: v, ...(v === 'custom' ? {} : { from: '', to: '' }), page: '1' })}
+              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.range === v ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {qs.range === 'custom' && (
+          <div className="flex items-center gap-2 text-sm">
+            <input
+              type="date"
+              value={qs.from}
+              max={qs.to || undefined}
+              onChange={(e) => setQs({ from: e.target.value, page: '1' })}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-2 dark:border-slate-800 dark:bg-slate-900"
+            />
+            <span className="text-slate-400">→</span>
+            <input
+              type="date"
+              value={qs.to}
+              min={qs.from || undefined}
+              onChange={(e) => setQs({ to: e.target.value, page: '1' })}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-2 dark:border-slate-800 dark:bg-slate-900"
+            />
+          </div>
+        )}
+        <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 md:ml-auto dark:bg-slate-800">
+          {GROUPS.map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setQs({ group: v, page: '1' })}
+              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.group === v ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
       <DataTable
