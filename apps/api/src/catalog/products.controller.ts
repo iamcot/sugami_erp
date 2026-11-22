@@ -4,6 +4,7 @@ import { toSearchKey } from '@sugami/shared';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
+import { StorageService } from '../media/storage.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 const ListQuery = z.object({
@@ -45,7 +46,22 @@ const n = (v: Prisma.Decimal | string | bigint | null) => Number(v ?? 0);
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+  ) {}
+
+  /** URLs of stored images by key; empty when storage is not configured so product pages still work. */
+  private async urlsFor(keys: string[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    try {
+      const storage = this.storageService.storage;
+      await Promise.all(keys.map(async (k) => out.set(k, await storage.url(k))));
+    } catch {
+      out.clear();
+    }
+    return out;
+  }
 
   /**
    * Product list with stock summed over warehouses. Search is accent-insensitive on name
@@ -107,6 +123,14 @@ export class ProductsController {
       db.$queryRaw<{ total: bigint }[]>`SELECT COUNT(*) AS total FROM (${base}) t`,
       this.viewCounts(),
     ]);
+    const covers = await this.prisma.client.productMedia.findMany({
+      where: { productId: { in: rows.map((r) => r.id) }, role: 'main' },
+      orderBy: { sort: 'asc' },
+      select: { productId: true, asset: { select: { storageKey: true } } },
+    });
+    const coverKey = new Map<string, string>();
+    for (const c of covers) if (!coverKey.has(c.productId)) coverKey.set(c.productId, c.asset.storageKey);
+    const coverUrl = await this.urlsFor([...new Set(coverKey.values())]);
     return {
       data: rows.map((r) => ({
         id: r.id,
@@ -115,7 +139,7 @@ export class ProductsController {
         status: r.status,
         category: r.category,
         variantCount: n(r.variant_count),
-        image: r.image ?? null,
+        image: coverUrl.get(coverKey.get(r.id) ?? '') ?? r.image ?? null,
         priceMin: n(r.price_min),
         priceMax: n(r.price_max),
         onHand: n(r.on_hand),
@@ -167,6 +191,17 @@ export class ProductsController {
       },
     });
     if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
+    const media = await this.prisma.client.productMedia.findMany({
+      where: { productId: product.id, variantId: { not: null } },
+      orderBy: { sort: 'asc' },
+      select: { variantId: true, asset: { select: { storageKey: true } } },
+    });
+    const stored = await this.urlsFor([...new Set(media.map((m) => m.asset.storageKey))]);
+    const storedByVariant = new Map<string, string[]>();
+    for (const m of media) {
+      const u = stored.get(m.asset.storageKey);
+      if (u) storedByVariant.set(m.variantId!, [...(storedByVariant.get(m.variantId!) ?? []), u]);
+    }
     return {
       product: {
         id: product.id,
@@ -183,7 +218,8 @@ export class ProductsController {
           id: v.id,
           sku: v.sku,
           barcode: v.barcode,
-          imageUrls: Array.isArray(v.imageUrls) ? (v.imageUrls as string[]) : [],
+          imageUrls:
+            storedByVariant.get(v.id) ?? (Array.isArray(v.imageUrls) ? (v.imageUrls as string[]) : []),
           optionValues: v.optionValues,
           price: Number(v.price),
           costAvg: Number(v.costAvg),

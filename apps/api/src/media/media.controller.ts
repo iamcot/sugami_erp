@@ -23,6 +23,7 @@ import { CurrentUser, Public, RequirePermissions } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { mirrorVariantImages } from './media-mirror.js';
 import { mediaPath, UPLOAD_TYPES } from './media.rules.js';
 import { StorageService } from './storage.service.js';
 
@@ -30,6 +31,11 @@ const CreateUploadBody = z.object({
   filename: z.string().trim().min(1).max(255),
   contentType: z.string().trim().toLowerCase(),
   sizeBytes: z.number().int().positive(),
+});
+const MirrorBody = z.object({
+  dryRun: z.boolean().default(true),
+  limit: z.number().int().min(1).max(100).default(40),
+  afterSku: z.string().max(64).optional(),
 });
 const ListQuery = z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) });
 
@@ -102,6 +108,15 @@ export class MediaController {
     }
     const ready = await this.prisma.client.mediaAsset.update({ where: { id }, data: { status: 'ready' } });
     return { asset: await this.dto(ready) };
+  }
+
+  /** Copy variant images from their source URLs into storage, a batch at a time (call again with nextAfter). */
+  @Post('mirror-variant-images')
+  @HttpCode(200)
+  @RequirePermissions('media.write')
+  mirror(@Body() raw: unknown) {
+    const { dryRun, limit, afterSku } = parseInput(MirrorBody, raw ?? {});
+    return mirrorVariantImages(this.prisma.client, this.storage, { dryRun, limit, afterSku });
   }
 
   @Get()

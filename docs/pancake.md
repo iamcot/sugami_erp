@@ -89,4 +89,4 @@ pnpm pancake:probe
 
 - Pancake giữ các tin đăng Shopee/TikTok (`GET /marketplace/products`): mỗi tin có `variations[]` với `sku`, `images`, `price`, `quantity`.
 - Tab "Đơn từ Pancake" → "Ảnh sản phẩm từ sàn": nối ảnh vào biến thể theo SKU người bán (= mã hàng KiotViet). Ưu tiên shop Việt Nam (bỏ qua hậu tố PH/MY khi trùng SKU). Mặc định chỉ điền cho biến thể chưa có ảnh; tick "Thay cả ảnh đã có" để ghi đè ảnh từ file KiotViet.
-- Chỉ lưu URL ảnh của sàn (chưa sao chép sang S3).
+- Bước 2: nút "Lưu ảnh về kho (S3)" (`POST /api/media/mirror-variant-images`) tải ảnh từ URL gốc (chỉ https, host công khai, tối đa 20 MB, tối đa 6 ảnh/biến thể) vào lớp `storage` (S3, prefix `sugami/`), tạo `media_assets` + `product_media`. Cùng một file dùng cho nhiều biến thể chỉ lưu một lần (SHA-256). Làm theo lô 40 biến thể, chạy lại an toàn; biến thể đã có ảnh trong kho thì bỏ qua. Giao diện ưu tiên ảnh trong kho, chưa có thì dùng URL gốc.
