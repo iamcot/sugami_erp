@@ -1,8 +1,22 @@
 'use client';
 
-import { ImageIcon, ListOrdered, Minus, Plus, Printer, Search, Store, Trash2, Truck, User, X } from 'lucide-react';
+import {
+  ImageIcon,
+  ListOrdered,
+  Minus,
+  Plus,
+  Printer,
+  Receipt,
+  Search,
+  Store,
+  Trash2,
+  Truck,
+  User,
+  X,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button } from '@/components/ui';
+import { OrderDetail } from '@/components/order-detail';
 import { formatRelativeDateTime } from '@/lib/datetime';
 import { api } from '@/lib/api';
 import { printReceipt, type ReceiptOrder, type ReceiptTemplate } from '@/lib/receipt';
@@ -81,28 +95,55 @@ const STATUS_LABEL: Record<string, string> = {
 const pad = (n: number) => String(n).padStart(2, '0');
 const toLocal = (iso: string | null) => {
   const d = iso ? new Date(iso) : new Date();
-  return { date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
 };
 const fromLocal = (date: string, time: string) => new Date(`${date}T${time}`).toISOString();
 const ceilTo = (n: number, step: number) => Math.ceil(n / step) * step;
 const quickAmounts = (total: number) =>
-  [...new Set([total, ceilTo(total, 10000), ceilTo(total, 10000) + 10000, ceilTo(total, 50000), ceilTo(total, 100000), ceilTo(total, 100000) + 100000])]
+  [
+    ...new Set([
+      total,
+      ceilTo(total, 10000),
+      ceilTo(total, 10000) + 10000,
+      ceilTo(total, 50000),
+      ceilTo(total, 100000),
+      ceilTo(total, 100000) + 100000,
+    ]),
+  ]
     .filter((n) => n >= total && n > 0)
     .sort((a, b) => a - b)
     .slice(0, 6);
 
 function Thumb({ src, className = 'size-12' }: { src: string | null | undefined; className?: string }) {
   return src ? (
-    <img src={src} alt="" loading="lazy" className={`${className} shrink-0 rounded-md bg-slate-100 object-cover`} />
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      className={`${className} shrink-0 rounded-md bg-slate-100 object-cover`}
+    />
   ) : (
-    <span className={`${className} grid shrink-0 place-items-center rounded-md bg-slate-100 text-slate-400 dark:bg-slate-800`}>
+    <span
+      className={`${className} grid shrink-0 place-items-center rounded-md bg-slate-100 text-slate-400 dark:bg-slate-800`}
+    >
       <ImageIcon className="size-5" />
     </span>
   );
 }
 
 /** Popup with the customer's details; saving edits the customer record. */
-function CustomerModal({ id, onClose, onSaved }: { id: string; onClose: () => void; onSaved: (c: CustomerFull) => void }) {
+function CustomerModal({
+  id,
+  onClose,
+  onSaved,
+}: {
+  id: string;
+  onClose: () => void;
+  onSaved: (c: CustomerFull) => void;
+}) {
   const [c, setC] = useState<CustomerFull | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [stats, setStats] = useState<{ orders: number; spent: number } | null>(null);
@@ -130,7 +171,10 @@ function CustomerModal({ id, onClose, onSaved }: { id: string; onClose: () => vo
   const set = (k: keyof CustomerFull, v: string) => setC((cur) => (cur ? { ...cur, [k]: v } : cur));
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between">
           <h2 className="text-lg font-semibold">
             {c?.name ?? 'Khách hàng'} <span className="text-sm font-normal text-slate-500">{c?.code}</span>
@@ -141,23 +185,51 @@ function CustomerModal({ id, onClose, onSaved }: { id: string; onClose: () => vo
         </div>
         {stats && c && (
           <p className="mt-2 text-sm text-slate-600">
-            Nợ: <b>{fmt(c.kvDebt)}</b> | Số lần mua: <b>{fmt(stats.orders)}</b> | Tổng bán: <b>{fmt(stats.spent)}</b>
+            Nợ: <b>{fmt(c.kvDebt)}</b> | Số lần mua: <b>{fmt(stats.orders)}</b> | Tổng bán:{' '}
+            <b>{fmt(stats.spent)}</b>
           </p>
         )}
         {err && <p className="mt-2 text-sm text-rose-600">{err}</p>}
         {c && (
           <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
-            <label className="text-xs text-slate-500">Mã khách hàng<input className={line} value={c.code ?? ''} disabled /></label>
-            <label className="text-xs text-slate-500">Email<input className={line} value={c.email ?? ''} onChange={(e) => set('email', e.target.value)} /></label>
-            <label className="text-xs text-slate-500">Tên khách hàng<input className={line} value={c.name ?? ''} onChange={(e) => set('name', e.target.value)} /></label>
-            <label className="text-xs text-slate-500">Điện thoại<input className={line} value={c.phone ?? ''} onChange={(e) => set('phone', e.target.value)} /></label>
-            <label className="text-xs text-slate-500 sm:col-span-2">Địa chỉ<input className={line} value={c.addressLine ?? ''} onChange={(e) => set('addressLine', e.target.value)} /></label>
-            <label className="text-xs text-slate-500">Khu vực<input className={line} value={c.region ?? ''} disabled /></label>
-            <label className="text-xs text-slate-500">Phường/Xã<input className={line} value={c.ward ?? ''} disabled /></label>
+            <label className="text-xs text-slate-500">
+              Mã khách hàng
+              <input className={line} value={c.code ?? ''} disabled />
+            </label>
+            <label className="text-xs text-slate-500">
+              Email
+              <input className={line} value={c.email ?? ''} onChange={(e) => set('email', e.target.value)} />
+            </label>
+            <label className="text-xs text-slate-500">
+              Tên khách hàng
+              <input className={line} value={c.name ?? ''} onChange={(e) => set('name', e.target.value)} />
+            </label>
+            <label className="text-xs text-slate-500">
+              Điện thoại
+              <input className={line} value={c.phone ?? ''} onChange={(e) => set('phone', e.target.value)} />
+            </label>
+            <label className="text-xs text-slate-500 sm:col-span-2">
+              Địa chỉ
+              <input
+                className={line}
+                value={c.addressLine ?? ''}
+                onChange={(e) => set('addressLine', e.target.value)}
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              Khu vực
+              <input className={line} value={c.region ?? ''} disabled />
+            </label>
+            <label className="text-xs text-slate-500">
+              Phường/Xã
+              <input className={line} value={c.ward ?? ''} disabled />
+            </label>
           </div>
         )}
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Bỏ qua</Button>
+          <Button variant="secondary" onClick={onClose}>
+            Bỏ qua
+          </Button>
           <Button onClick={() => void save()}>Lưu</Button>
         </div>
       </div>
@@ -187,7 +259,15 @@ const num = (s: string) => Math.max(0, Number.parseInt(s.replace(/\D/g, ''), 10)
 const line =
   'w-full border-0 border-b border-slate-300 bg-transparent px-1 py-1.5 text-sm outline-none focus:border-brand-600 dark:border-slate-700';
 
-function Money({ value, onChange, className }: { value: number; onChange: (n: number) => void; className?: string }) {
+function Money({
+  value,
+  onChange,
+  className,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  className?: string;
+}) {
   return (
     <input
       inputMode="numeric"
@@ -218,6 +298,9 @@ export default function PosPage() {
   const [customerOpen, setCustomerOpen] = useState<string | null>(null);
   const [recentOpen, setRecentOpen] = useState(false);
   const [recent, setRecent] = useState<RecentOrder[]>([]);
+  // orders opened from the recent list live as extra tabs beside the drafts
+  const [orderTabs, setOrderTabs] = useState<string[]>([]);
+  const [orderTab, setOrderTab] = useState<string | null>(null);
   const draftsRef = useRef<Draft[]>([]);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const searchRef = useRef<HTMLInputElement>(null);
@@ -276,9 +359,10 @@ export default function PosPage() {
   const flush = useCallback(async (id: string) => {
     const d = draftsRef.current.find((x) => x.id === id);
     if (!d) return;
-    await api(`/pos/drafts/${id}`, { method: 'PUT', json: { label: d.label, mode: d.mode, payload: d.payload } }).catch(
-      () => undefined,
-    );
+    await api(`/pos/drafts/${id}`, {
+      method: 'PUT',
+      json: { label: d.label, mode: d.mode, payload: d.payload },
+    }).catch(() => undefined);
   }, []);
   const edit = (id: string, fn: (d: Draft) => Draft) => {
     setDrafts((cur) => cur.map((d) => (d.id === id ? fn(d) : d)));
@@ -290,7 +374,8 @@ export default function PosPage() {
   };
 
   const draft = drafts.find((d) => d.id === active) ?? null;
-  const patch = (p: Partial<Payload>) => draft && edit(draft.id, (d) => ({ ...d, payload: { ...d.payload, ...p } }));
+  const patch = (p: Partial<Payload>) =>
+    draft && edit(draft.id, (d) => ({ ...d, payload: { ...d.payload, ...p } }));
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -391,7 +476,9 @@ export default function PosPage() {
         json: { mode: draft.mode, payload },
       });
       const o = await api<{
-        order: Omit<ReceiptOrder, 'customerName' | 'customerPhone'> & { customer: { name: string | null; phone: string | null } | null };
+        order: Omit<ReceiptOrder, 'customerName' | 'customerPhone'> & {
+          customer: { name: string | null; phone: string | null } | null;
+        };
       }>(`/orders/${r.code}`);
       setDone({
         code: r.code,
@@ -468,7 +555,9 @@ export default function PosPage() {
                     </span>
                     <span className="text-right">
                       <span className="block tabular-nums">{fmt(v.price)}</span>
-                      <span className={`text-xs ${v.onHand > 0 ? 'text-slate-500' : 'text-rose-600'}`}>Tồn {fmt(v.onHand)}</span>
+                      <span className={`text-xs ${v.onHand > 0 ? 'text-slate-500' : 'text-rose-600'}`}>
+                        Tồn {fmt(v.onHand)}
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -480,9 +569,15 @@ export default function PosPage() {
           {drafts.map((d) => (
             <div
               key={d.id}
-              className={`flex items-center gap-1 rounded-t-md px-3 py-1.5 text-sm ${d.id === active ? 'bg-white font-medium text-brand-700 dark:bg-slate-900' : 'bg-brand-700 text-white'}`}
+              className={`flex items-center gap-1 rounded-t-md px-3 py-1.5 text-sm ${d.id === active && !orderTab ? 'bg-white font-medium text-brand-700 dark:bg-slate-900' : 'bg-brand-700 text-white'}`}
             >
-              <button onClick={() => setActive(d.id)} className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  setActive(d.id);
+                  setOrderTab(null);
+                }}
+                className="flex items-center gap-1"
+              >
                 {d.mode === 'delivery' && <Truck className="size-3.5" />} {d.label}
               </button>
               <button aria-label="Đóng" onClick={() => void closeDraft(d.id)}>
@@ -490,209 +585,370 @@ export default function PosPage() {
               </button>
             </div>
           ))}
-          <button className="rounded-md p-1.5 text-white hover:bg-brand-700" aria-label="Thêm hóa đơn" onClick={() => void newDraft(draft.mode)}>
+          {orderTabs.map((code) => (
+            <div
+              key={code}
+              className={`flex items-center gap-1 rounded-t-md px-3 py-1.5 text-sm ${orderTab === code ? 'bg-white font-medium text-brand-700 dark:bg-slate-900' : 'bg-brand-700 text-white'}`}
+            >
+              <button onClick={() => setOrderTab(code)} className="flex items-center gap-1">
+                <Receipt className="size-3.5" /> {code}
+              </button>
+              <button
+                aria-label="Đóng"
+                onClick={() => {
+                  setOrderTabs((t) => t.filter((c) => c !== code));
+                  if (orderTab === code) setOrderTab(null);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+          <button
+            className="rounded-md p-1.5 text-white hover:bg-brand-700"
+            aria-label="Thêm hóa đơn"
+            onClick={() => {
+              setOrderTab(null);
+              void newDraft(draft.mode);
+            }}
+          >
             <Plus className="size-5" />
           </button>
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-3 bg-slate-100 p-3 lg:grid-cols-[1fr_minmax(360px,420px)] dark:bg-slate-950">
-        {/* lines: only the list scrolls */}
-        <div className="flex min-h-0 flex-col rounded-lg bg-white dark:bg-slate-900">
-          <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-auto dark:divide-slate-800">
-            {p.lines.length === 0 && <li className="p-6 text-center text-sm text-slate-500">Chưa có sản phẩm. Tìm hàng hoặc quét mã vạch.</li>}
-            {p.lines.map((l, i) => {
-              const v = info[l.variantId];
-              const low = v && v.onHand < l.qty;
-              return (
-                <li key={l.variantId} className="px-3 py-2">
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="w-5 text-slate-400">{i + 1}</span>
-                    <Thumb src={v?.image} className="size-12" />
-                    <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2">
-                        {v?.productName} <span className="text-slate-500">{optionText(v?.optionValues)}</span>
+      {orderTab ? (
+        <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-4 dark:bg-slate-950">
+          <OrderDetail key={orderTab} code={orderTab} embedded />
+        </div>
+      ) : (
+        <>
+          <div className="grid min-h-0 flex-1 gap-3 bg-slate-100 p-3 lg:grid-cols-[1fr_minmax(360px,420px)] dark:bg-slate-950">
+            {/* lines: only the list scrolls */}
+            <div className="flex min-h-0 flex-col rounded-lg bg-white dark:bg-slate-900">
+              <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-auto dark:divide-slate-800">
+                {p.lines.length === 0 && (
+                  <li className="p-6 text-center text-sm text-slate-500">
+                    Chưa có sản phẩm. Tìm hàng hoặc quét mã vạch.
+                  </li>
+                )}
+                {p.lines.map((l, i) => {
+                  const v = info[l.variantId];
+                  const low = v && v.onHand < l.qty;
+                  return (
+                    <li key={l.variantId} className="px-3 py-2">
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="w-5 text-slate-400">{i + 1}</span>
+                        <Thumb src={v?.image} className="size-12" />
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-2">
+                            {v?.productName}{' '}
+                            <span className="text-slate-500">{optionText(v?.optionValues)}</span>
+                          </span>
+                          <span className="font-mono text-xs text-slate-500">{v?.sku ?? '…'}</span>
+                          {low && (
+                            <span className="ml-2 text-xs text-rose-600">
+                              Tồn: {fmt(v.onHand)} (không đủ)
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <button
+                            aria-label="Giảm"
+                            className="rounded-full border border-slate-300 p-1 dark:border-slate-700"
+                            onClick={() =>
+                              patch({
+                                lines:
+                                  l.qty <= 1
+                                    ? p.lines.filter((x) => x.variantId !== l.variantId)
+                                    : p.lines.map((x) =>
+                                        x.variantId === l.variantId ? { ...x, qty: x.qty - 1 } : x,
+                                      ),
+                              })
+                            }
+                          >
+                            <Minus className="size-3.5" />
+                          </button>
+                          <input
+                            inputMode="numeric"
+                            className="w-12 border-b border-slate-300 bg-transparent text-center outline-none dark:border-slate-700"
+                            value={l.qty}
+                            onChange={(e) =>
+                              patch({
+                                lines: p.lines.map((x) =>
+                                  x.variantId === l.variantId
+                                    ? { ...x, qty: Math.max(1, num(e.target.value)) }
+                                    : x,
+                                ),
+                              })
+                            }
+                          />
+                          <button
+                            aria-label="Tăng"
+                            className="rounded-full border border-slate-300 p-1 dark:border-slate-700"
+                            onClick={() =>
+                              patch({
+                                lines: p.lines.map((x) =>
+                                  x.variantId === l.variantId ? { ...x, qty: x.qty + 1 } : x,
+                                ),
+                              })
+                            }
+                          >
+                            <Plus className="size-3.5" />
+                          </button>
+                        </span>
+                        <span className="w-28">
+                          <Money
+                            value={l.price}
+                            onChange={(n) =>
+                              patch({
+                                lines: p.lines.map((x) =>
+                                  x.variantId === l.variantId ? { ...x, price: n } : x,
+                                ),
+                              })
+                            }
+                          />
+                        </span>
+                        <span className="w-28 text-right font-medium tabular-nums">
+                          {fmt(l.price * l.qty)}
+                        </span>
+                        <button
+                          aria-label="Xóa dòng"
+                          onClick={() => patch({ lines: p.lines.filter((x) => x.variantId !== l.variantId) })}
+                        >
+                          <Trash2 className="size-4 text-slate-400 hover:text-rose-500" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="grid shrink-0 gap-3 border-t border-slate-200 p-3 text-sm sm:grid-cols-[1fr_auto] dark:border-slate-800">
+                <textarea
+                  className="resize-none rounded-md border border-slate-200 bg-transparent p-2 text-sm dark:border-slate-700"
+                  rows={3}
+                  placeholder="Ghi chú đơn hàng"
+                  value={p.note}
+                  onChange={(e) => patch({ note: e.target.value })}
+                />
+                <div className="w-full min-w-64 space-y-1 sm:w-80">
+                  <div className="flex justify-between">
+                    <span>Tổng tiền hàng ({p.lines.reduce((a, l) => a + l.qty, 0)})</span>
+                    <span className="tabular-nums">{fmt(subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-6">
+                    <span>Giảm giá</span>
+                    <span className="w-32">
+                      <Money value={p.discount} onChange={(n) => patch({ discount: n })} />
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-6">
+                    <span>Thu khác</span>
+                    <span className="w-32">
+                      <Money value={p.otherIncome} onChange={(n) => patch({ otherIncome: n })} />
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-base font-semibold">
+                    <span>Khách cần trả</span>
+                    <span className="tabular-nums text-brand-700">{fmt(total)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* right column: only this scrolls */}
+            <div className="flex min-h-0 flex-col rounded-lg bg-white text-sm dark:bg-slate-900">
+              <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
+                <div className="flex items-center justify-end gap-2 text-slate-500">
+                  <input
+                    type="date"
+                    className="border-b border-slate-300 bg-transparent text-sm outline-none dark:border-slate-700"
+                    value={when.date}
+                    max={toLocal(null).date}
+                    onChange={(e) => setWhen(e.target.value, when.time)}
+                  />
+                  <input
+                    type="time"
+                    className="border-b border-slate-300 bg-transparent text-sm outline-none dark:border-slate-700"
+                    value={when.time}
+                    onChange={(e) => setWhen(when.date, e.target.value)}
+                  />
+                  {p.orderedAt && (
+                    <button className="text-xs text-brand-700" onClick={() => patch({ orderedAt: null })}>
+                      Bây giờ
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <label className="flex items-center gap-2 border-b border-slate-300 pb-1.5 dark:border-slate-700">
+                    <Search className="size-4 text-slate-400" />
+                    <input
+                      className="min-w-0 flex-1 bg-transparent outline-none"
+                      placeholder="Tìm khách hàng (tên, SĐT)"
+                      value={cq}
+                      onChange={(e) => setCq(e.target.value)}
+                    />
+                  </label>
+                  {chits.length > 0 && (
+                    <ul className="absolute left-0 right-0 z-10 mt-1 rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                      {chits.map((c) => (
+                        <li key={c.id}>
+                          <button
+                            className="flex w-full justify-between px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
+                            onClick={() => void pickCustomer(c)}
+                          >
+                            <span>{c.name ?? '(không tên)'}</span>
+                            <span className="text-slate-500">{c.phone}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {p.customer?.id && (
+                  <div className="flex items-start gap-2 rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+                    <button
+                      className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                      onClick={() => setCustomerOpen(p.customer!.id!)}
+                    >
+                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800">
+                        <User className="size-4" />
                       </span>
-                      <span className="font-mono text-xs text-slate-500">{v?.sku ?? '…'}</span>
-                      {low && <span className="ml-2 text-xs text-rose-600">Tồn: {fmt(v.onHand)} (không đủ)</span>}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <button
-                        aria-label="Giảm"
-                        className="rounded-full border border-slate-300 p-1 dark:border-slate-700"
-                        onClick={() =>
-                          patch({
-                            lines:
-                              l.qty <= 1
-                                ? p.lines.filter((x) => x.variantId !== l.variantId)
-                                : p.lines.map((x) => (x.variantId === l.variantId ? { ...x, qty: x.qty - 1 } : x)),
-                          })
-                        }
-                      >
-                        <Minus className="size-3.5" />
-                      </button>
-                      <input
-                        inputMode="numeric"
-                        className="w-12 border-b border-slate-300 bg-transparent text-center outline-none dark:border-slate-700"
-                        value={l.qty}
-                        onChange={(e) =>
-                          patch({ lines: p.lines.map((x) => (x.variantId === l.variantId ? { ...x, qty: Math.max(1, num(e.target.value)) } : x)) })
-                        }
-                      />
-                      <button
-                        aria-label="Tăng"
-                        className="rounded-full border border-slate-300 p-1 dark:border-slate-700"
-                        onClick={() => patch({ lines: p.lines.map((x) => (x.variantId === l.variantId ? { ...x, qty: x.qty + 1 } : x)) })}
-                      >
-                        <Plus className="size-3.5" />
-                      </button>
-                    </span>
-                    <span className="w-28">
-                      <Money value={l.price} onChange={(n) => patch({ lines: p.lines.map((x) => (x.variantId === l.variantId ? { ...x, price: n } : x)) })} />
-                    </span>
-                    <span className="w-28 text-right font-medium tabular-nums">{fmt(l.price * l.qty)}</span>
-                    <button aria-label="Xóa dòng" onClick={() => patch({ lines: p.lines.filter((x) => x.variantId !== l.variantId) })}>
-                      <Trash2 className="size-4 text-slate-400 hover:text-rose-500" />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-brand-700">
+                          {customer?.name ?? p.customer.name ?? '(không tên)'}{' '}
+                          {customer?.code && (
+                            <span className="text-xs font-normal text-slate-500">{customer.code}</span>
+                          )}
+                        </span>
+                        <span className="block text-xs text-slate-500">
+                          {customer?.phone ?? p.customer.phone ?? 'Chưa có số điện thoại'}
+                        </span>
+                        {customer?.addressLine && (
+                          <span className="block truncate text-xs text-slate-500">
+                            {customer.addressLine}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                    <button aria-label="Bỏ khách" onClick={() => patch({ customer: null })}>
+                      <X className="size-4" />
                     </button>
                   </div>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="grid shrink-0 gap-3 border-t border-slate-200 p-3 text-sm sm:grid-cols-[1fr_auto] dark:border-slate-800">
-            <textarea
-              className="resize-none rounded-md border border-slate-200 bg-transparent p-2 text-sm dark:border-slate-700"
-              rows={3}
-              placeholder="Ghi chú đơn hàng"
-              value={p.note}
-              onChange={(e) => patch({ note: e.target.value })}
-            />
-            <div className="w-full min-w-64 space-y-1 sm:w-80">
-              <div className="flex justify-between"><span>Tổng tiền hàng ({p.lines.reduce((a, l) => a + l.qty, 0)})</span><span className="tabular-nums">{fmt(subtotal)}</span></div>
-              <div className="flex items-center justify-between gap-6"><span>Giảm giá</span><span className="w-32"><Money value={p.discount} onChange={(n) => patch({ discount: n })} /></span></div>
-              <div className="flex items-center justify-between gap-6"><span>Thu khác</span><span className="w-32"><Money value={p.otherIncome} onChange={(n) => patch({ otherIncome: n })} /></span></div>
-              <div className="flex justify-between text-base font-semibold"><span>Khách cần trả</span><span className="tabular-nums text-brand-700">{fmt(total)}</span></div>
-            </div>
-          </div>
-        </div>
+                )}
 
-        {/* right column: only this scrolls */}
-        <div className="flex min-h-0 flex-col rounded-lg bg-white text-sm dark:bg-slate-900">
-          <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
-            <div className="flex items-center justify-end gap-2 text-slate-500">
-              <input type="date" className="border-b border-slate-300 bg-transparent text-sm outline-none dark:border-slate-700" value={when.date} max={toLocal(null).date} onChange={(e) => setWhen(e.target.value, when.time)} />
-              <input type="time" className="border-b border-slate-300 bg-transparent text-sm outline-none dark:border-slate-700" value={when.time} onChange={(e) => setWhen(when.date, e.target.value)} />
-              {p.orderedAt && (
-                <button className="text-xs text-brand-700" onClick={() => patch({ orderedAt: null })}>
-                  Bây giờ
-                </button>
-              )}
-            </div>
-
-            <div className="relative">
-              <label className="flex items-center gap-2 border-b border-slate-300 pb-1.5 dark:border-slate-700">
-                <Search className="size-4 text-slate-400" />
-                <input
-                  className="min-w-0 flex-1 bg-transparent outline-none"
-                  placeholder="Tìm khách hàng (tên, SĐT)"
-                  value={cq}
-                  onChange={(e) => setCq(e.target.value)}
-                />
-              </label>
-              {chits.length > 0 && (
-                <ul className="absolute left-0 right-0 z-10 mt-1 rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                  {chits.map((c) => (
-                    <li key={c.id}>
-                      <button className="flex w-full justify-between px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => void pickCustomer(c)}>
-                        <span>{c.name ?? '(không tên)'}</span>
-                        <span className="text-slate-500">{c.phone}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {p.customer?.id && (
-              <div className="flex items-start gap-2 rounded-lg border border-slate-200 p-2 dark:border-slate-700">
-                <button className="flex min-w-0 flex-1 items-start gap-3 text-left" onClick={() => setCustomerOpen(p.customer!.id!)}>
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800">
-                    <User className="size-4" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium text-brand-700">
-                      {customer?.name ?? p.customer.name ?? '(không tên)'} {customer?.code && <span className="text-xs font-normal text-slate-500">{customer.code}</span>}
-                    </span>
-                    <span className="block text-xs text-slate-500">{customer?.phone ?? p.customer.phone ?? 'Chưa có số điện thoại'}</span>
-                    {customer?.addressLine && <span className="block truncate text-xs text-slate-500">{customer.addressLine}</span>}
-                  </span>
-                </button>
-                <button aria-label="Bỏ khách" onClick={() => patch({ customer: null })}>
-                  <X className="size-4" />
-                </button>
+                {!retail && (
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        className={line}
+                        placeholder="Tên người nhận"
+                        value={p.receiver.name}
+                        onChange={(e) => patch({ receiver: { ...p.receiver, name: e.target.value } })}
+                      />
+                      <input
+                        className={line}
+                        placeholder="Số điện thoại"
+                        value={p.receiver.phone}
+                        onChange={(e) => patch({ receiver: { ...p.receiver, phone: e.target.value } })}
+                      />
+                    </div>
+                    <input
+                      className={line}
+                      placeholder="Địa chỉ chi tiết (số nhà, ngõ, đường)"
+                      value={p.receiver.address}
+                      onChange={(e) => patch({ receiver: { ...p.receiver, address: e.target.value } })}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        className={line}
+                        placeholder="Khu vực (tỉnh/quận)"
+                        value={p.receiver.area}
+                        onChange={(e) => patch({ receiver: { ...p.receiver, area: e.target.value } })}
+                      />
+                      <input
+                        className={line}
+                        placeholder="Phường/Xã"
+                        value={p.receiver.ward}
+                        onChange={(e) => patch({ receiver: { ...p.receiver, ward: e.target.value } })}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <label className="text-xs text-slate-500">
+                        Đối tác giao hàng
+                        <input
+                          className={line}
+                          value={p.carrier}
+                          placeholder="SHOPEE, GHN, tự giao…"
+                          onChange={(e) => patch({ carrier: e.target.value })}
+                        />
+                      </label>
+                      <label className="text-xs text-slate-500">
+                        Phí trả ĐTGH
+                        <Money value={p.shippingFee} onChange={(n) => patch({ shippingFee: n })} />
+                      </label>
+                      <label className="col-span-2 text-xs text-slate-500">
+                        Mã vận đơn
+                        <input
+                          className={line}
+                          value={p.trackingNo}
+                          onChange={(e) => patch({ trackingNo: e.target.value })}
+                        />
+                      </label>
+                    </div>
+                    <label className="flex items-center justify-between gap-4 pt-2">
+                      <span>Thu hộ tiền (COD)</span>
+                      <input
+                        type="checkbox"
+                        checked={p.cod}
+                        onChange={(e) => patch({ cod: e.target.checked })}
+                      />
+                    </label>
+                  </div>
+                )}
+                {outOfStock > 0 && (
+                  <p className="text-xs text-amber-600">
+                    {outOfStock} sản phẩm vượt tồn hiện có, vẫn cho bán (tồn sẽ âm).
+                  </p>
+                )}
               </div>
-            )}
-
-            {!retail && (
-              <div className="space-y-1">
-                <div className="grid grid-cols-2 gap-3">
-                  <input className={line} placeholder="Tên người nhận" value={p.receiver.name} onChange={(e) => patch({ receiver: { ...p.receiver, name: e.target.value } })} />
-                  <input className={line} placeholder="Số điện thoại" value={p.receiver.phone} onChange={(e) => patch({ receiver: { ...p.receiver, phone: e.target.value } })} />
-                </div>
-                <input className={line} placeholder="Địa chỉ chi tiết (số nhà, ngõ, đường)" value={p.receiver.address} onChange={(e) => patch({ receiver: { ...p.receiver, address: e.target.value } })} />
-                <div className="grid grid-cols-2 gap-3">
-                  <input className={line} placeholder="Khu vực (tỉnh/quận)" value={p.receiver.area} onChange={(e) => patch({ receiver: { ...p.receiver, area: e.target.value } })} />
-                  <input className={line} placeholder="Phường/Xã" value={p.receiver.ward} onChange={(e) => patch({ receiver: { ...p.receiver, ward: e.target.value } })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <label className="text-xs text-slate-500">
-                    Đối tác giao hàng
-                    <input className={line} value={p.carrier} placeholder="SHOPEE, GHN, tự giao…" onChange={(e) => patch({ carrier: e.target.value })} />
-                  </label>
-                  <label className="text-xs text-slate-500">
-                    Phí trả ĐTGH
-                    <Money value={p.shippingFee} onChange={(n) => patch({ shippingFee: n })} />
-                  </label>
-                  <label className="col-span-2 text-xs text-slate-500">
-                    Mã vận đơn
-                    <input className={line} value={p.trackingNo} onChange={(e) => patch({ trackingNo: e.target.value })} />
-                  </label>
-                </div>
-                <label className="flex items-center justify-between gap-4 pt-2">
-                  <span>Thu hộ tiền (COD)</span>
-                  <input type="checkbox" checked={p.cod} onChange={(e) => patch({ cod: e.target.checked })} />
-                </label>
+              <div className="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
+                <Button
+                  className="h-12 w-full text-base"
+                  disabled={busy || p.lines.length === 0}
+                  onClick={openConfirm}
+                >
+                  THANH TOÁN
+                </Button>
               </div>
-            )}
-            {outOfStock > 0 && <p className="text-xs text-amber-600">{outOfStock} sản phẩm vượt tồn hiện có, vẫn cho bán (tồn sẽ âm).</p>}
+            </div>
           </div>
-          <div className="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
-            <Button className="h-12 w-full text-base" disabled={busy || p.lines.length === 0} onClick={openConfirm}>
-              THANH TOÁN
-            </Button>
-          </div>
-        </div>
-      </div>
 
-      <div className="flex shrink-0 gap-1 border-t border-slate-200 bg-white px-3 py-1 dark:border-slate-800 dark:bg-slate-900">
-        {(
-          [
-            ['retail', 'Bán thường', Store],
-            ['delivery', 'Bán giao hàng', Truck],
-          ] as const
-        ).map(([m, label, Icon]) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium ${draft.mode === m ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500'}`}
-          >
-            <Icon className="size-4" /> {label}
-          </button>
-        ))}
-      </div>
+          <div className="flex shrink-0 gap-1 border-t border-slate-200 bg-white px-3 py-1 dark:border-slate-800 dark:bg-slate-900">
+            {(
+              [
+                ['retail', 'Bán thường', Store],
+                ['delivery', 'Bán giao hàng', Truck],
+              ] as const
+            ).map(([m, label, Icon]) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium ${draft.mode === m ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500'}`}
+              >
+                <Icon className="size-4" /> {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* recent orders slide out from the left */}
-      <div className={`absolute inset-y-0 left-0 z-40 w-80 transform bg-white shadow-xl transition-transform duration-200 dark:bg-slate-900 ${recentOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div
+        className={`absolute inset-y-0 left-0 z-40 w-80 transform bg-white shadow-xl transition-transform duration-200 dark:bg-slate-900 ${recentOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
         <div className="flex items-center justify-between border-b border-slate-200 px-3 py-3 dark:border-slate-800">
           <h2 className="font-medium">Đơn bán gần đây</h2>
           <button aria-label="Đóng" onClick={() => setRecentOpen(false)}>
@@ -703,14 +959,33 @@ export default function PosPage() {
           {recent.length === 0 && <li className="p-4 text-sm text-slate-500">Chưa có đơn bán tại quầy.</li>}
           {recent.map((o) => (
             <li key={o.code}>
-              <button className="w-full px-3 py-2.5 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800" onClick={() => window.open(`/orders/${encodeURIComponent(o.code)}`, '_blank')}>
+              <button
+                className="w-full px-3 py-2.5 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+                onClick={() => {
+                  setOrderTabs((t) => (t.includes(o.code) ? t : [...t, o.code]));
+                  setOrderTab(o.code);
+                  setRecentOpen(false);
+                }}
+              >
                 <span className="flex items-center justify-between">
                   <span className="font-medium">{o.code}</span>
                   <span className="tabular-nums">{fmt(o.total)}</span>
                 </span>
                 <span className="flex items-center justify-between text-xs text-slate-500">
-                  <span>{o.customer?.name ?? 'Khách lẻ'} · {formatRelativeDateTime(o.orderedAt)}</span>
-                  <Badge tone={o.status === 'cancelled' || o.status === 'returned' ? 'danger' : o.status === 'completed' || o.status === 'delivered' ? 'success' : 'brand'}>{STATUS_LABEL[o.status] ?? o.status}</Badge>
+                  <span>
+                    {o.customer?.name ?? 'Khách lẻ'} · {formatRelativeDateTime(o.orderedAt)}
+                  </span>
+                  <Badge
+                    tone={
+                      o.status === 'cancelled' || o.status === 'returned'
+                        ? 'danger'
+                        : o.status === 'completed' || o.status === 'delivered'
+                          ? 'success'
+                          : 'brand'
+                    }
+                  >
+                    {STATUS_LABEL[o.status] ?? o.status}
+                  </Badge>
                 </span>
               </button>
             </li>
@@ -720,13 +995,30 @@ export default function PosPage() {
 
       {/* confirm drawer */}
       {confirming && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={() => !busy && setConfirming(false)}>
-          <div className="flex h-full w-full max-w-md flex-col bg-white p-5 shadow-xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-black/40"
+          onClick={() => !busy && setConfirming(false)}
+        >
+          <div
+            className="flex h-full w-full max-w-md flex-col bg-white p-5 shadow-xl dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between text-sm text-slate-500">
               <span>{retail ? 'Bán thường' : 'Bán giao hàng'}</span>
               <span className="flex items-center gap-2">
-                <input type="date" className="border-b border-slate-300 bg-transparent outline-none dark:border-slate-700" value={when.date} max={toLocal(null).date} onChange={(e) => setWhen(e.target.value, when.time)} />
-                <input type="time" className="border-b border-slate-300 bg-transparent outline-none dark:border-slate-700" value={when.time} onChange={(e) => setWhen(when.date, e.target.value)} />
+                <input
+                  type="date"
+                  className="border-b border-slate-300 bg-transparent outline-none dark:border-slate-700"
+                  value={when.date}
+                  max={toLocal(null).date}
+                  onChange={(e) => setWhen(e.target.value, when.time)}
+                />
+                <input
+                  type="time"
+                  className="border-b border-slate-300 bg-transparent outline-none dark:border-slate-700"
+                  value={when.time}
+                  onChange={(e) => setWhen(when.date, e.target.value)}
+                />
                 <button aria-label="Đóng" onClick={() => setConfirming(false)}>
                   <X className="size-5" />
                 </button>
@@ -736,33 +1028,74 @@ export default function PosPage() {
               {customer?.name || p.customer?.name || (!retail ? p.receiver.name : '') || 'Khách lẻ'}
             </h2>
             <div className="mt-3 flex-1 space-y-3 overflow-auto text-sm">
-              <div className="flex justify-between"><span>Tổng tiền hàng ({p.lines.reduce((a, l) => a + l.qty, 0)})</span><span className="tabular-nums">{fmt(subtotal)}</span></div>
-              <div className="flex items-center justify-between"><span>Giảm giá</span><span className="w-36"><Money value={p.discount} onChange={(n) => patch({ discount: n })} /></span></div>
-              <div className="flex items-center justify-between"><span>Thu khác</span><span className="w-36"><Money value={p.otherIncome} onChange={(n) => patch({ otherIncome: n })} /></span></div>
-              <div className="flex justify-between text-base font-semibold"><span>Khách cần trả</span><span className="tabular-nums text-brand-700">{fmt(total)}</span></div>
-              <div className="flex items-center justify-between font-semibold"><span>Khách thanh toán</span><span className="w-36"><Money value={paid} onChange={(n) => setPaidInput(n)} /></span></div>
+              <div className="flex justify-between">
+                <span>Tổng tiền hàng ({p.lines.reduce((a, l) => a + l.qty, 0)})</span>
+                <span className="tabular-nums">{fmt(subtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Giảm giá</span>
+                <span className="w-36">
+                  <Money value={p.discount} onChange={(n) => patch({ discount: n })} />
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Thu khác</span>
+                <span className="w-36">
+                  <Money value={p.otherIncome} onChange={(n) => patch({ otherIncome: n })} />
+                </span>
+              </div>
+              <div className="flex justify-between text-base font-semibold">
+                <span>Khách cần trả</span>
+                <span className="tabular-nums text-brand-700">{fmt(total)}</span>
+              </div>
+              <div className="flex items-center justify-between font-semibold">
+                <span>Khách thanh toán</span>
+                <span className="w-36">
+                  <Money value={paid} onChange={(n) => setPaidInput(n)} />
+                </span>
+              </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {METHODS.map(([k, label]) => (
                   <label key={k} className="flex items-center gap-1.5">
-                    <input type="radio" name="method" checked={p.paymentMethod === k} onChange={() => patch({ paymentMethod: k })} /> {label}
+                    <input
+                      type="radio"
+                      name="method"
+                      checked={p.paymentMethod === k}
+                      onChange={() => patch({ paymentMethod: k })}
+                    />{' '}
+                    {label}
                   </label>
                 ))}
               </div>
               {retail && (
                 <div className="flex flex-wrap gap-2 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
                   {quickAmounts(total).map((n) => (
-                    <button key={n} className="rounded-full border border-slate-300 bg-white px-4 py-1.5 tabular-nums hover:border-brand-600 dark:border-slate-600 dark:bg-slate-900" onClick={() => setPaidInput(n)}>
+                    <button
+                      key={n}
+                      className="rounded-full border border-slate-300 bg-white px-4 py-1.5 tabular-nums hover:border-brand-600 dark:border-slate-600 dark:bg-slate-900"
+                      onClick={() => setPaidInput(n)}
+                    >
                       {fmt(n)}
                     </button>
                   ))}
                 </div>
               )}
-              {retail && paidInput > total && <p className="text-slate-500">Tiền thừa trả khách: {fmt(paidInput - total)}</p>}
+              {retail && paidInput > total && (
+                <p className="text-slate-500">Tiền thừa trả khách: {fmt(paidInput - total)}</p>
+              )}
               {!retail && (
                 <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  <p>Người nhận: {p.receiver.name || '—'} · {p.receiver.phone || '—'}</p>
-                  <p>{[p.receiver.address, p.receiver.ward, p.receiver.area].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}</p>
-                  <p className="mt-1">{p.cod ? `Thu hộ COD: ${fmt(cod)}` : 'Không thu hộ'}{p.carrier ? ` · ${p.carrier}` : ''}</p>
+                  <p>
+                    Người nhận: {p.receiver.name || '—'} · {p.receiver.phone || '—'}
+                  </p>
+                  <p>
+                    {[p.receiver.address, p.receiver.ward, p.receiver.area].filter(Boolean).join(', ') ||
+                      'Chưa có địa chỉ'}
+                  </p>
+                  <p className="mt-1">
+                    {p.cod ? `Thu hộ COD: ${fmt(cod)}` : 'Không thu hộ'}
+                    {p.carrier ? ` · ${p.carrier}` : ''}
+                  </p>
                 </div>
               )}
               {msg && <p className="text-rose-600">{msg}</p>}
@@ -784,7 +1117,14 @@ export default function PosPage() {
               <Button onClick={() => void print()}>
                 <Printer className="size-4" /> In biên lai
               </Button>
-              <Button variant="secondary" onClick={() => window.open(`/orders/${encodeURIComponent(done.code)}`, '_blank')}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setOrderTabs((t) => (t.includes(done.code) ? t : [...t, done.code]));
+                  setOrderTab(done.code);
+                  setDone(null);
+                }}
+              >
                 Xem đơn
               </Button>
               <Button variant="ghost" onClick={() => setDone(null)}>
