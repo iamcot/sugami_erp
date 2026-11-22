@@ -15,7 +15,12 @@
     "format:check": "prettier --check .",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
-    "infra:mysql": "docker compose --profile mysql up -d"
+    "infra:mysql": "docker compose --profile mysql up -d",
+    "db:generate": "pnpm --filter @sugami/db db:generate",
+    "db:migrate": "pnpm --filter @sugami/db db:migrate",
+    "db:deploy": "pnpm --filter @sugami/db db:deploy",
+    "db:seed": "pnpm --filter @sugami/db db:seed",
+    "db:studio": "pnpm --filter @sugami/db db:studio"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
