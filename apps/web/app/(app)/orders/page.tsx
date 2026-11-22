@@ -7,6 +7,7 @@ import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
 import { Badge, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { formatRelativeDateTime } from '@/lib/datetime';
 import { useQueryState } from '@/lib/use-query-state';
 
 interface OrderRow {
@@ -102,12 +103,7 @@ const STATUS: Record<string, { label: string; tone: 'neutral' | 'brand' | 'succe
   returned: { label: 'Trả hàng', tone: 'danger' },
 };
 
-const fmtTime = (s: string) =>
-  new Date(s).toLocaleString('vi-VN', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-    timeZone: 'Asia/Ho_Chi_Minh',
-  });
+const fmtTime = (s: string) => formatRelativeDateTime(s);
 
 const CHANNEL_ICON: Record<string, { letter: string; cls: string }> = {
   shopee: { letter: 'S', cls: 'bg-orange-500 text-white' },

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useDetail } from '@/components/detail-drawer';
 import { Badge, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { formatRelativeDateTime } from '@/lib/datetime';
 
 interface Line {
   id: string;
@@ -74,14 +75,7 @@ const FEE_LABEL: Record<string, string> = {
   shipping_fee_discount: 'Giảm phí vận chuyển',
 };
 
-const dt = (s: string | null) =>
-  s
-    ? new Date(s).toLocaleString('vi-VN', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-        timeZone: 'Asia/Ho_Chi_Minh',
-      })
-    : '–';
+const dt = (s: string | null) => formatRelativeDateTime(s);
 
 function Row({ label, value, strong }: { label: React.ReactNode; value: React.ReactNode; strong?: boolean }) {
   return (
