@@ -11,7 +11,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
 | P0 — Chuẩn bị & xác minh | 6/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
-| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 5/22 | |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 6/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 0/12 | |
@@ -21,8 +21,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Đang làm
 
 - P0-10 chờ duyệt giao diện.
-- Đang làm: P1-11 import hàng hóa + tồn từ file KiotViet.
-- Sau đó: P1-04 layout app, P1-05 bảng dữ liệu.
+- Tiếp theo: P1-12 import hóa đơn, P1-04/P1-05 giao diện + bảng dữ liệu, P1-08 danh sách sản phẩm (dữ liệu thật đã vào được).
 
 ## Bị chặn / chờ chủ shop
 
@@ -61,6 +60,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-03 nhật ký thay đổi + API lịch sử sản phẩm; README hướng dẫn khởi tạo; infra hỗ trợ Podman | f971be5 |
 | 2026-11-22 | P3-01 lớp lưu trữ S3/local, schema media, API upload ký sẵn, `pnpm storage:check` (chờ thử bucket thật) | 9c19840 |
 | 2026-11-22 | P0-07 phân tích file Excel KiotViet (1.029 mã hàng, 153 nhóm biến thể, hóa đơn Shopee) | 117ab2d |
+| 2026-11-22 | P1-11 import danh sách hàng hóa KiotViet (xem trước, tồn đầu kỳ, chạy lại an toàn) + màn hình Nhập KiotViet | f5d2bbf |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -94,7 +94,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-08 | API + màn hình danh sách sản phẩm (bảng + lưới ảnh), tìm không dấu | ⬜ | | |
 | P1-09 | Chi tiết sản phẩm | ⬜ | | |
 | P1-10 | Import/export Excel sản phẩm, sửa hàng loạt | ⬜ | | |
-| P1-11 | Import Excel hàng hóa + tồn từ KiotViet | ⬜ | | |
+| P1-11 | Import Excel hàng hóa + tồn từ KiotViet | ✅ | f5d2bbf | File thật: 1.029 SKU, 12.257 cái, khớp 100% |
 | P1-12 | Import Excel hóa đơn/đặt hàng KiotViet → đơn hàng | ⬜ | | |
 | P1-13 | Export Excel phiếu nhập/kiểm kho theo mẫu import KiotViet | ⬜ | | |
 | P1-14 | Schema kho: warehouse, stock_level, stock_movement | ✅ | aaf6f99 | |
