@@ -28,6 +28,7 @@
 
 ## 8.3 Câu hỏi còn mở
 
+0. **Pancake POS làm lớp trung gian thay KiotViet?** (2026-11-22) Pancake có Open API + webhook (đơn, sản phẩm, tồn), là đối tác TikTok, giá 200k/tháng, dùng thử 15 ngày. Chưa kiểm chứng: Pancake có tự đẩy tồn lên Shopee/TikTok khi tồn đổi qua API không. Cần thử với 1 SKU trước khi quyết.
 1. Đơn vị trung gian **chỉ có file Excel** (đã xác nhận). Còn cần: họ tính phí theo kg, theo m³, hay lấy số lớn hơn? Có phí mua hộ (% giá trị) không? Gửi 1–2 file mẫu cho task P2-07.
 2. Bạn đặt hàng trực tiếp trên Taobao/1688 rồi gửi về kho trung gian, hay đưa link để họ mua hộ?
 3. Ngoài Shopee và TikTok Shop, hiện có bán qua Facebook/Zalo hay cửa hàng không?

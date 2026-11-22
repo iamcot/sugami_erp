@@ -43,6 +43,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - 2026-11-22: Đơn vị trung gian không có API, chỉ có file Excel → import Excel (P2-07).
 - 2026-11-22: Stack thực tế: Node 22, pnpm 10, TypeScript 6, Next.js 16, NestJS 12, Prisma 7 (MariaDB adapter), BullMQ 6 + ioredis, Tailwind 4, Vitest 5.
 - 2026-11-22: Claude viết toàn bộ code, commit thẳng lên `main` (không PR); mỗi task cập nhật file này trong commit cuối.
+- 2026-11-22: Đang cân nhắc **Pancake POS** (Open API + webhook, 200k/tháng, thử 15 ngày, đối tác TikTok) thay KiotViet làm lớp đẩy tồn lên sàn; chờ thử 1 SKU.
 
 ## Nhật ký
 
