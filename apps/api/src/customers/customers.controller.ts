@@ -1,4 +1,4 @@
-import { Body, Controller, Get, NotFoundException, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
 import { Prisma } from '@sugami/db';
 import { toSearchKey } from '@sugami/shared';
 import { z } from 'zod';
@@ -25,6 +25,10 @@ const UpdateBody = z.object({
   ward: z.string().trim().max(191).nullable().optional(),
   tags: z.array(z.string().trim().min(1).max(64)).max(20).optional(),
 });
+
+const CreateBody = UpdateBody.extend({
+  name: z.string().trim().max(191).nullable().optional(),
+}).refine((b) => b.name || b.phone, { message: 'Cần ít nhất tên hoặc số điện thoại' });
 
 const ORDER_SORT: Record<string, Prisma.CustomerOrderByWithRelationInput[]> = {
   recent: [{ lastPurchaseAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
@@ -176,6 +180,44 @@ export class CustomersController {
         orderedAt: o.orderedAt.toISOString(),
         items: o.lines.map((l) => ({ sku: l.sku, name: l.name, qty: Number(l.qty) })),
       })),
+    };
+  }
+
+  /** Create a customer by hand (e.g. from the sales screen). A customer with the same phone is returned as is. */
+  @Post()
+  @RequirePermissions('customers.write')
+  async create(@Body() body: unknown) {
+    const data = parseInput(CreateBody, body);
+    const db = this.prisma.client;
+    const phone = data.phone || null;
+    const found = phone ? await db.customer.findFirst({ where: { phone } }) : null;
+    const c =
+      found ??
+      (await db.customer.create({
+        data: {
+          name: data.name || null,
+          phone,
+          email: data.email || null,
+          addressLine: data.addressLine || null,
+          region: data.region || null,
+          ward: data.ward || null,
+          tags: data.tags ?? ['Bán trực tiếp'],
+          searchKey: toSearchKey([data.name, phone].filter(Boolean).join(' ')).slice(0, 400),
+        },
+      }));
+    return {
+      existing: Boolean(found),
+      customer: {
+        id: c.id,
+        code: c.kiotvietCode,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        addressLine: c.addressLine,
+        region: c.region,
+        ward: c.ward,
+        kvDebt: Number(c.kvDebt),
+      },
     };
   }
 

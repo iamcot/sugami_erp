@@ -199,8 +199,24 @@ function CustomerModal({
   const save = async () => {
     if (!c) return;
     if (!id) {
-      onSaved(c);
-      onClose();
+      // a new buyer is saved to the customer list right away
+      try {
+        const r = await api<{ customer: CustomerFull; existing: boolean }>('/customers', {
+          method: 'POST',
+          json: {
+            name: c.name,
+            phone: c.phone,
+            email: c.email,
+            addressLine: c.addressLine,
+            region: c.region,
+            ward: c.ward,
+          },
+        });
+        onSaved(r.customer);
+        onClose();
+      } catch (e) {
+        setErr((e as Error).message);
+      }
       return;
     }
     try {
