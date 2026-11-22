@@ -46,6 +46,31 @@ for await (const v of client.paginate<Record<string, unknown>>('/products/variat
   );
 }
 
+// Listings linked on Pancake: where do the link fields sit for Shopee vs TikTok? (marketplace data only)
+{
+  const want = process.env.PROBE_LISTING ?? '11352909979';
+  let shown = 0;
+  for await (const l of client.paginate<Record<string, unknown>>('/marketplace/products')) {
+    const vars = (Array.isArray(l.variations) ? l.variations : []) as Record<string, unknown>[];
+    const hit = JSON.stringify(l).includes(want);
+    const linked = vars.some((v) => v.linked_variation_custom_id || v.linked_product_custom_id);
+    if (!(hit || (linked && shown < 4))) continue;
+    shown++;
+    const { variations: _v, images: _i, ...top } = l;
+    console.log(
+      hit ? 'tin đăng chứa mã tìm:' : 'tin đăng có liên kết:',
+      JSON.stringify({
+        marketplace_id: l.marketplace_id,
+        shop: l.marketplace_shop_name,
+        top: Object.fromEntries(Object.entries(top).filter(([k]) => /id|sku|link|code/i.test(k))),
+        variations: vars.map((v) =>
+          Object.fromEntries(Object.entries(v).filter(([k]) => /id|sku|link|code|name/i.test(k))),
+        ),
+      }),
+    );
+  }
+}
+
 let products = 0;
 let variants = 0;
 let units = 0;
