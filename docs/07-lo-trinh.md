@@ -4,7 +4,7 @@ Bối cảnh đã xác nhận: vài trăm SKU, dưới 10 đơn/ngày, ngành đ
 
 Vì quy mô nhỏ, lộ trình ưu tiên **giá trị dùng ngay** (nguồn hàng, giá vốn thật, ảnh/content) và **sẵn sàng thoát KiotViet** ngay từ thiết kế: Sugami tự giữ sổ kho đầy đủ từ ngày đầu, KiotViet chỉ là một "kênh" có thể gỡ ra.
 
-Ước lượng cho 1 lập trình viên full-stack (hoặc Claude làm qua PR, chủ shop duyệt).
+Claude viết toàn bộ code qua PR, chủ shop duyệt. Thời lượng dưới đây là ước lượng theo lịch, phụ thuộc nhiều vào tốc độ duyệt và các task 👤. Danh sách task chi tiết ở [09](09-ke-hoach-trien-khai.md), tiến độ ở [`PROGRESS.md`](../PROGRESS.md).
 
 | GĐ | Tên | Thời lượng | Kết quả chính |
 |----|-----|-----------|---------------|

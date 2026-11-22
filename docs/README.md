@@ -10,5 +10,8 @@
 | 6 | [UI/UX](06-ui-ux.md) | Định hướng giao diện, bố cục, màn hình chính |
 | 7 | [Lộ trình](07-lo-trinh.md) | Các giai đoạn, mốc, tiêu chí hoàn thành |
 | 8 | [Quyết định & câu hỏi mở](08-quyet-dinh-va-cau-hoi.md) | Những gì đã chọn và cần chủ shop xác nhận |
+| 9 | [Kế hoạch triển khai chi tiết](09-ke-hoach-trien-khai.md) | Danh sách task theo giai đoạn, phụ thuộc, tiêu chí hoàn thành |
+
+Tiến độ: [`PROGRESS.md`](../PROGRESS.md). Quy ước làm việc: [`CLAUDE.md`](../CLAUDE.md).
 
 Tài liệu này là bản kế hoạch, sẽ được cập nhật khi các câu hỏi mở được trả lời và khi xác minh API trên cửa hàng KiotViet thật.

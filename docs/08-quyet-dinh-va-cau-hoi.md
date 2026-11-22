@@ -26,12 +26,12 @@
 
 ## 8.3 Câu hỏi còn mở
 
-1. Đơn vị vận chuyển trung gian có **API hoặc file Excel** tra cứu kiện hàng không? Họ tính phí theo kg, theo m³, hay lấy số lớn hơn? Có phí mua hộ (% giá trị) không?
+1. Đơn vị trung gian **chỉ có file Excel** (đã xác nhận). Còn cần: họ tính phí theo kg, theo m³, hay lấy số lớn hơn? Có phí mua hộ (% giá trị) không? Gửi 1–2 file mẫu cho task P2-07.
 2. Bạn đặt hàng trực tiếp trên Taobao/1688 rồi gửi về kho trung gian, hay đưa link để họ mua hộ?
 3. Ngoài Shopee và TikTok Shop, hiện có bán qua Facebook/Zalo hay cửa hàng không?
 4. Shop đăng ký dạng hộ kinh doanh hay công ty? (Ảnh hưởng điều kiện đăng ký app Shopee Open Platform/TikTok Partner.)
-5. Shop đã có **tên miền** chưa (cần cho Cloudflare Tunnel và webhook)? iMac là Intel hay Apple Silicon, RAM bao nhiêu?
-6. Ai làm phần code: để Claude làm từng giai đoạn qua PR và bạn duyệt, hay có dev khác?
+5. Đã có tên miền (đã xác nhận). Còn cần: iMac là Intel hay Apple Silicon, RAM bao nhiêu?
+6. Claude viết toàn bộ code qua PR, chủ shop duyệt; theo dõi tiến độ ở `PROGRESS.md` (đã xác nhận).
 
 ## 8.4 Việc cần xác minh kỹ thuật (GĐ0)
 
