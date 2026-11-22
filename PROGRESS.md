@@ -11,7 +11,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
 | P0 — Chuẩn bị & xác minh | 6/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
-| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 8/22 | |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 10/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 0/15 | Đang thử Pancake POS làm lớp trung gian |
@@ -21,7 +21,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Đang làm
 
 - P0-10 chờ duyệt giao diện.
-- Tiếp theo: P1-18 danh sách tồn kho, P1-20 dashboard số thật, P1-13 xuất phiếu nhập/kiểm kho sang KiotViet, P1-15 đối chiếu tồn.
+- Pancake POS: chờ chủ shop chạy `probe` trên shop thật (P4-P1).
+- Tiếp theo: P1-13 xuất phiếu nhập/kiểm kho sang KiotViet, P1-15 đối chiếu tồn.
 
 ## Bị chặn / chờ chủ shop
 
@@ -67,6 +68,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-12 import hóa đơn KiotViet thành đơn hàng (kênh, trạng thái, trừ tồn sau tồn đầu kỳ, hoàn tồn khi hủy); sửa .gitignore làm sót trang Nhập KiotViet | a610588 |
 | 2026-11-22 | P1-08 danh sách sản phẩm/đơn hàng trên dữ liệu thật, chi tiết sản phẩm có lịch sử, bảng dữ liệu dùng chung | 5e7493e |
 | 2026-11-22 | P1-18/P1-20 API tồn kho theo SKU × kho và API tổng quan (chưa có giao diện) | 83dc4cc |
+| 2026-11-22 | P1-18/P1-20 trang Tồn kho và Tổng quan với số liệu thật | 8ee9509 |
 | 2026-11-22 | P4-P1 nối Pancake POS (chỉ đọc): client, ánh xạ sản phẩm/đơn, webhook vào `webhook_events`, `probe` | 43fbac4 |
 
 ## P0 — Chuẩn bị & xác minh
@@ -108,9 +110,9 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-15 | Đối chiếu tồn file KiotViet ↔ sổ kho Sugami | ⬜ | | |
 | P1-16 | Trung tâm dữ liệu: lịch sử import/export | ⬜ | | |
 | P1-17 | Nhắc việc đồng bộ Excel trên dashboard | ⬜ | | |
-| P1-18 | Danh sách tồn kho (ma trận SKU × kho, tô màu mức tồn) | ⬜ | | |
+| P1-18 | Danh sách tồn kho (ma trận SKU × kho, tô màu mức tồn) | ✅ | 8ee9509 | |
 | P1-19 | Danh sách đơn hàng, chi tiết đơn, lọc theo kênh | 🟡 | 5e7493e | Danh sách + lọc kênh/trạng thái + API chi tiết; chưa có trang chi tiết đơn |
-| P1-20 | Dashboard cơ bản | ⬜ | | |
+| P1-20 | Dashboard cơ bản | ✅ | 8ee9509 | Doanh thu hôm nay/7 ngày, lãi gộp 30 ngày, giá trị tồn, việc cần làm |
 | P1-21 | Báo cáo sức khỏe dữ liệu: SKU trùng/thiếu, thiếu ảnh, tồn âm | ⬜ | | |
 | P1-22 | Deploy production lên iMac, dùng thật 1 tuần | 👤 ⬜ | | |
 
