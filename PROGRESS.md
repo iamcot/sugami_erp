@@ -11,7 +11,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
 | P0 — Chuẩn bị & xác minh | 6/13 | Khung dự án và phân tích file KiotViet xong; còn P0-10 chờ duyệt, P0-08 hồ sơ app sàn, P0-11/12/13 iMac |
-| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 11/24 | Import, tồn kho, tổng quan, phiếu kho, PWA đã chạy trên dữ liệu thật; P1-13 chờ thử KiotViet; còn đối chiếu tồn, trung tâm dữ liệu, nhắc việc, sức khỏe dữ liệu |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 12/24 | Import, tồn kho, tổng quan, phiếu kho, PWA đã chạy trên dữ liệu thật; P1-13 chờ thử KiotViet; còn đối chiếu tồn, trung tâm dữ liệu, nhắc việc, sức khỏe dữ liệu |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 1/15 | Đang thử Pancake POS làm lớp trung gian (P4-P1 xong) |
@@ -150,7 +150,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-16 | Trung tâm dữ liệu: lịch sử import/export | ⬜ | | |
 | P1-17 | Nhắc việc đồng bộ Excel trên dashboard | ⬜ | | |
 | P1-18 | Danh sách tồn kho (ma trận SKU × kho, tô màu mức tồn) | ✅ | 8ee9509 | |
-| P1-19 | Danh sách đơn hàng, chi tiết đơn, lọc theo kênh | 🟡 | 5e7493e | Danh sách + lọc kênh/trạng thái + API chi tiết; chưa có trang chi tiết đơn |
+| P1-19 | Danh sách đơn hàng, chi tiết đơn, lọc theo kênh | ✅ | | Danh sách, lọc, trang chi tiết (sản phẩm, giá trị, thanh toán, khách, vận chuyển, lãi gộp ước tính). Địa chỉ nhận, hạn bàn giao, phí sàn chờ lấy từ Pancake / đối soát |
 | P1-20 | Dashboard cơ bản | ✅ | 8ee9509 | Doanh thu hôm nay/7 ngày, lãi gộp 30 ngày, giá trị tồn, việc cần làm |
 | P1-21 | Báo cáo sức khỏe dữ liệu: SKU trùng/thiếu, thiếu ảnh, tồn âm | ⬜ | | |
 | P1-22 | Deploy production lên iMac, dùng thật 1 tuần | 👤 ⬜ | | |

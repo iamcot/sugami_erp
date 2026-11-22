@@ -14,7 +14,7 @@ interface OrderRow {
   code: string;
   externalCode: string | null;
   channel: { code: string; name: string };
-  customer: { code: string | null; name: string | null; phone: string | null } | null;
+  customer: { id: string; code: string | null; name: string | null; phone: string | null } | null;
   status: string;
   shippingStatus: string | null;
   carrier: string | null;
@@ -75,9 +75,9 @@ const columns: Column<OrderRow>[] = [
     header: 'Khách hàng',
     className: 'hidden whitespace-nowrap md:table-cell',
     render: (o) =>
-      o.customer?.code ? (
+      o.customer ? (
         <Link
-          href={`/customers/${encodeURIComponent(o.customer.code)}`}
+          href={`/customers/${encodeURIComponent(o.customer.code ?? o.customer.id)}`}
           className="text-brand-700 hover:underline dark:text-brand-50"
         >
           <span className="block">{o.customer.name ?? o.customer.code}</span>
@@ -216,6 +216,7 @@ function OrdersList() {
         columns={columns}
         rows={res?.data ?? []}
         rowKey={(o) => o.id}
+        rowHref={(o) => `/orders/${encodeURIComponent(o.code)}`}
         page={Number(qs.page)}
         pageSize={50}
         total={res?.total}
