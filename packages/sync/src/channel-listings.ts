@@ -176,7 +176,13 @@ export async function syncPancakeVariantRefs(
   db: PrismaClient,
   items: PancakeVariantInput[],
   opts: { dryRun: boolean },
-): Promise<{ onPancake: number; notInSugami: number; removed: number; sampleNotInSugami: string[] }> {
+): Promise<{
+  onPancake: number;
+  notInSugami: number;
+  removed: number;
+  sampleNotInSugami: string[];
+  sampleMulti: string[];
+}> {
   const codes = [...new Set(items.flatMap((i) => [i.sku, i.productCode ?? '']).filter(Boolean))];
   const bySku = new Map<string, string>();
   const productVariants = new Map<string, { id: string; options: string }[]>();
@@ -199,6 +205,7 @@ export async function syncPancakeVariantRefs(
         pr.variants.map((v) => ({ id: v.id, options: optKey(v.optionValues) })),
       );
   }
+  const sampleMulti: string[] = [];
   /** Sugami variant for a Pancake variation: by seller code, else by the product code (+ options). */
   const resolve = (it: PancakeVariantInput): string | undefined => {
     const direct = bySku.get(it.sku);
@@ -207,6 +214,10 @@ export async function syncPancakeVariantRefs(
     if (!vs) return undefined;
     if (vs.length === 1 && (it.siblings ?? 1) === 1) return vs[0]!.id;
     const opts = optKey(it.optionValues);
+    if (sampleMulti.length < 5 && !sampleMulti.some((x) => x.startsWith(`${it.productCode}:`)))
+      sampleMulti.push(
+        `${it.productCode}: Pancake ${it.siblings} biến thể, tùy chọn [${opts || 'trống'}]; Sugami ${vs.length} biến thể [${vs.map((v) => v.options || 'trống').join(' | ')}]`,
+      );
     const same = opts ? vs.filter((v) => v.options === opts) : [];
     return same.length === 1 ? same[0]!.id : undefined;
   };
@@ -244,5 +255,5 @@ export async function syncPancakeVariantRefs(
   const removed = opts.dryRun
     ? await db.externalRef.count({ where: stale })
     : (await db.externalRef.deleteMany({ where: stale })).count;
-  return { onPancake: keep.length, notInSugami, removed, sampleNotInSugami };
+  return { onPancake: keep.length, notInSugami, removed, sampleNotInSugami, sampleMulti };
 }
