@@ -81,6 +81,11 @@ export class PancakeClient {
     return this.request<T>('GET', path, query);
   }
 
+  /** Write call. Pancake has no idempotency keys: callers check before they create. */
+  async post<T>(path: string, body: unknown, query: Query = {}): Promise<T> {
+    return this.request<T>('POST', path, query, body);
+  }
+
   private async request<T>(method: string, path: string, query: Query, body?: unknown): Promise<T> {
     const url = this.buildUrl(path, query);
     const label = `Pancake ${method} ${path}`;

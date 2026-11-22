@@ -105,6 +105,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | Nâng giới hạn turbo để `pnpm dev` chạy với 11 tiến trình | 348f8e9 |
 | 2026-11-22 | Format Prettier để CI xanh lại | 79f4778 |
 | 2026-11-22 | P1-24 trang Khách hàng, import file khách KiotViet, liên kết khách với đơn | xem commit `[P1-24]` |
+| 2026-11-22 | P4-P1b nút đẩy sản phẩm và tồn sang Pancake (từng sản phẩm, xem trước) | xem commit `[P4-P1b]` |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -193,6 +194,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
 | P4-P1 | Pancake: client API, đọc sản phẩm/tồn/đơn, nhận webhook vào `webhook_events`, lệnh `probe` | ✅ | 43fbac4, 574e537 | Đã chạy `probe` trên shop thật (22/11): 4 kênh, 625 listing chưa liên kết, chưa có sản phẩm/đơn |
+| P4-P1b | Pancake: nút đẩy 1 sản phẩm (tạo sản phẩm, đồng bộ tồn) từ trang chi tiết sản phẩm, xem trước rồi mới ghi | 🟡 | | Code xong, test bằng Pancake giả; chưa thử trên shop thật (docs/pancake.md) |
 | P4-P2 | Pancake: tự kéo đơn 4 kênh theo ID tài khoản (quét bù theo con trỏ khi khởi động, mỗi 5 phút; webhook tùy chọn), tiền tệ riêng MY/PH, trừ tồn theo đơn, thông báo đơn mới | ⬜ | | Thiết kế chịu máy tắt: docs/03 mục 3.8 |
 | P4-P3 | Pancake: đẩy tồn từ Sugami (outbox, chỉ đẩy khi quét bù đơn còn mới), tắt đồng bộ tồn KiotViet | ⬜ | | Sau khi thử 1 SKU đạt |
 | P4-01 | Interface `ChannelAdapter` + chuẩn hóa ExternalProduct/ExternalOrder | ⬜ | | |

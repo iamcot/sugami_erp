@@ -225,3 +225,79 @@ describe('PancakeAdapter', () => {
     expect(webhookType({ foo: 1 })).toBe('unknown');
   });
 });
+
+describe('push to Pancake', () => {
+  const input = {
+    code: 'XE1',
+    name: 'Xe đua mini',
+    description: null,
+    options: ['Màu'],
+    variants: [
+      { sku: 'XE1-DO', barcode: '893', optionValues: ['Đỏ'], price: 150000, cost: 90000, onHand: 4 },
+      { sku: 'XE1-XANH', barcode: null, optionValues: ['Xanh'], price: 150000, cost: 90000, onHand: -2 },
+    ],
+  };
+
+  it('builds the create body with seller codes, prices and stock in the chosen warehouse', async () => {
+    const { buildCreateProductBody } = await import('./push.js');
+    const body = buildCreateProductBody(input, 'wh-1');
+    expect(body.product).toMatchObject({
+      name: 'Xe đua mini',
+      custom_id: 'XE1',
+      product_attributes: [{ name: 'Màu', values: ['Đỏ', 'Xanh'] }],
+    });
+    expect(body.product.variations[0]).toMatchObject({
+      custom_id: 'XE1-DO',
+      barcode: '893',
+      fields: [{ name: 'Màu', value: 'Đỏ' }],
+      retail_price: 150000,
+      last_imported_price: 90000,
+      variations_warehouses: [{ warehouse_id: 'wh-1', remain_quantity: 4 }],
+    });
+    expect(body.product.variations[1]).not.toHaveProperty('barcode');
+    expect(body.product.variations[1]!.variations_warehouses[0]!.remain_quantity).toBe(0);
+  });
+
+  it('finds existing variations by custom_id or display_id', async () => {
+    const { findVariationsBySku } = await import('./push.js');
+    const { client } = makeClient(() =>
+      json({
+        data: [
+          variation({ id: 'a', custom_id: 'XE1-DO', display_id: '1' }),
+          variation({ id: 'b', custom_id: null, display_id: 'XE1-XANH' }),
+          variation({ id: 'c', custom_id: 'OTHER', display_id: '3' }),
+        ],
+        total_pages: 1,
+      }),
+    );
+    const found = await findVariationsBySku(client, ['XE1-DO', 'XE1-XANH', 'NONE']);
+    expect([...found].map(([sku, v]) => [sku, v.id])).toEqual([
+      ['XE1-DO', 'a'],
+      ['XE1-XANH', 'b'],
+    ]);
+  });
+
+  it('sends stock as actual inventory and never leaks the api key on errors', async () => {
+    const { setStock } = await import('./push.js');
+    let sent: { url: URL; body: unknown } | undefined;
+    const fetchSpy = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      sent = { url: new URL(String(input)), body: JSON.parse(String(init?.body)) };
+      return json({ success: true });
+    });
+    const c = new PancakeClient({
+      apiKey: 'secret-key',
+      shopId: '123',
+      fetch: fetchSpy as unknown as typeof fetch,
+      sleep: async () => {},
+    });
+    await setStock(c, 'v-1', 'wh-1', 7);
+    expect(sent!.url.pathname).toBe('/api/v1/shops/123/variations/update_quantity');
+    expect(sent!.body).toEqual({
+      is_actual_remain_quantity: true,
+      variations_warehouses: [{ variation_id: 'v-1', warehouse_id: 'wh-1', remain_quantity: 7 }],
+    });
+    const bad = makeClient(() => json({ success: false, message: 'Invalid warehouse' }, 400)).client;
+    await expect(setStock(bad, 'v-1', 'x', 1)).rejects.toThrow(/Invalid warehouse/);
+    await expect(setStock(bad, 'v-1', 'x', 1)).rejects.not.toThrow(/secret-key/);
+  });
+});
