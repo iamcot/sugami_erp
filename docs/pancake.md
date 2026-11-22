@@ -31,6 +31,19 @@ Shopee / TikTok ⇄ Pancake POS ⇄ Sugami
 
 Không đọc thông tin khách (tên, SĐT, địa chỉ) vào Sugami.
 
+## Tài khoản sàn đã nối (2026-11-22)
+
+Tên gợi nhớ đặt trong Pancake (Cài đặt → Danh sách kênh bán); Sugami dùng đúng tên này làm tên kênh.
+
+| Tên gợi nhớ | ID tài khoản | Sàn | `marketplace_id` | Tiền tệ |
+|-------------|--------------|-----|------------------|---------|
+| SuGaMi Shopee | 6875667 | Shopee VN | -3 | VND |
+| SuGaMi Shopee MY | 1841375951 | Shopee MY | -3 | MYR |
+| SuGaMi Shopee PH | 1841375952 | Shopee PH | -3 | PHP |
+| SuGaMi Tiktok | 7494949569066076732 | TikTok Shop | -9 (tạm) | VND |
+
+Ba shop Shopee dùng chung `marketplace_id` -3, nên phân biệt đơn theo ID tài khoản, không theo `marketplace_id`. Cần một đơn thật để xác nhận đơn Pancake mang ID tài khoản nào.
+
 ## Chưa kiểm chứng (cần dữ liệu thật)
 
 1. Pancake có tự đẩy tồn lên Shopee/TikTok khi tồn đổi qua API không (thử với 1 SKU).
