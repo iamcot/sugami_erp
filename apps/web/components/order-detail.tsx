@@ -98,9 +98,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+interface PosAction {
+  key: string;
+  label: string;
+  tone: 'primary' | 'secondary' | 'danger';
+  stock: 'take' | 'give' | null;
+}
+
 export function OrderDetail({ code, embedded }: { code: string; embedded?: boolean }) {
   const { open } = useDetail();
   const [order, setOrder] = useState<Order | null>(null);
+  const [actions, setActions] = useState<PosAction[]>([]);
+  const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,16 +117,29 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
       .then((r) => setOrder(r.order))
       .catch((e: Error) => setError(e.message));
   }, [code]);
+  // counter orders move through a state machine: the buttons come from the server
+  useEffect(() => {
+    if (order?.source !== 'pos') return setActions([]);
+    api<{ actions: PosAction[] }>(`/pos/orders/${encodeURIComponent(order.code)}/actions`)
+      .then((r) => setActions(r.actions))
+      .catch(() => setActions([]));
+  }, [order?.code, order?.source, order?.status]);
 
-  const setStatus = async (status: string) => {
+  const act = async (a: PosAction) => {
     if (!order) return;
+    const hint =
+      a.stock === 'take' ? ' Tồn kho sẽ được trừ.' : a.stock === 'give' ? ' Hàng sẽ được hoàn vào kho.' : '';
+    if ((a.tone === 'danger' || a.stock) && !window.confirm(`${a.label} đơn ${order.code}?${hint}`)) return;
+    setActing(true);
     setError(null);
     try {
-      await api(`/pos/orders/${encodeURIComponent(order.code)}/status`, { method: 'POST', json: { status } });
+      await api(`/pos/orders/${encodeURIComponent(order.code)}/actions/${a.key}`, { method: 'POST' });
       const r = await api<{ order: Order }>(`/orders/${encodeURIComponent(order.code)}`);
       setOrder(r.order);
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setActing(false);
     }
   };
   const print = async () => {
@@ -153,18 +175,25 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
           <div className="flex items-center gap-2">
             {order.source === 'pos' && (
               <>
-                <select
-                  className="rounded-md border border-slate-300 bg-transparent px-2 py-1 text-sm dark:border-slate-700"
-                  value={order.status}
-                  onChange={(e) => void setStatus(e.target.value)}
-                  aria-label="Đổi trạng thái"
-                >
-                  {Object.entries(STATUS).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v.label}
-                    </option>
-                  ))}
-                </select>
+                {actions.map((a) => (
+                  <Button
+                    key={a.key}
+                    variant={a.tone === 'primary' ? 'primary' : 'secondary'}
+                    className={a.tone === 'danger' ? 'text-rose-600' : ''}
+                    disabled={acting}
+                    title={
+                      a.stock === 'take' ? 'Trừ tồn kho' : a.stock === 'give' ? 'Hoàn tồn kho' : undefined
+                    }
+                    onClick={() => void act(a)}
+                  >
+                    {a.label}
+                    {a.stock && (
+                      <span className="text-xs opacity-80">
+                        ({a.stock === 'take' ? 'trừ tồn' : 'hoàn tồn'})
+                      </span>
+                    )}
+                  </Button>
+                ))}
                 <Button variant="secondary" onClick={() => void print()}>
                   <Printer className="size-4" /> In biên lai
                 </Button>

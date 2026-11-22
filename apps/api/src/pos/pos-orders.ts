@@ -1,5 +1,6 @@
 import { applyMovements, Prisma, type PrismaClient, withLedgerTx } from '@sugami/db';
 import { toSearchKey } from '@sugami/shared';
+import { fulfillmentOf, holdsStock, posActions, SHIPPING_TEXT } from './pos-flow.js';
 import type { PosPayload } from './pos-schema.js';
 
 export class PosError extends Error {
@@ -14,7 +15,6 @@ export class PosError extends Error {
 const CODE_PREFIX = 'BH';
 const WAREHOUSE = () => process.env.POS_WAREHOUSE || 'KHO-CHINH';
 const big = (n: number) => BigInt(Math.round(n));
-const isActive = (status: string) => status !== 'cancelled' && status !== 'returned';
 
 async function nextCode(db: PrismaClient): Promise<string> {
   const last = await db.order.findFirst({
@@ -129,7 +129,8 @@ export async function createPosOrder(
             paymentMethod: t.paid > 0 ? p.paymentMethod : null,
             completedAt: retail ? at : null,
             source: 'pos',
-            stockAppliedAt: now,
+            fulfillment: mode,
+            stockAppliedAt: retail ? now : null,
             internalNote:
               [!retail && p.receiver.name ? `Người nhận: ${p.receiver.name}` : '', p.note]
                 .filter(Boolean)
@@ -156,20 +157,22 @@ export async function createPosOrder(
           },
           select: { id: true, code: true },
         });
-        await applyMovements(
-          tx,
-          p.lines.map((l) => ({
-            warehouseId: warehouse.id,
-            variantId: l.variantId,
-            qtyDelta: -l.qty,
-            type: 'sale_out' as const,
-            refType: 'order',
-            refId: order.id,
-            note: `Bán hàng ${order.code}`,
-            occurredAt: at,
-            createdBy: input.userId,
-          })),
-        );
+        // a delivery keeps its stock on the shelf until the parcel is handed over ("Giao cho ĐVVC")
+        if (retail)
+          await applyMovements(
+            tx,
+            p.lines.map((l) => ({
+              warehouseId: warehouse.id,
+              variantId: l.variantId,
+              qtyDelta: -l.qty,
+              type: 'sale_out' as const,
+              refType: 'order',
+              refId: order.id,
+              note: `Bán hàng ${order.code}`,
+              occurredAt: at,
+              createdBy: input.userId,
+            })),
+          );
         if (input.draftId) await tx.posDraft.deleteMany({ where: { id: input.draftId } });
         return order;
       });
@@ -181,25 +184,27 @@ export async function createPosOrder(
 }
 
 /**
- * Move a counter order to another status by hand. Cancelled/returned give the stock back; moving an order
- * out of those takes it again. Only counter orders can be changed this way (marketplace orders follow
- * their channel).
+ * Run one button of the state machine on a counter order: the status moves along the allowed edge and stock
+ * follows the button (sale_out when the goods leave, return_in when they come back), all in one transaction.
+ * Marketplace orders are not handled here: they follow their channel.
  */
-export async function changePosOrderStatus(
+export async function runPosAction(
   db: PrismaClient,
   code: string,
-  status: string,
+  key: string,
   userId?: string,
-): Promise<void> {
+): Promise<{ status: string }> {
   const order = await db.order.findUnique({ where: { code }, include: { lines: true } });
   if (!order) throw new PosError('Không tìm thấy đơn', 404);
-  if (order.source !== 'pos') throw new PosError('Chỉ đổi tay được trạng thái đơn bán tại quầy', 409);
-  if (order.status === status) return;
-  const wasActive = isActive(order.status);
-  const willBeActive = isActive(status);
+  if (order.source !== 'pos') throw new PosError('Chỉ đơn bán tại quầy mới có các nút xử lý này', 409);
+  const kind = fulfillmentOf(order);
+  const action = posActions(kind, order.status).find((a) => a.key === key);
+  if (!action) throw new PosError('Đơn đã đổi trạng thái, không còn thao tác này (tải lại trang)', 409);
+  const wasHolding = order.stockAppliedAt !== null;
+  const willHold = holdsStock(kind, action.to);
+  const lines = order.lines.filter((l) => l.variantId);
   await withLedgerTx(db, async (tx) => {
-    const lines = order.lines.filter((l) => l.variantId);
-    if (wasActive && !willBeActive && order.stockAppliedAt)
+    if (wasHolding && !willHold)
       await applyMovements(
         tx,
         lines.map((l) => ({
@@ -209,11 +214,11 @@ export async function changePosOrderStatus(
           type: 'return_in' as const,
           refType: 'order',
           refId: order.id,
-          note: `${status === 'returned' ? 'Hoàn' : 'Hủy'} đơn ${order.code}`,
+          note: `${action.label} đơn ${order.code}`,
           createdBy: userId,
         })),
       );
-    if (!wasActive && willBeActive)
+    if (!wasHolding && willHold)
       await applyMovements(
         tx,
         lines.map((l) => ({
@@ -223,29 +228,27 @@ export async function changePosOrderStatus(
           type: 'sale_out' as const,
           refType: 'order',
           refId: order.id,
-          note: `Mở lại đơn ${order.code}`,
+          note: `${action.label} đơn ${order.code}`,
           createdBy: userId,
         })),
       );
+    const done = action.to === 'completed';
     await tx.order.update({
       where: { id: order.id },
       data: {
-        status: status as never,
-        completedAt:
-          status === 'completed' || status === 'delivered' ? (order.completedAt ?? new Date()) : null,
-        stockAppliedAt: willBeActive ? (order.stockAppliedAt ?? new Date()) : order.stockAppliedAt,
-        shippingStatus:
-          {
-            new: 'Chờ xử lý',
-            confirmed: 'Đã xác nhận',
-            packing: 'Đang đóng gói',
-            shipped: 'Đang giao',
-            delivered: 'Giao thành công',
-            completed: order.shippingStatus,
-            cancelled: 'Đã hủy',
-            returned: 'Hoàn hàng',
-          }[status] ?? order.shippingStatus,
+        status: action.to,
+        fulfillment: kind,
+        shippingStatus: SHIPPING_TEXT[action.to],
+        stockAppliedAt: willHold ? (order.stockAppliedAt ?? new Date()) : null,
+        completedAt: done
+          ? new Date()
+          : action.to === 'cancelled' || action.to === 'returned'
+            ? null
+            : order.completedAt,
+        // COD collected: a completed delivery is paid in full
+        ...(done ? { paidAmount: order.total, codAmount: 0n } : {}),
       },
     });
   });
+  return { status: action.to };
 }

@@ -1371,6 +1371,7 @@ export default function PosPage() {
                     {p.cod ? `Thu hộ COD: ${fmt(cod)}` : 'Không thu hộ'}
                     {p.carrier ? ` · ${p.carrier}` : ''}
                   </p>
+                  <p className="mt-1">Tồn kho chưa trừ: sẽ trừ khi bấm “Giao cho ĐVVC” ở đơn hàng.</p>
                 </div>
               )}
               {msg && <p className="text-rose-600">{msg}</p>}

@@ -10,7 +10,11 @@ Trang **Bán hàng** (`/pos`) thay màn hình bán hàng của KiotViet.
 - Icon danh sách bên trái ô tìm hàng mở ngăn trượt các đơn bán gần đây; bấm một đơn mở nó thành một tab ngay trên thanh tab của trang bán hàng (cạnh các Hóa đơn nháp), xem chi tiết, đổi trạng thái và in lại biên lai tại đó; popup tạo đơn thành công cũng có nút Xem đơn mở tab này.
 - **THANH TOÁN** mở ngăn xác nhận (ngày giờ, giảm giá, thu khác, khách thanh toán, hình thức tiền mặt/chuyển khoản/thẻ/ví, gợi ý số tiền); bấm **XÁC NHẬN** mới tạo đơn rồi hiện popup thành công kèm nút In biên lai.
 - Tạo đơn `orders` (kênh `store`, nguồn `pos`, mã `BH000001…`), trừ tồn bằng `sale_out` qua sổ kho trong cùng transaction, xóa nháp.
-- **Đổi trạng thái tay** ở chi tiết đơn (chỉ đơn `pos`): Hủy/Trả hàng hoàn tồn (`return_in`), mở lại thì trừ lại.
+- **Máy trạng thái** (`apps/api/src/pos/pos-flow.ts`): đơn bán tại quầy không đổi trạng thái bằng danh sách chọn mà bằng các nút ở chi tiết đơn, nút nào cũng ghi rõ tác động tồn.
+  - *Bán thường*: hoàn thành ngay, trừ tồn lúc bán; nút **Trả hàng** / **Hủy đơn** hoàn tồn (`return_in`).
+  - *Bán giao hàng*: Mới → **Xác nhận** → Đã xác nhận → **Đóng gói** → Đang đóng gói → **Giao cho ĐVVC** (trừ tồn, `sale_out`) → Đang giao → **Đã giao** → **Hoàn tất (đã thu đủ)** (ghi nhận đã thu đủ COD). **Hủy đơn** chỉ có trước khi giao cho ĐVVC, không đụng tồn. Đã giao đi thì chỉ còn **Hoàn hàng / Trả hàng** (hoàn tồn).
+  - Đơn đã hủy/trả là trạng thái cuối. Máy chủ kiểm tra từng nút theo trạng thái hiện tại (hai người bấm cùng lúc: người sau nhận báo lỗi, tồn không bị trừ hai lần).
+  - Đơn giao hàng tạo từ bản trước (đã trừ tồn lúc tạo) được cân lại tồn theo trạng thái ở lần bấm nút đầu tiên.
 - Lọc ở trang Đơn hàng: kênh "Bán trực tiếp".
 
 ## Mẫu biên lai

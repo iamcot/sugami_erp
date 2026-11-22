@@ -62,15 +62,3 @@ export const DraftBody = z.object({
   mode: z.enum(MODES),
   payload: PosPayload,
 });
-
-/** Statuses a counter order can be moved to by hand. */
-export const POS_STATUSES = [
-  'new',
-  'confirmed',
-  'packing',
-  'shipped',
-  'delivered',
-  'completed',
-  'cancelled',
-  'returned',
-] as const;

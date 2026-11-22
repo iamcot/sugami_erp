@@ -19,10 +19,10 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { changePosOrderStatus, createPosOrder, PosError } from './pos-orders.js';
-import { DraftBody, POS_STATUSES, PosPayload } from './pos-schema.js';
+import { fulfillmentOf, posActions } from './pos-flow.js';
+import { createPosOrder, PosError, runPosAction } from './pos-orders.js';
+import { DraftBody, PosPayload } from './pos-schema.js';
 
-const StatusBody = z.object({ status: z.enum(POS_STATUSES) });
 const CheckoutBody = z.object({ mode: z.enum(['retail', 'delivery']), payload: PosPayload });
 
 interface SearchRow {
@@ -176,13 +176,25 @@ export class PosController {
     );
   }
 
-  /** Move a counter order to another status by hand. */
-  @Post('orders/:code/status')
+  /** The buttons a counter order offers right now (what each does to stock is in `stock`). */
+  @Get('orders/:code/actions')
+  @RequirePermissions('orders.read')
+  async actions(@Param('code') code: string) {
+    const o = await this.prisma.client.order.findUnique({
+      where: { code },
+      select: { source: true, status: true, fulfillment: true, shipAddress: true, shipPhone: true, carrier: true },
+    });
+    if (!o) throw new NotFoundException('Không tìm thấy đơn');
+    if (o.source !== 'pos') return { fulfillment: null, actions: [] };
+    const kind = fulfillmentOf(o);
+    return { fulfillment: kind, actions: posActions(kind, o.status) };
+  }
+
+  /** Press one button of the state machine. */
+  @Post('orders/:code/actions/:key')
   @HttpCode(200)
   @RequirePermissions('orders.write')
-  async status(@Param('code') code: string, @Body() raw: unknown, @CurrentUser() user: AuthUser) {
-    const { status } = parseInput(StatusBody, raw);
-    await this.wrap(() => changePosOrderStatus(this.prisma.client, code, status, user.id));
-    return { ok: true, status };
+  async act(@Param('code') code: string, @Param('key') key: string, @CurrentUser() user: AuthUser) {
+    return this.wrap(() => runPosAction(this.prisma.client, code, key, user.id));
   }
 }

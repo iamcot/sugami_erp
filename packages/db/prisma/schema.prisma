@@ -683,6 +683,8 @@ model Order {
   otherIncome         BigInt      @default(0) @map("other_income")
   total               BigInt      @default(0)
   paidAmount          BigInt      @default(0) @map("paid_amount")
+  /// Counter sales: retail (taken away) or delivery. Decides which status buttons the order offers.
+  fulfillment         String?     @db.VarChar(16)
   /// Counter sales: cash, transfer, card or wallet.
   paymentMethod       String?     @map("payment_method") @db.VarChar(16)
   codAmount           BigInt      @default(0) @map("cod_amount")
