@@ -425,3 +425,17 @@ describe('Listing codes', () => {
     expect(l.variations?.[0]?.linked_variation_custom_id).toBe('7');
   });
 });
+
+describe('PANCAKE_READONLY', () => {
+  it('blocks writes but not reads', async () => {
+    vi.stubEnv('PANCAKE_READONLY', 'on');
+    try {
+      const { client, fetchMock } = makeClient(() => json({ success: true, data: [] }));
+      await expect(client.post('/x', {})).rejects.toThrow(/PANCAKE_READONLY/);
+      await client.get('/x');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
