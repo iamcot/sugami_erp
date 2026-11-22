@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PancakeAdapter, webhookType } from './adapter.js';
 import { PancakeClient, PancakeError } from './client.js';
-import { groupVariations, parsePancakeTime, toExternalOrder } from './mapping.js';
+import { groupVariations, parseDeadline, parsePancakeTime, toExternalOrder } from './mapping.js';
 import { Order, Variation } from './schemas.js';
 
 const json = (body: unknown, status = 200) =>
@@ -174,6 +174,28 @@ describe('mapping', () => {
       toExternalOrder(Order.parse(order({ bill_full_name: 'T******u', bill_phone_number: '0****53' })))
         .customer,
     ).toBeUndefined();
+  });
+
+  it('reads the buyer nickname, ship-by deadline, address and fee breakdown', () => {
+    const o = toExternalOrder(
+      Order.parse(
+        order({
+          bill_full_name: 'T******u',
+          bill_phone_number: '0****53',
+          customer: { username: 'candy532', name: 'C****2' },
+          additional_info: { ship_by_date: 1795000000 },
+          shipping_address: { full_address: '12 Lê Lợi, Quận 1', province_name: 'TP. Hồ Chí Minh' },
+          advanced_platform_fee: { commission_fee: 12000, service_fee: 3000, other: 0, note: 'x' },
+        }),
+      ),
+    );
+    expect(o.customer).toEqual({ name: 'candy532' });
+    expect(o.shipByAt).toEqual(new Date(1795000000 * 1000));
+    expect(o.shipAddress).toBe('12 Lê Lợi, Quận 1');
+    expect(o.shipProvince).toBe('TP. Hồ Chí Minh');
+    expect(o.feeDetail).toEqual({ commission_fee: 12000, service_fee: 3000 });
+    expect(parseDeadline(1795000000000)).toEqual(new Date(1795000000000));
+    expect(parseDeadline('garbage')).toBeUndefined();
   });
 
   it('reads the shipping carrier and tracking number from the partner', () => {

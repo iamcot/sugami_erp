@@ -18,6 +18,7 @@ interface Summary {
   customers: { created: number; linked: number };
   stock: { applied: number; beforeSnapshot: number; reversed: number };
   unknownSkus: string[];
+  unlinkedLines: number;
   newOrders: { code: string; channel: string; total: number }[];
   errors: { code: string; message: string }[];
 }
@@ -139,6 +140,11 @@ export default function PancakePage() {
               label="Mã hàng chưa có"
               value={fmt(res.unknownSkus.length)}
               hint={res.unknownSkus.slice(0, 5).join(', ')}
+            />
+            <Stat
+              label="Dòng hàng chưa liên kết"
+              value={fmt(res.unlinkedLines)}
+              hint="Tin đăng chưa nối sản phẩm Pancake, không trừ tồn"
             />
           </div>
           {res.newOrders.length > 0 && (

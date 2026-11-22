@@ -70,3 +70,10 @@ pnpm pancake:probe
 ```
 
 `probe` chỉ đọc, in số lượng sản phẩm/tồn, sàn đã nối và `marketplace_id`, đơn 7 ngày theo kênh và trạng thái; không in thông tin khách.
+
+## Thông tin đơn lấy từ Pancake (bổ sung)
+
+- Khách: nickname Shopee ở `customer.username` (`bill_full_name` và SĐT bị che nên bỏ qua).
+- Lưu vào đơn: hạn bàn giao (`additional_info.ship_by_date`, dự phòng `delivery_deadline`), địa chỉ nhận (`shipping_address.full_address`, tỉnh), phí sàn (`fee_marketplace`) và chi tiết (`advanced_platform_fee`, chỉ các mục số khác 0). Đơn nhập từ KiotViet được bổ sung các trường này nhưng giữ trạng thái/tồn.
+- Dòng hàng không có mã (tin đăng chưa nối sản phẩm Pancake) được đếm ở "Dòng hàng chưa liên kết" và không trừ tồn; cần nối tin đăng với sản phẩm trong Pancake.
+- Chạy lại "Quét lại" sau khi cập nhật để đơn cũ nhận thông tin mới.

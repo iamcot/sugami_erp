@@ -19,6 +19,7 @@ interface OrderRow {
   shippingStatus: string | null;
   carrier: string | null;
   trackingNo: string | null;
+  shipByAt: string | null;
   total: number;
   orderedAt: string;
   items: { sku: string; name: string; qty: number }[];
@@ -99,6 +100,24 @@ const columns: Column<OrderRow>[] = [
       ) : (
         <span className="text-slate-400">–</span>
       ),
+  },
+  {
+    key: 'shipBy',
+    header: 'Hạn bàn giao',
+    className: 'hidden whitespace-nowrap xl:table-cell',
+    render: (o) => {
+      if (!o.shipByAt) return <span className="text-slate-400">–</span>;
+      const late = new Date(o.shipByAt) < new Date() && ['new', 'confirmed', 'packing'].includes(o.status);
+      return (
+        <span className={late ? 'font-medium text-rose-600' : ''}>
+          {new Date(o.shipByAt).toLocaleString('vi-VN', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+            timeZone: 'Asia/Ho_Chi_Minh',
+          })}
+        </span>
+      );
+    },
   },
   {
     key: 'channel',

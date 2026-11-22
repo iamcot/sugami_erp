@@ -29,6 +29,11 @@ interface Order {
   shippingStatus: string | null;
   carrier: string | null;
   trackingNo: string | null;
+  shipByAt: string | null;
+  shipAddress: string | null;
+  shipProvince: string | null;
+  platformFee: number;
+  feeDetail: Record<string, number> | null;
   subtotal: number;
   discount: number;
   otherIncome: number;
@@ -61,6 +66,14 @@ const SOURCE: Record<string, string> = {
   manual: 'Nhập tay',
 };
 
+const FEE_LABEL: Record<string, string> = {
+  commission_fee: 'Phí hoa hồng',
+  service_fee: 'Phí dịch vụ',
+  transaction_fee: 'Phí giao dịch',
+  seller_voucher: 'Voucher shop',
+  shipping_fee_discount: 'Giảm phí vận chuyển',
+};
+
 const dt = (s: string | null) =>
   s
     ? new Date(s).toLocaleString('vi-VN', {
@@ -70,7 +83,7 @@ const dt = (s: string | null) =>
       })
     : '–';
 
-function Row({ label, value, strong }: { label: string; value: React.ReactNode; strong?: boolean }) {
+function Row({ label, value, strong }: { label: React.ReactNode; value: React.ReactNode; strong?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1 text-sm">
       <span className="text-slate-500">{label}</span>
@@ -196,9 +209,20 @@ export default function OrderDetailPage({ params }: { params: Promise<{ code: st
             <Section title="Thanh toán">
               <Row label="Khách đã trả" value={formatVnd(order.paidAmount)} />
               <Row label="Còn cần thu (COD)" value={formatVnd(toCollect)} strong />
-              <p className="mt-3 text-xs text-slate-500">
-                Phí sàn, ví quảng cáo và đối soát sẽ có khi nối đối soát sàn (P4-05).
-              </p>
+              {order.platformFee > 0 && (
+                <>
+                  <div className="my-1 border-t border-slate-200 dark:border-slate-800" />
+                  <Row label="Phí sàn" value={formatVnd(order.platformFee)} strong />
+                  {Object.entries(order.feeDetail ?? {}).map(([k, v]) => (
+                    <Row
+                      key={k}
+                      label={<span className="text-xs">{FEE_LABEL[k] ?? k.replace(/_/g, ' ')}</span>}
+                      value={formatVnd(v)}
+                    />
+                  ))}
+                </>
+              )}
+              <p className="mt-3 text-xs text-slate-500">Đối soát chi tiết sẽ có ở P4-05.</p>
             </Section>
           </div>
 
@@ -244,9 +268,13 @@ export default function OrderDetailPage({ params }: { params: Promise<{ code: st
               value={<span className="font-mono text-xs">{order.trackingNo ?? '–'}</span>}
             />
             <Row label="Trạng thái giao" value={order.shippingStatus ?? '–'} />
-            <p className="mt-3 text-xs text-slate-500">
-              Địa chỉ nhận và hạn bàn giao sẽ có sau khi lấy từ Pancake.
-            </p>
+            <Row label="Hạn bàn giao" value={dt(order.shipByAt)} />
+            <div className="mt-1 text-sm">
+              <p className="text-slate-500">Địa chỉ nhận</p>
+              <p className="mt-0.5">
+                {order.shipAddress ?? order.shipProvince ?? <span className="text-slate-400">–</span>}
+              </p>
+            </div>
           </Section>
         </div>
       </div>

@@ -42,6 +42,8 @@ export interface OrderSyncSummary {
   /** Customers created from order buyers (nickname) and orders attached to a customer. */
   customers: { created: number; linked: number };
   unknownSkus: string[];
+  /** Order lines with no SKU: the listing is not linked to a Pancake product, so no stock is deducted. */
+  unlinkedLines: number;
   newOrders: NewOrder[];
   /** Orders that failed; the cursor does not move while there are any. */
   errors: { code: string; message: string }[];
@@ -73,6 +75,7 @@ export async function syncPancakeOrders(
     stock: { applied: 0, beforeSnapshot: 0, reversed: 0 },
     customers: { created: 0, linked: 0 },
     unknownSkus: [],
+    unlinkedLines: 0,
     newOrders: [],
     errors: [],
   };
@@ -193,7 +196,10 @@ export async function syncPancakeOrders(
   };
 
   const handle = async (o: ExternalOrder): Promise<void> => {
-    for (const l of o.lines) if (!variantBySku.has(l.sku)) unknown.add(l.sku);
+    for (const l of o.lines) {
+      if (!l.sku) summary.unlinkedLines++;
+      else if (!variantBySku.has(l.sku)) unknown.add(l.sku);
+    }
     const prev =
       (o.marketplaceCode ? byMarketplace.get(`${o.saleChannel}:${o.marketplaceCode}`) : undefined) ??
       byCode.get(o.code);
@@ -203,6 +209,11 @@ export async function syncPancakeOrders(
       shippingFee: big(o.shippingFee ?? 0),
       carrier: o.carrier?.slice(0, 255) ?? null,
       trackingNo: o.trackingNo?.slice(0, 255) ?? null,
+      shipByAt: o.shipByAt ?? null,
+      shipAddress: o.shipAddress?.slice(0, 500) ?? null,
+      shipProvince: o.shipProvince?.slice(0, 128) ?? null,
+      platformFee: big(o.platformFee ?? 0),
+      feeDetail: o.feeDetail ?? Prisma.DbNull,
       completedAt: o.status === 'completed' || o.status === 'delivered' ? o.orderedAt : null,
     };
 
@@ -283,6 +294,16 @@ export async function syncPancakeOrders(
       const patch: Prisma.OrderUncheckedUpdateInput = {};
       if (fields.carrier && fields.carrier !== prev.carrier) patch.carrier = fields.carrier;
       if (fields.trackingNo && fields.trackingNo !== prev.trackingNo) patch.trackingNo = fields.trackingNo;
+      if (fields.shipByAt && fields.shipByAt.getTime() !== prev.shipByAt?.getTime())
+        patch.shipByAt = fields.shipByAt;
+      if (fields.shipAddress && fields.shipAddress !== prev.shipAddress)
+        patch.shipAddress = fields.shipAddress;
+      if (fields.shipProvince && fields.shipProvince !== prev.shipProvince)
+        patch.shipProvince = fields.shipProvince;
+      if (fields.platformFee > 0n && fields.platformFee !== prev.platformFee) {
+        patch.platformFee = fields.platformFee;
+        patch.feeDetail = fields.feeDetail;
+      }
       const key = keyOf(o);
       let enrichedCustomer = false;
       if (o.customer && key) {
@@ -331,7 +352,11 @@ export async function syncPancakeOrders(
       prev.total !== fields.total ||
       prev.shippingFee !== fields.shippingFee ||
       prev.carrier !== fields.carrier ||
-      prev.trackingNo !== fields.trackingNo;
+      prev.trackingNo !== fields.trackingNo ||
+      prev.shipByAt?.getTime() !== fields.shipByAt?.getTime() ||
+      prev.shipAddress !== fields.shipAddress ||
+      prev.shipProvince !== fields.shipProvince ||
+      prev.platformFee !== fields.platformFee;
     if (!changed) {
       summary.unchanged++;
       return;

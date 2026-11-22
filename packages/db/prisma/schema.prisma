@@ -619,6 +619,13 @@ model Order {
   shippingStatus      String?     @map("shipping_status") @db.VarChar(255)
   carrier             String?     @db.VarChar(255)
   trackingNo          String?     @map("tracking_no") @db.VarChar(255)
+  /// Handover deadline set by the marketplace.
+  shipByAt            DateTime?   @map("ship_by_at")
+  shipAddress         String?     @map("ship_address") @db.VarChar(500)
+  shipProvince        String?     @map("ship_province") @db.VarChar(128)
+  /// Marketplace fee total (VND) and its breakdown by name.
+  platformFee         BigInt      @default(0) @map("platform_fee")
+  feeDetail           Json?       @map("fee_detail")
   /// All amounts in VND.
   subtotal            BigInt      @default(0)
   discount            BigInt      @default(0)

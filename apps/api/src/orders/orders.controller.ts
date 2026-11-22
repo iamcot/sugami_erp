@@ -89,6 +89,7 @@ export class OrdersController {
         shippingStatus: o.shippingStatus,
         carrier: o.carrier,
         trackingNo: o.trackingNo,
+        shipByAt: o.shipByAt?.toISOString() ?? null,
         total: Number(o.total),
         orderedAt: o.orderedAt.toISOString(),
         items: o.lines.map((l) => ({ sku: l.sku, name: l.name, qty: Number(l.qty) })),
@@ -124,6 +125,7 @@ export class OrdersController {
         paidAmount: Number(o.paidAmount),
         codAmount: Number(o.codAmount),
         shippingFee: Number(o.shippingFee),
+        platformFee: Number(o.platformFee),
         lines: o.lines.map((l) => ({
           ...l,
           qty: Number(l.qty),

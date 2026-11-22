@@ -69,6 +69,12 @@ export interface ExternalOrder {
   trackingNo?: string;
   shippingFee?: number;
   platformFee?: number;
+  /** Ship-by / handover deadline set by the marketplace. */
+  shipByAt?: Date;
+  shipAddress?: string;
+  shipProvince?: string;
+  /** Platform fee breakdown by name, VND. */
+  feeDetail?: Record<string, number>;
   lines: ExternalOrderLine[];
 }
 

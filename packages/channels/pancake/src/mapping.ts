@@ -107,15 +107,44 @@ const unitPrice = (item: Order['items'][number]) => {
   return Math.max(0, Math.round(item.is_discount_percent ? price * (1 - d / 100) : price - d));
 };
 
-/** Buyer name/phone of an order; empty or masked names ("T******u") cannot identify a buyer and are dropped. */
+const unmasked = (v: string | null | undefined) => {
+  const t = v?.trim();
+  return t && !t.includes('*') ? t : undefined;
+};
+
+/**
+ * Buyer of an order. Shopee shows the buyer's nickname in `customer.username`; the billing name and
+ * phone are masked ("T******u"), so masked values are dropped.
+ */
 export function buyerOf(o: Order): { name: string; phone?: string } | undefined {
-  const name = o.bill_full_name?.trim();
-  if (!name || name.includes('*')) return undefined;
-  const phone = o.bill_phone_number?.replace(/[\s.()-]/g, '');
-  return { name, ...(phone && !phone.includes('*') && phone.length >= 6 ? { phone } : {}) };
+  const name = unmasked(o.customer?.username) ?? unmasked(o.customer?.name) ?? unmasked(o.bill_full_name);
+  if (!name) return undefined;
+  const phone = [o.bill_phone_number, ...(o.customer?.phone_numbers ?? [])]
+    .map((p) => unmasked(p)?.replace(/[\s.()-]/g, ''))
+    .find((p): p is string => !!p && p.length >= 6);
+  return { name, ...(phone ? { phone } : {}) };
 }
 
-/** Pancake order → channel-neutral order. Only the buyer's name and phone are copied, no address. */
+/** Unix seconds (Shopee), milliseconds, or an ISO string → Date; undefined when unreadable. */
+export function parseDeadline(v: number | string | null | undefined): Date | undefined {
+  if (v === null || v === undefined || v === '') return undefined;
+  const n = typeof v === 'number' ? v : /^\d+(\.\d+)?$/.test(v) ? Number(v) : NaN;
+  const d = Number.isNaN(n) ? new Date(v) : new Date(n < 1e11 ? n * 1000 : n);
+  const y = d.getUTCFullYear();
+  return Number.isNaN(d.getTime()) || y < 2000 || y > 2100 ? undefined : d;
+}
+
+/** Fee breakdown: only numeric entries, e.g. { commission_fee: 12000, service_fee: 3000 }. */
+export function feeDetailOf(o: Order): Record<string, number> | undefined {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(o.advanced_platform_fee ?? {})) {
+    const n = typeof v === 'string' ? Number(v) : v;
+    if (typeof n === 'number' && Number.isFinite(n) && n !== 0) out[k] = n;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** Pancake order → channel-neutral order. The buyer is only the nickname (and phone when unmasked); the shipping address is kept as text for the order. */
 export function toExternalOrder(o: Order): ExternalOrder {
   const status = ORDER_STATUS[o.status];
   if (!status) throw new Error(`Unknown Pancake order status ${o.status} on order ${o.id}`);
@@ -130,6 +159,11 @@ export function toExternalOrder(o: Order): ExternalOrder {
     carrier: o.partner?.partner_name?.trim() || undefined,
     trackingNo: o.partner?.extend_code?.trim() || undefined,
     orderedAt: parsePancakeTime(o.inserted_at),
+    shipByAt:
+      parseDeadline(o.additional_info?.ship_by_date) ?? parseDeadline(o.additional_info?.delivery_deadline),
+    shipAddress: o.shipping_address?.full_address?.trim() || undefined,
+    shipProvince: o.shipping_address?.province_name?.trim() || undefined,
+    feeDetail: feeDetailOf(o),
     total: o.total_price ?? 0,
     shippingFee: o.shipping_fee ?? undefined,
     platformFee: o.fee_marketplace ?? undefined,

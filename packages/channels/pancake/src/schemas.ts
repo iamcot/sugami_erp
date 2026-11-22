@@ -64,6 +64,20 @@ export const Order = z.looseObject({
   order_currency: str,
   bill_full_name: str,
   bill_phone_number: str,
+  /** Marketplace buyer: Shopee gives the nickname in `username`; names and phones are masked. */
+  customer: z
+    .looseObject({ username: str, name: str, phone_numbers: z.array(z.string()).nullish() })
+    .nullish(),
+  additional_info: z
+    .looseObject({
+      ship_by_date: z.union([z.number(), z.string()]).nullish(),
+      delivery_deadline: z.union([z.number(), z.string()]).nullish(),
+    })
+    .nullish(),
+  shipping_address: z
+    .looseObject({ full_address: str, province_name: str, district_name: str, commune_name: str })
+    .nullish(),
+  advanced_platform_fee: z.record(z.string(), z.unknown()).nullish(),
   items: z.array(OrderItem).default([]),
   invoice_info_list: z.array(z.looseObject({ order_sn: str })).nullish(),
   partner: z.looseObject({ extend_code: str, partner_name: str, partner_status: str }).nullish(),
