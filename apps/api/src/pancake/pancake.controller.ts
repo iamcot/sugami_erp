@@ -303,8 +303,19 @@ export class PancakeController {
             optionValues: v.optionValues,
           });
       const pancake = await syncPancakeVariantRefs(this.prisma.client, pancakeVariants, { dryRun });
+      // Listings (and linked options) per Pancake marketplace id, to confirm which id is Shopee/TikTok.
+      const marketplaces: Record<string, string> = {};
+      for (const l of vn) {
+        const k = l.marketplace_id ?? '?';
+        const linked = (l.variations ?? []).filter(
+          (v) => v.linked_variation_custom_id || v.linked_product_custom_id,
+        ).length;
+        const prev = marketplaces[k]?.split('/') ?? ['0', '0'];
+        marketplaces[k] = `${Number(prev[0]) + 1} tin/${Number(prev[1]) + linked} nối`;
+      }
       return {
         ...summary,
+        marketplaces,
         pancake,
         skippedOtherCountry: listings.length - vn.length,
         removedOtherCountry: stale,

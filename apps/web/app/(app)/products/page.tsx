@@ -244,6 +244,7 @@ function ProductsList() {
         matched: { link: number };
         unmatched: number;
         withLink: number;
+        marketplaces: Record<string, string>;
         unmatchedLinks: string[];
         pancake: {
           onPancake: number;
@@ -253,7 +254,13 @@ function ProductsList() {
         };
       }>('/pancake/sync-listings', { method: 'POST', json: { dryRun: false } });
       setSyncMsg(
-        `Đã đồng bộ: ${r.pancake.onPancake} biến thể có trên Pancake, ${r.listings} tin đăng sàn (${r.matched.link} biến thể sàn đã nối trên Pancake, ${r.unmatched} chưa nối). Tin đăng có liên kết trên Pancake: ${r.withLink}. Mã Pancake không có trong Sugami: ${r.pancake.notInSugami}${r.pancake.sampleNotInSugami.length ? ` (mẫu: ${r.pancake.sampleNotInSugami.join(', ')})` : ''}.${r.unmatchedLinks.length ? ` Mã liên kết trên Pancake không khớp SKU Sugami (mẫu): ${r.unmatchedLinks.join(', ')}.` : ''}${r.pancake.sampleMulti.length ? ` Sản phẩm nhiều biến thể chưa ghép được (mẫu): ${r.pancake.sampleMulti.join(' ; ')}.` : ''}`,
+        `Đã đồng bộ: ${r.pancake.onPancake} biến thể có trên Pancake, ${r.listings} tin đăng sàn (${r.matched.link} biến thể sàn đã nối trên Pancake, ${r.unmatched} chưa nối). Tin đăng có liên kết trên Pancake: ${r.withLink}. Theo mã sàn Pancake: ${Object.entries(
+          r.marketplaces,
+        )
+          .map(([k, v]) => `${k} → ${v}`)
+          .join(
+            '; ',
+          )}. Mã Pancake không có trong Sugami: ${r.pancake.notInSugami}${r.pancake.sampleNotInSugami.length ? ` (mẫu: ${r.pancake.sampleNotInSugami.join(', ')})` : ''}.${r.unmatchedLinks.length ? ` Mã liên kết trên Pancake không khớp SKU Sugami (mẫu): ${r.unmatchedLinks.join(', ')}.` : ''}${r.pancake.sampleMulti.length ? ` Sản phẩm nhiều biến thể chưa ghép được (mẫu): ${r.pancake.sampleMulti.join(' ; ')}.` : ''}`,
       );
       setVersion((n) => n + 1);
     } catch (e) {
