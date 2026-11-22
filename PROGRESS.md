@@ -21,14 +21,15 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Đang làm
 
 - P0-10 chờ duyệt giao diện.
-- Tiếp theo: P3-01 lưu trữ S3 + API upload (kéo lên sớm vì shop đã có bucket), rồi P1-04 layout app, P1-05 bảng dữ liệu.
+- P0-07: đọc file mẫu KiotViet chủ shop gửi (22/11), map định dạng cột.
+- Sau đó: P1-11 import hàng hóa + tồn, P1-04 layout app, P1-05 bảng dữ liệu.
 
 ## Bị chặn / chờ chủ shop
 
 - P0-05: xuất file Excel mẫu từ KiotViet và gửi trong chat (hàng hóa kèm tồn, hóa đơn 1–3 tháng, phiếu nhập, NCC, mẫu file import phiếu nhập/kiểm kho).
 - P0-08: **nộp hồ sơ ngay** app Shopee Open Platform và TikTok Shop Partner Center (hướng dẫn: docs/ops/dang-ky-app-san.md).
 - P0-11: cài Docker trên iMac.
-- P3-01: tạo IAM user/access key chỉ có quyền trên bucket (prefix `sugami/`), điền vào `.env` trên iMac; cho biết region và có CloudFront không.
+- P3-01: tạo IAM user/key và cấu hình CORS theo docs/ops/s3.md, điền `.env`, chạy `pnpm storage:check`; cho biết region, folder, có CloudFront không.
 - P2-07: gửi 1–2 file Excel mẫu của đơn vị vận chuyển trung gian.
 
 ## Quyết định đã chốt
@@ -57,6 +58,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P0-06 client KiotViet + script probe chỉ đọc (chưa chạy với store thật) | e3c0d6e |
 | 2026-11-22 | P1-01/P1-02 đăng nhập, phân quyền, trang /login; tài khoản chủ shop tạo bằng `pnpm db:seed` | c799ed3 |
 | 2026-11-22 | P1-03 nhật ký thay đổi + API lịch sử sản phẩm; README hướng dẫn khởi tạo; infra hỗ trợ Podman | f971be5 |
+| 2026-11-22 | P3-01 lớp lưu trữ S3/local, schema media, API upload ký sẵn, `pnpm storage:check` (chờ thử bucket thật) | 9c19840 |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -129,7 +131,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
-| P3-01 | Schema media + lớp storage (local/S3), upload qua API | ⬜ | | |
+| P3-01 | Schema media + lớp storage (local/S3), upload qua API | 🟡 | 9c19840 | Code xong; chờ chủ shop chạy `pnpm storage:check` với bucket thật |
 | P3-02 | Thư viện media | ⬜ | | |
 | P3-03 | Worker xử lý ảnh | ⬜ | | |
 | P3-04 | Tab Ảnh trong chi tiết SP: sắp xếp, ảnh chính, ảnh theo biến thể/kênh | ⬜ | | |
