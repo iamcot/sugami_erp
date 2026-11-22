@@ -20,6 +20,14 @@ corepack enable && corepack prepare pnpm@10.28.0 --activate
 
 Cài thêm Docker Desktop (hoặc `brew install colima docker && colima start`) để chạy Redis.
 
+Dùng **Podman** thay Docker cũng được: các lệnh `pnpm infra:*` tự nhận `podman` khi máy không có `docker`. Podman cần thêm công cụ compose và máy ảo đang chạy:
+
+```bash
+brew install podman-compose
+podman machine init   # chỉ lần đầu
+podman machine start
+```
+
 ### 2. Lấy code
 
 ```bash
