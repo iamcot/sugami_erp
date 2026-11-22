@@ -10,7 +10,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
-| P0 — Chuẩn bị & xác minh | 4/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
+| P0 — Chuẩn bị & xác minh | 5/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
 | P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 5/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
@@ -21,12 +21,12 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Đang làm
 
 - P0-10 chờ duyệt giao diện.
-- P0-07: đọc file mẫu KiotViet chủ shop gửi (22/11), map định dạng cột.
-- Sau đó: P1-11 import hàng hóa + tồn, P1-04 layout app, P1-05 bảng dữ liệu.
+- Đang làm: P1-11 import hàng hóa + tồn từ file KiotViet.
+- Sau đó: P1-04 layout app, P1-05 bảng dữ liệu.
 
 ## Bị chặn / chờ chủ shop
 
-- P0-05: xuất file Excel mẫu từ KiotViet và gửi trong chat (hàng hóa kèm tồn, hóa đơn 1–3 tháng, phiếu nhập, NCC, mẫu file import phiếu nhập/kiểm kho).
+- P0-05: còn thiếu **mẫu import kiểm kho** và **mẫu import hàng hóa** của KiotViet (cho P1-13).
 - P0-08: **nộp hồ sơ ngay** app Shopee Open Platform và TikTok Shop Partner Center (hướng dẫn: docs/ops/dang-ky-app-san.md).
 - P0-11: cài Docker trên iMac.
 - P3-01: tạo IAM user/key và cấu hình CORS theo docs/ops/s3.md, điền `.env`, chạy `pnpm storage:check`; cho biết region, folder, có CloudFront không.
@@ -60,6 +60,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | P1-01/P1-02 đăng nhập, phân quyền, trang /login; tài khoản chủ shop tạo bằng `pnpm db:seed` | c799ed3 |
 | 2026-11-22 | P1-03 nhật ký thay đổi + API lịch sử sản phẩm; README hướng dẫn khởi tạo; infra hỗ trợ Podman | f971be5 |
 | 2026-11-22 | P3-01 lớp lưu trữ S3/local, schema media, API upload ký sẵn, `pnpm storage:check` (chờ thử bucket thật) | 9c19840 |
+| 2026-11-22 | P0-07 phân tích file Excel KiotViet (1.029 mã hàng, 153 nhóm biến thể, hóa đơn Shopee) | 117ab2d |
 
 ## P0 — Chuẩn bị & xác minh
 
@@ -69,9 +70,9 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P0-02 | Docker Compose dev | ✅ | 726704e | |
 | P0-03 | CI GitHub Actions: lint, typecheck, test, build trên mỗi PR | ✅ | 2a53d81 | |
 | P0-04 | Prisma schema khung (user, role, audit_log) + migration đầu + seed | ✅ | 2c78005 | |
-| P0-05 | Xuất file Excel mẫu từ KiotViet (hàng hóa + tồn, hóa đơn, phiếu nhập, NCC, mẫu import) | 👤 ⬜ | | |
+| P0-05 | Xuất file Excel mẫu từ KiotViet (hàng hóa + tồn, hóa đơn, phiếu nhập, NCC, mẫu import) | 👤 🟡 | | Đã có 8 file (22/11); còn thiếu mẫu import kiểm kho và mẫu import hàng hóa |
 | P0-06 | Script probe KiotViet Public API | ⏸ | e3c0d6e | Tạm ngưng: gói hiện tại không có API |
-| P0-07 | Phân tích file Excel KiotViet (`docs/kiotviet-excel.md`) | ⬜ | | Chờ P0-05 |
+| P0-07 | Phân tích file Excel KiotViet (`docs/kiotviet-excel.md`) | ✅ | 117ab2d | |
 | P0-08 | Đăng ký app Shopee Open Platform và TikTok Shop Partner Center | 👤 ⬜ | | |
 | P0-09 | Rà soát SKU | ⬜ | | |
 | P0-10 | Prototype UI 5 màn hình | 🟡 | 84065e7 | Chờ chủ shop duyệt giao diện |
