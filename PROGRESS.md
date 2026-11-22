@@ -29,7 +29,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 - P0-08: **nộp hồ sơ ngay** app Shopee Open Platform và TikTok Shop Partner Center (hướng dẫn: docs/ops/dang-ky-app-san.md).
 - P0-11: cài Docker trên iMac.
-- Pancake: mở bản thử, nối Shopee/TikTok (tắt đồng bộ tồn), thử 1 SKU, điền `PANCAKE_*` vào `.env`, chạy `pnpm --filter @sugami/channels-pancake probe` (docs/pancake.md).
+- Pancake: mở bản thử, nối Shopee/TikTok (tắt đồng bộ tồn), thử 1 SKU, điền `PANCAKE_*` vào `.env`, chạy `pnpm pancake:probe` (docs/pancake.md).
 - P1-13: thử import vào KiotViet các file từ trang KiotViet → Xuất sang KiotViet và trang Phiếu kho.
 - P3-01: tạo IAM user/key và cấu hình CORS theo docs/ops/s3.md, điền `.env`, chạy `pnpm storage:check`; cho biết region, folder, có CloudFront không.
 - P2-07: gửi 1–2 file Excel mẫu của đơn vị vận chuyển trung gian.

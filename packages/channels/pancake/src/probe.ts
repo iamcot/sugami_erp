@@ -1,6 +1,6 @@
 /**
  * Read-only check against the real Pancake shop, run on the iMac after filling .env:
- *   pnpm --filter @sugami/channels-pancake build && pnpm --filter @sugami/channels-pancake probe
+ *   pnpm pancake:probe
  * Prints counts and code mappings only, never customer data.
  */
 import { PancakeAdapter } from './adapter.js';

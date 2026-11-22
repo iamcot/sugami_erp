@@ -5,8 +5,7 @@ Sugami là web app cài được (PWA): có biểu tượng trên màn hình ch�
 ## 1. Tạo khóa thông báo (một lần, trên iMac)
 
 ```bash
-pnpm --filter @sugami/notify build
-pnpm --filter @sugami/notify vapid
+pnpm vapid:generate
 ```
 
 Chép hai dòng in ra vào `.env` (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`), khởi động lại api. Không gửi khóa qua chat. Đổi khóa thì mọi máy phải bật lại thông báo.

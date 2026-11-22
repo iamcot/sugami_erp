@@ -34,7 +34,7 @@ export const ORDER_STATUS: Record<number, string> = {
 
 /**
  * Pancake marketplace_id → Sugami channel code. Only Shopee (-3) is shown in the docs; the others
- * are confirmed with `pnpm --filter @sugami/channels-pancake probe` on the real shop and added here.
+ * are confirmed with `pnpm pancake:probe` on the real shop and added here.
  */
 export const MARKETPLACES: Record<string, string> = { '-3': 'shopee' };
 

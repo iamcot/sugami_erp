@@ -1,7 +1,7 @@
 /**
  * Web push to the owner's phones/computers (PWA). Used by the API and, later, the worker
  * (new orders, sync falling behind). Keys: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY in .env,
- * generated once with `pnpm --filter @sugami/notify vapid`.
+ * generated once with `pnpm vapid:generate`.
  */
 import { createHash } from 'node:crypto';
 import type { PrismaClient } from '@sugami/db';

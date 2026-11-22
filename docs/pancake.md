@@ -42,8 +42,7 @@ Không đọc thông tin khách (tên, SĐT, địa chỉ) vào Sugami.
 
 ```bash
 # .env: PANCAKE_API_KEY, PANCAKE_SHOP_ID, PANCAKE_WEBHOOK_SECRET
-pnpm --filter @sugami/channels-pancake build
-pnpm --filter @sugami/channels-pancake probe
+pnpm pancake:probe
 ```
 
 `probe` chỉ đọc, in số lượng sản phẩm/tồn, sàn đã nối và `marketplace_id`, đơn 7 ngày theo kênh và trạng thái; không in thông tin khách.

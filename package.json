@@ -22,6 +22,8 @@
     "db:seed": "pnpm --filter @sugami/db db:seed",
     "db:studio": "pnpm --filter @sugami/db db:studio",
     "storage:check": "pnpm --filter @sugami/storage build && pnpm --filter @sugami/storage check",
+    "pancake:probe": "pnpm --filter @sugami/channels-pancake build && pnpm --filter @sugami/channels-pancake probe",
+    "vapid:generate": "pnpm --filter @sugami/notify build && pnpm --filter @sugami/notify vapid",
     "kiotviet:probe": "pnpm --filter @sugami/channels-kiotviet build && pnpm --filter @sugami/channels-kiotviet probe -- --out ../../../kiotviet-probe-report.json"
   },
   "devDependencies": {
