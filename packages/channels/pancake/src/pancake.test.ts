@@ -219,6 +219,10 @@ describe('mapping', () => {
       toExternalOrder(Order.parse(order({ ...base, display_id: '2611220ND1CP8V' }))).marketplaceCode,
     ).toBe('2611220ND1CP8V');
     expect(
+      toExternalOrder(Order.parse(order({ ...base, display_id: null, id: '261121UJNGHVQJ' })))
+        .marketplaceCode,
+    ).toBe('261121UJNGHVQJ');
+    expect(
       toExternalOrder(Order.parse(order({ ...base, display_id: 1418 }))).marketplaceCode,
     ).toBeUndefined();
     expect(
