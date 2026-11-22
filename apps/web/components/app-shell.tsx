@@ -29,7 +29,7 @@ const nav = [
   { href: '/orders', label: 'Đơn hàng', icon: ShoppingBag },
   { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/customers', label: 'Khách hàng', icon: Users },
-  { href: '#sourcing', label: 'Nguồn hàng', icon: Truck },
+  { href: '/purchasing', label: 'Nguồn hàng', icon: Truck },
   { href: '#reports', label: 'Báo cáo', icon: BarChart3 },
   { href: '/data/import', label: 'Đồng bộ', icon: RefreshCw },
 ];

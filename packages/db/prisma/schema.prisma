@@ -224,6 +224,7 @@ model Variant {
   listingVariants ChannelListingVariant[]
   movements       StockMovement[]
   documentLines   StockDocumentLine[]
+  purchaseLines   PurchaseOrderLine[]
 
   @@index([productId])
   @@map("variants")
@@ -318,6 +319,7 @@ model Warehouse {
   stockLevels       StockLevel[]
   movements         StockMovement[]
   documents         StockDocument[] @relation("DocumentWarehouse")
+  purchaseOrders    PurchaseOrder[]
   orders            Order[]
   incomingTransfers StockDocument[] @relation("DocumentToWarehouse")
 
@@ -829,4 +831,85 @@ model ProductContent {
 
   @@unique([productId, channel])
   @@map("product_contents")
+}
+
+// ---------------------------------------------------------------------------
+// Purchasing
+// ---------------------------------------------------------------------------
+
+model Supplier {
+  id        String          @id @default(uuid(7)) @db.Char(36)
+  name      String          @unique @db.VarChar(191)
+  /// Where the goods come from: "taobao", "1688", "local", "agent"...
+  platform  String?         @db.VarChar(32)
+  contact   String?         @db.VarChar(255)
+  note      String?         @db.Text
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  orders    PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+enum PurchaseOrderStatus {
+  draft
+  ordered
+  received
+  cancelled
+}
+
+/// A purchase from a supplier. Receiving it books a goods-received document at landed cost.
+model PurchaseOrder {
+  id              String              @id @default(uuid(7)) @db.Char(36)
+  code            String              @unique @db.VarChar(32)
+  supplierId      String?             @map("supplier_id") @db.Char(36)
+  warehouseId     String              @map("warehouse_id") @db.Char(36)
+  status          PurchaseOrderStatus @default(draft)
+  /// "VND" or "CNY"; line prices are in this currency's minor units (đồng / fen).
+  currency        String              @default("VND") @db.VarChar(3)
+  /// VND per CNY, only for CNY orders.
+  fxRate          Decimal?            @map("fx_rate") @db.Decimal(14, 4)
+  note            String?             @db.VarChar(255)
+  orderedAt       DateTime?           @map("ordered_at")
+  receivedAt      DateTime?           @map("received_at")
+  /// The goods-received document created when this order was received.
+  stockDocumentId String?             @map("stock_document_id") @db.Char(36)
+  createdBy       String?             @map("created_by") @db.Char(36)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  supplier        Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  warehouse       Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  lines           PurchaseOrderLine[]
+  costs           PurchaseOrderCost[]
+
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id        String        @id @default(uuid(7)) @db.Char(36)
+  orderId   String        @map("order_id") @db.Char(36)
+  variantId String        @map("variant_id") @db.Char(36)
+  qty       Decimal       @db.Decimal(14, 3)
+  /// Per unit, minor units of the order's currency.
+  unitPrice BigInt        @map("unit_price")
+  sort      Int           @default(0)
+  order     PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant   Variant       @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([variantId])
+  @@map("purchase_order_lines")
+}
+
+/// Extra costs of an order in VND (shipping, agent fee...), spread over the lines by value on receipt.
+model PurchaseOrderCost {
+  id      String        @id @default(uuid(7)) @db.Char(36)
+  orderId String        @map("order_id") @db.Char(36)
+  label   String        @db.VarChar(64)
+  amount  BigInt
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("purchase_order_costs")
 }

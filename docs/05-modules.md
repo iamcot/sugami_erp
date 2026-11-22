@@ -92,3 +92,7 @@ Mỗi module ghi: mục đích, chức năng chính, giai đoạn (GĐ) dự ki�
 - Cài đặt: quy tắc mã SKU, mẫu in, đơn vị, thuế, tiền tệ.
 - Thông báo: trong app + Telegram/Zalo OA (hết hàng, lỗi đồng bộ, PO trễ).
 - Trung tâm đồng bộ: hàng đợi, lỗi, chạy lại, lịch sử webhook.
+
+## Đơn nhập hàng (bản gọn, đã làm)
+
+Trang `/purchasing`: nhà cung cấp và đơn nhập (nháp → đã đặt hàng → đã nhận). Giá hàng nhập bằng VND hoặc CNY (kèm tỷ giá VND/tệ). Chi phí khác (ship, phí trung gian...) nhập bằng VND và được chia vào từng dòng theo giá trị hàng (`landedCosts` trong `@sugami/shared`). Bấm **Nhận hàng** tạo phiếu nhập kho (`NH...`), xác nhận qua sổ kho nên tồn và giá vốn bình quân cập nhật; phiếu này xuất sang KiotViet như phiếu nhập thường. Chưa có: nhận một phần, kiện hàng/mã vận đơn, công nợ nhà cung cấp, import Excel của đơn vị trung gian.
