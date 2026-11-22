@@ -2,7 +2,6 @@
 
 import { cn } from '@sugami/ui';
 import {
-  Boxes,
   FileSpreadsheet,
   ClipboardList,
   Images,
@@ -29,7 +28,6 @@ import { UserMenu } from './user-menu';
 const nav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/products', label: 'Sản phẩm', icon: Package },
-  { href: '/inventory', label: 'Kho', icon: Boxes },
   { href: '/pos', label: 'Bán hàng', icon: Receipt },
   { href: '/orders', label: 'Đơn hàng', icon: ShoppingBag },
   { href: '/customers', label: 'Khách hàng', icon: Users },
@@ -43,13 +41,13 @@ const nav = [
 const mobileNav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/orders', label: 'Đơn', icon: ClipboardList },
-  { href: '/inventory', label: 'Kho', icon: Boxes },
   { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/media', label: 'Media', icon: Images },
 ];
 
 function isActive(pathname: string, href: string) {
   if (href.startsWith('#')) return false;
+  if (href === '/products' && pathname.startsWith('/inventory')) return true;
   return href === '/' ? pathname === '/' : pathname.startsWith(href.split('/').slice(0, 2).join('/'));
 }
 

@@ -210,16 +210,20 @@ export async function syncPancakeVariantRefs(
   const resolve = (it: PancakeVariantInput): string | undefined => {
     const direct = bySku.get(it.sku);
     if (direct) return direct;
+    // A Pancake product made from one KiotViet row carries that row's code as its display id.
+    if ((it.siblings ?? 1) === 1 && it.productCode && bySku.has(it.productCode))
+      return bySku.get(it.productCode);
     const vs = it.productCode ? productVariants.get(it.productCode) : undefined;
     if (!vs) return undefined;
     if (vs.length === 1 && (it.siblings ?? 1) === 1) return vs[0]!.id;
     const opts = optKey(it.optionValues);
+    const same = opts ? vs.filter((v) => v.options === opts) : [];
+    if (same.length === 1) return same[0]!.id;
     if (sampleMulti.length < 5 && !sampleMulti.some((x) => x.startsWith(`${it.productCode}:`)))
       sampleMulti.push(
         `${it.productCode}: Pancake ${it.siblings} biến thể, tùy chọn [${opts || 'trống'}]; Sugami ${vs.length} biến thể [${vs.map((v) => v.options || 'trống').join(' | ')}]`,
       );
-    const same = opts ? vs.filter((v) => v.options === opts) : [];
-    return same.length === 1 ? same[0]!.id : undefined;
+    return undefined;
   };
   const keep: string[] = [];
   let notInSugami = 0;

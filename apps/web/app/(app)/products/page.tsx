@@ -7,8 +7,9 @@ import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
 import { ListingsDrawer } from '@/components/listings-drawer';
-import { Badge, Button, PageHeader } from '@/components/ui';
+import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import type { InventoryResponse } from '@/lib/inventory';
 import { useQueryState } from '@/lib/use-query-state';
 
 interface ProductRow {
@@ -163,6 +164,14 @@ function ProductsList() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const [totals, setTotals] = useState<InventoryResponse['totals'] | null>(null);
+
+  // Stock totals for the whole catalogue (the cards above the list).
+  useEffect(() => {
+    api<InventoryResponse>('/inventory?pageSize=1')
+      .then((r) => setTotals(r.totals))
+      .catch(() => setTotals(null));
+  }, [version]);
 
   const sync = async () => {
     setSyncing(true);
@@ -230,12 +239,37 @@ function ProductsList() {
             <Button variant="secondary" onClick={() => setShowListings(true)}>
               <Store className="size-4" /> Tin đăng sàn
             </Button>
+            <Link href="/inventory/documents">
+              <Button variant="secondary">Phiếu kho</Button>
+            </Link>
+            <Link href="/inventory/documents/new?type=count">
+              <Button variant="secondary">Kiểm kho</Button>
+            </Link>
             <Link href="/data/import">
               <Button variant="secondary">Nhập từ KiotViet</Button>
             </Link>
           </>
         }
       />
+      {totals && (
+        <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {[
+            { label: 'Số SKU', value: totals.skus.toLocaleString('vi-VN'), tone: '' },
+            { label: 'Tổng tồn', value: totals.units.toLocaleString('vi-VN'), tone: '' },
+            { label: 'Giá trị tồn (giá vốn)', value: formatVnd(totals.value), tone: '' },
+            {
+              label: 'Tồn âm / hết hàng',
+              value: `${totals.negative.toLocaleString('vi-VN')} / ${totals.out.toLocaleString('vi-VN')}`,
+              tone: totals.negative > 0 ? 'text-rose-600' : '',
+            },
+          ].map((c) => (
+            <Card key={c.label} className="p-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">{c.label}</p>
+              <p className={`mt-0.5 text-lg font-semibold tabular-nums ${c.tone}`}>{c.value}</p>
+            </Card>
+          ))}
+        </div>
+      )}
       {syncMsg && <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">{syncMsg}</p>}
       {showListings && <ListingsDrawer version={version} onClose={() => setShowListings(false)} />}
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center">
