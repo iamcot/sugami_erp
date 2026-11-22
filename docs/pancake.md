@@ -107,3 +107,8 @@ pnpm pancake:probe
 - Bảng `channel_listings` (tin đăng: shop, tiêu đề, SKU, giá, ảnh) và `channel_listing_variants` (biến thể của tin: SKU sàn, giá, tồn, ảnh, biến thể Sugami đã nối và cách nối). Chỉ là bản sao đọc từ Pancake (`GET /marketplace/products`), chạy lại thì cập nhật tại chỗ. Khóa tin đăng gồm tên shop vì shop VN/MY/PH dùng chung `marketplace_id`.
 - Nối biến thể sàn với biến thể Sugami, theo thứ tự: link trên Pancake (`linked_variation_custom_id`), SKU sàn = mã hàng, SKU sàn = mã vạch, mã học từ đơn (`pancake_sku`).
 - Giao diện: mục "Tin đăng sàn" (lọc đã nối/một phần/chưa nối, theo shop, tìm theo tên/SKU), drawer chi tiết tin, và thẻ "Đang đăng trên sàn" ở chi tiết sản phẩm. Nút "Đồng bộ tin đăng" ở tab "Đơn từ Pancake".
+
+## Ghép tay dòng hàng chưa liên kết
+
+Dòng đơn Pancake chưa nối sản phẩm chỉ có tên bắt đầu bằng mã sàn. Mục "Dòng hàng chưa liên kết" ở trang Dữ liệu Pancake gom theo mã sàn; chọn một mã hàng Sugami có sẵn thì lưu `external_refs` (provider `pancake_sku`), gán SKU cho mọi dòng đang chưa link và trừ tồn theo quy tắc thường (đơn đang hoạt động và sau mốc tồn đầu của mã hàng). Các lần đồng bộ sau tự áp mã đã ghép. Không phụ thuộc việc link trên Pancake; chỉ ghép vào sản phẩm đã có, không tạo sản phẩm mới.
+API: `GET /pancake/unlinked-lines`, `GET /pancake/variant-search?q=`, `POST /pancake/link-line {key, variantId}`.

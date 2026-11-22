@@ -1,5 +1,7 @@
 import {
   Body,
+  Get,
+  Query,
   ConflictException,
   Controller,
   HttpCode,
@@ -19,7 +21,14 @@ import {
   pullListings,
   type PushProductInput,
 } from '@sugami/channels-pancake';
-import { runPancakeOrderSync, syncChannelListings, syncListingImages } from '@sugami/sync';
+import {
+  linkUnlinkedLines,
+  listUnlinkedLines,
+  runPancakeOrderSync,
+  syncChannelListings,
+  syncListingImages,
+} from '@sugami/sync';
+import { toSearchKey } from '@sugami/shared';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
@@ -50,6 +59,12 @@ const SyncBody = z.object({
   /** Fixed date range YYYY-MM-DD (Vietnam time) to backfill history; the saved cursor is untouched. */
   from: z.iso.date().optional(),
   to: z.iso.date().optional(),
+});
+
+const LinkBody = z.object({
+  /** The marketplace's own code at the start of the unlinked line name. */
+  key: z.string().trim().min(4).max(64),
+  variantId: z.string().trim().min(1).max(36),
 });
 
 /** Manual, one-product-at-a-time writes to Pancake for the trial. */
@@ -154,6 +169,64 @@ export class PancakeController {
         range,
       }),
     );
+  }
+
+  /** Order lines Pancake did not link to a product, grouped by marketplace code. */
+  @Get('unlinked-lines')
+  @RequirePermissions('orders.read')
+  async unlinked() {
+    const groups = await listUnlinkedLines(this.prisma.client);
+    return {
+      data: groups.map((g) => ({ ...g, lastOrderedAt: g.lastOrderedAt.toISOString() })),
+      lines: groups.reduce((a, g) => a + g.lines, 0),
+    };
+  }
+
+  /** Find Sugami variants to link a marketplace code to (by SKU, barcode or name). */
+  @Get('variant-search')
+  @RequirePermissions('catalog.read')
+  async variantSearch(@Query('q') raw?: string) {
+    const q = (raw ?? '').trim().slice(0, 64);
+    if (q.length < 2) return { data: [] };
+    const rows = await this.prisma.client.variant.findMany({
+      where: {
+        product: { status: { not: 'archived' } },
+        OR: [{ sku: { contains: q } }, { barcode: q }, { product: { searchKey: { contains: toSearchKey(q) } } }],
+      },
+      take: 20,
+      orderBy: { sku: 'asc' },
+      select: {
+        id: true,
+        sku: true,
+        barcode: true,
+        price: true,
+        optionValues: true,
+        product: { select: { name: true } },
+      },
+    });
+    return {
+      data: rows.map((v) => ({
+        id: v.id,
+        sku: v.sku,
+        barcode: v.barcode,
+        price: Number(v.price),
+        productName: v.product.name,
+        optionValues: v.optionValues,
+      })),
+    };
+  }
+
+  /** Link a marketplace code to a Sugami variant: existing unlinked lines get the SKU and take stock. */
+  @Post('link-line')
+  @HttpCode(200)
+  @RequirePermissions('orders.write', 'inventory.write')
+  async linkLine(@Body() raw: unknown) {
+    const body = parseInput(LinkBody, raw);
+    try {
+      return await linkUnlinkedLines(this.prisma.client, body);
+    } catch (err) {
+      throw new UnprocessableEntityException(err instanceof Error ? err.message : String(err));
+    }
   }
 
   /** Store the marketplace listings Pancake pulled and match their options to Sugami variants. Preview by default. */

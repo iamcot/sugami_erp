@@ -228,3 +228,4 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P5-05 | Checklist chuyển đổi | ⬜ | | |
 | P5-06 | Xuất & lưu trữ toàn bộ dữ liệu KiotViet | ⬜ | | |
 | P5-07 | 30 ngày vận hành không KiotViet, gỡ adapter khỏi lịch chạy | ⬜ | | |
+| 2026-11-22 | [P4] Ghép tay dòng hàng Pancake chưa liên kết vào mã hàng Sugami có sẵn (trang Dữ liệu Pancake) | main |
