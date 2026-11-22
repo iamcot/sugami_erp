@@ -12,6 +12,38 @@ export class PosError extends Error {
   }
 }
 
+/** Statuses in which a delivery order holds goods for its buyer but they are still on the shelf. */
+const HOLDING = ['new', 'confirmed', 'packing'] as const;
+
+/**
+ * Stock on the shelf, what open delivery orders have set aside, and what can still be sold. The held
+ * amount is computed from the orders themselves (not a stored counter), so it can never drift.
+ */
+export async function availability(db: PrismaClient, warehouseId: string, variantIds: string[]) {
+  const out = new Map<string, { onHand: number; reserved: number; available: number }>();
+  if (!variantIds.length) return out;
+  const levels = await db.stockLevel.findMany({
+    where: { warehouseId, variantId: { in: variantIds } },
+    select: { variantId: true, onHand: true },
+  });
+  const held = await db.orderLine.groupBy({
+    by: ['variantId'],
+    where: {
+      variantId: { in: variantIds },
+      order: { source: 'pos', warehouseId, stockAppliedAt: null, status: { in: [...HOLDING] } },
+    },
+    _sum: { qty: true },
+  });
+  const onHand = new Map(levels.map((l) => [l.variantId, Number(l.onHand)]));
+  const reserved = new Map(held.map((h) => [h.variantId!, Number(h._sum.qty ?? 0)]));
+  for (const id of variantIds) {
+    const o = onHand.get(id) ?? 0;
+    const r = reserved.get(id) ?? 0;
+    out.set(id, { onHand: o, reserved: r, available: o - r });
+  }
+  return out;
+}
+
 const CODE_PREFIX = 'BH';
 const WAREHOUSE = () => process.env.POS_WAREHOUSE || 'KHO-CHINH';
 const big = (n: number) => BigInt(Math.round(n));
@@ -47,7 +79,13 @@ export function posTotals(p: PosPayload, mode: 'retail' | 'delivery') {
  */
 export async function createPosOrder(
   db: PrismaClient,
-  input: { mode: 'retail' | 'delivery'; payload: PosPayload; draftId?: string; userId?: string },
+  input: {
+    mode: 'retail' | 'delivery';
+    payload: PosPayload;
+    draftId?: string;
+    userId?: string;
+    allowOversell?: boolean;
+  },
 ): Promise<{ code: string; id: string }> {
   const { mode, payload: p } = input;
   if (!p.lines.length) throw new PosError('Đơn chưa có sản phẩm');
@@ -66,6 +104,19 @@ export async function createPosOrder(
     update: {},
   });
   const t = posTotals(p, mode);
+  // Selling more than what is left (shelf minus what other open deliveries hold) needs a deliberate "sell anyway".
+  if (!input.allowOversell) {
+    const avail = await availability(
+      db,
+      warehouse.id,
+      p.lines.map((l) => l.variantId),
+    );
+    const short = p.lines
+      .map((l) => ({ l, a: avail.get(l.variantId)?.available ?? 0 }))
+      .filter(({ l, a }) => l.qty > a)
+      .map(({ l, a }) => `${byId.get(l.variantId)!.sku} cần ${l.qty}, còn bán ${Math.max(a, 0)}`);
+    if (short.length) throw new PosError(`Không đủ tồn: ${short.join('; ')}`, 409);
+  }
   if (mode === 'delivery' && !p.receiver.address && !p.receiver.phone)
     throw new PosError('Bán giao hàng cần ít nhất địa chỉ hoặc số điện thoại người nhận');
 

@@ -62,6 +62,10 @@ interface VariantInfo {
   optionValues: unknown;
   image: string | null;
   onHand: number;
+  /** Held by open delivery orders that have not shipped yet. */
+  reserved: number;
+  /** onHand minus reserved: what can still be sold. */
+  available: number;
 }
 interface CustomerHit {
   id: string;
@@ -632,7 +636,7 @@ export default function PosPage() {
   const subtotal = p ? p.lines.reduce((a, l) => a + l.price * l.qty, 0) : 0;
   const total = p ? Math.max(0, subtotal - p.discount + p.otherIncome) : 0;
   const retail = draft?.mode === 'retail';
-  const outOfStock = p?.lines.filter((l) => (info[l.variantId]?.onHand ?? 0) < l.qty).length ?? 0;
+  const outOfStock = p?.lines.filter((l) => (info[l.variantId]?.available ?? 0) < l.qty).length ?? 0;
   const when = toLocal(p?.orderedAt ?? null);
   const setWhen = (date: string, time: string) => date && time && patch({ orderedAt: fromLocal(date, time) });
   const customer = p?.customer?.id ? cinfo[p.customer.id] : undefined;
@@ -655,7 +659,7 @@ export default function PosPage() {
   const paid = Math.min(paidInput, total);
   const cod = !retail && p?.cod ? total - paid : 0;
 
-  const confirm = async () => {
+  const confirm = async (allowOversell = false) => {
     if (!draft || !p) return;
     setBusy(true);
     setMsg(null);
@@ -663,7 +667,7 @@ export default function PosPage() {
       const payload: Payload = { ...p, paid, orderedAt: p.orderedAt ?? new Date().toISOString() };
       const r = await api<{ code: string }>(`/pos/drafts/${draft.id}/checkout`, {
         method: 'POST',
-        json: { mode: draft.mode, payload },
+        json: { mode: draft.mode, payload, allowOversell },
       });
       const o = await api<{
         order: Omit<ReceiptOrder, 'customerName' | 'customerPhone'> & {
@@ -765,8 +769,9 @@ export default function PosPage() {
                         </span>
                         <span className="text-right">
                           <span className="block tabular-nums">{fmt(v.price)}</span>
-                          <span className={`text-xs ${v.onHand > 0 ? 'text-slate-500' : 'text-rose-600'}`}>
-                            Tồn {fmt(v.onHand)}
+                          <span className={`text-xs ${v.available > 0 ? 'text-slate-500' : 'text-rose-600'}`}>
+                            Còn bán {fmt(v.available)}
+                            {v.reserved > 0 ? ` (tồn ${fmt(v.onHand)}, giữ ${fmt(v.reserved)})` : ''}
                           </span>
                         </span>
                       </button>
@@ -847,7 +852,7 @@ export default function PosPage() {
                 )}
                 {p.lines.map((l, i) => {
                   const v = info[l.variantId];
-                  const low = v && v.onHand < l.qty;
+                  const low = v && v.available < l.qty;
                   return (
                     <li key={l.variantId} className="px-3 py-2">
                       <div className="flex items-center gap-3 text-sm">
@@ -861,7 +866,8 @@ export default function PosPage() {
                           <span className="font-mono text-xs text-slate-500">{v?.sku ?? '…'}</span>
                           {low && (
                             <span className="ml-2 text-xs text-rose-600">
-                              Tồn: {fmt(v.onHand)} (không đủ)
+                              Còn bán: {fmt(v.available)} (không đủ)
+                              {v.reserved > 0 ? `, đang giữ ${fmt(v.reserved)}` : ''}
                             </span>
                           )}
                         </span>
@@ -1192,7 +1198,8 @@ export default function PosPage() {
                 )}
                 {outOfStock > 0 && (
                   <p className="text-xs text-amber-600">
-                    {outOfStock} sản phẩm vượt tồn hiện có, vẫn cho bán (tồn sẽ âm).
+                    {outOfStock} sản phẩm vượt số còn bán. Khi thanh toán sẽ báo thiếu, có thể chọn “Vẫn bán”
+                    (tồn sẽ âm).
                   </p>
                 )}
               </div>
@@ -1380,12 +1387,23 @@ export default function PosPage() {
                     {p.cod ? `Thu hộ COD: ${fmt(cod)}` : 'Không thu hộ'}
                     {p.carrier ? ` · ${p.carrier}` : ''}
                   </p>
-                  <p className="mt-1">Tồn kho chưa trừ: sẽ trừ khi bấm “Giao cho ĐVVC” ở đơn hàng.</p>
+                  <p className="mt-1">
+                    Hàng được giữ chỗ (không bán cho người khác), tồn kho chỉ trừ khi bấm “Giao cho ĐVVC”.
+                  </p>
                 </div>
               )}
               {msg && <p className="text-rose-600">{msg}</p>}
+              {msg?.startsWith('Không đủ tồn') && (
+                <Button variant="secondary" disabled={busy} onClick={() => void confirm(true)}>
+                  Vẫn bán (tồn sẽ âm)
+                </Button>
+              )}
             </div>
-            <Button className="mt-3 h-12 w-full text-base" disabled={busy} onClick={() => void confirm()}>
+            <Button
+              className="mt-3 h-12 w-full text-base"
+              disabled={busy}
+              onClick={() => void confirm(false)}
+            >
               {busy ? 'ĐANG TẠO ĐƠN…' : 'XÁC NHẬN'}
             </Button>
           </div>

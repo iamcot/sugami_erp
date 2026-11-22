@@ -20,10 +20,15 @@ import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { fulfillmentOf, posActions } from './pos-flow.js';
-import { createPosOrder, PosError, runPosAction } from './pos-orders.js';
+import { availability, createPosOrder, PosError, runPosAction } from './pos-orders.js';
 import { DraftBody, PosPayload } from './pos-schema.js';
 
-const CheckoutBody = z.object({ mode: z.enum(['retail', 'delivery']), payload: PosPayload });
+const CheckoutBody = z.object({
+  mode: z.enum(['retail', 'delivery']),
+  payload: PosPayload,
+  /** Sell more than what is left (stock goes negative). */
+  allowOversell: z.boolean().default(false),
+});
 
 interface SearchRow {
   id: string;
@@ -72,8 +77,15 @@ export class PosController {
         ${inStock === '1' ? Prisma.sql`AND sl.on_hand > 0` : Prisma.empty}
       ORDER BY p.updated_at DESC, v.sku ASC
       LIMIT 30`;
+    const avail = await availability(
+      db,
+      wh?.id ?? '',
+      rows.map((r) => r.id),
+    );
     return {
       data: rows.map((r) => ({
+        reserved: avail.get(r.id)?.reserved ?? 0,
+        available: avail.get(r.id)?.available ?? 0,
         id: r.id,
         sku: r.sku,
         barcode: r.barcode,
@@ -107,8 +119,15 @@ export class PosController {
         stockLevels: { where: { warehouseId: wh?.id ?? '' }, select: { onHand: true } },
       },
     });
+    const avail = await availability(
+      db,
+      wh?.id ?? '',
+      vs.map((v) => v.id),
+    );
     return {
       data: vs.map((v) => ({
+        reserved: avail.get(v.id)?.reserved ?? 0,
+        available: avail.get(v.id)?.available ?? 0,
         id: v.id,
         sku: v.sku,
         barcode: v.barcode,
@@ -172,7 +191,13 @@ export class PosController {
   async checkout(@Param('id') id: string, @Body() raw: unknown, @CurrentUser() user: AuthUser) {
     const b = parseInput(CheckoutBody, raw);
     return this.wrap(() =>
-      createPosOrder(this.prisma.client, { mode: b.mode, payload: b.payload, draftId: id, userId: user.id }),
+      createPosOrder(this.prisma.client, {
+        mode: b.mode,
+        payload: b.payload,
+        draftId: id,
+        userId: user.id,
+        allowOversell: b.allowOversell,
+      }),
     );
   }
 
