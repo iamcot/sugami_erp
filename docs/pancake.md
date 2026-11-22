@@ -117,6 +117,10 @@ API: `GET /pancake/unlinked-lines`, `GET /pancake/variant-search?q=`, `POST /pan
 
 Dòng đơn chưa liên kết ("Thêm nhanh") chỉ có tiêu đề sàn trong `variation_info.name`, còn tùy chọn (ví dụ "Xanh đen đậm") Pancake để riêng. `lineName()` (`packages/channels/pancake/src/mapping.ts`) đọc `variation_info.fields[].value` và nối vào cuối tên (`… - Xanh đen đậm`) nếu tên chưa có. Lần đồng bộ/quét lại sau đó cập nhật tên các dòng đã lưu (không đụng tồn). Cấu trúc `fields` dựa trên định dạng tùy chọn của Pancake, chưa kiểm với dữ liệu thật: chạy `pnpm pancake:probe` xem `items[].variation_info` nếu tên biến thể vẫn chưa hiện.
 
-## Tin đăng sàn theo sản phẩm Sugami
+## Liên kết sàn trên trang Sản phẩm
 
-Trang "Tin đăng sàn" mặc định xem theo sản phẩm Sugami: mỗi mã hàng hiện các tin đăng Shopee/TikTok đã nối (mở rộng từng dòng), có nút "Nối tin đăng" để chọn tay biến thể sàn chưa nối và "Bỏ nối". Nối tay lưu `linked_by = manual` và được giữ nguyên khi đồng bộ tin đăng. Lưu ý: nối trong Sugami chỉ để quản lý; Pancake chỉ đẩy tồn lên tin đăng đã được liên kết trong chính Pancake (API công khai của Pancake không có lệnh tạo liên kết).
+Mọi thứ nằm ở trang Sản phẩm (không còn trang Tin đăng sàn riêng). Mỗi sản phẩm hiện 3 nhãn Pancake / Shopee / TikTok dạng `đã kết nối/tổng biến thể`:
+- Pancake: số biến thể (theo SKU) có trên Pancake, lưu thành `external_refs` (provider `pancake`) khi đồng bộ.
+- Shopee/TikTok: số biến thể được Pancake liên kết (`linked_variation_custom_id`) với tin đăng sàn. Sugami không tự nối (không đoán theo SKU/mã vạch/đơn) và không có nối tay; muốn nối thì làm trong Pancake rồi bấm lại "Đồng bộ từ Pancake".
+- Nút "Đồng bộ từ Pancake" kéo cả sản phẩm Pancake lẫn tin đăng sàn; nút "Tin đăng sàn" mở drawer xem tin đăng, lọc theo nền tảng và trạng thái nối.
+Pancake chỉ đẩy tồn lên tin đăng đã được liên kết trong chính Pancake (API công khai không có lệnh tạo liên kết).

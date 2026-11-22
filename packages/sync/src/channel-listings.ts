@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from '@sugami/db';
-import { loadSkuMap } from './sku-map.js';
 
 export interface ListingVariationInput {
   externalId: string;
@@ -40,9 +39,8 @@ export interface ListingSyncSummary {
 const clean = (v: string | null | undefined) => v?.trim() || undefined;
 
 /**
- * Store marketplace listings and match each variation to a Sugami variant: by the link set in the
- * source system, by seller SKU = Sugami SKU, by seller SKU = barcode, or by a code learned from orders.
- * Listings are copies; reruns update them in place.
+ * Store marketplace listings; each variation is linked to a Sugami variant only when the source system
+ * (Pancake) links it to that SKU. Listings are copies; reruns update them in place.
  */
 export async function syncChannelListings(
   db: PrismaClient,
@@ -65,33 +63,23 @@ export async function syncChannelListings(
   const codes = [
     ...new Set(
       listings.flatMap((l) =>
-        l.variations.flatMap((v) =>
-          [clean(v.linkedCustomId), sellerSku(l, v)].filter((c): c is string => !!c),
-        ),
+        l.variations.flatMap((v) => [clean(v.linkedCustomId)].filter((c): c is string => !!c)),
       ),
     ),
   ];
   const bySku = new Map<string, string>();
-  const byBarcode = new Map<string, string>();
   for (let i = 0; i < codes.length; i += 400) {
     const chunk = codes.slice(i, i + 400);
     const rows = await db.variant.findMany({
-      where: { OR: [{ sku: { in: chunk } }, { barcode: { in: chunk } }] },
-      select: { id: true, sku: true, barcode: true },
+      where: { sku: { in: chunk } },
+      select: { id: true, sku: true },
     });
-    for (const r of rows) {
-      bySku.set(r.sku, r.id);
-      if (r.barcode) byBarcode.set(r.barcode, r.id);
-    }
+    for (const r of rows) bySku.set(r.sku, r.id);
   }
-  const learned = await loadSkuMap(db, codes);
-  const match = (l: ListingInput, v: ListingVariationInput) => {
+  // The link status comes from Pancake only (its link to a Sugami SKU); Sugami does not guess matches.
+  const match = (_l: ListingInput, v: ListingVariationInput) => {
     const link = clean(v.linkedCustomId);
-    const sku = sellerSku(l, v);
     if (link && bySku.has(link)) return { id: bySku.get(link)!, by: 'link' as const };
-    if (sku && bySku.has(sku)) return { id: bySku.get(sku)!, by: 'sku' as const };
-    if (sku && byBarcode.has(sku)) return { id: byBarcode.get(sku)!, by: 'barcode' as const };
-    if (sku && learned.has(sku)) return { id: learned.get(sku)!, by: 'orders' as const };
     return undefined;
   };
 
@@ -139,18 +127,65 @@ export async function syncChannelListings(
         variantId: m?.id ?? null,
         linkedBy: m?.by ?? null,
       };
-      // A link made by hand in Sugami wins over the automatic matching.
-      const prevV = await db.channelListingVariant.findUnique({
-        where: { listingId_externalId: { listingId, externalId: v.externalId } },
-        select: { linkedBy: true },
-      });
-      const { variantId: _v, linkedBy: _l, ...keepLink } = vdata;
       await db.channelListingVariant.upsert({
         where: { listingId_externalId: { listingId, externalId: v.externalId } },
         create: { listingId, externalId: v.externalId, ...vdata },
-        update: prevV?.linkedBy === 'manual' ? keepLink : vdata,
+        update: vdata,
       });
     }
   }
   return summary;
+}
+
+/**
+ * Which Sugami variants exist on Pancake (matched by SKU = Pancake seller code). Kept as external refs so
+ * the product list can show "x/y on Pancake" without calling Pancake. A full pull replaces the set.
+ */
+export async function syncPancakeVariantRefs(
+  db: PrismaClient,
+  items: { externalId: string; sku: string }[],
+  opts: { dryRun: boolean },
+): Promise<{ onPancake: number; notInSugami: number; removed: number }> {
+  const skus = [...new Set(items.map((i) => i.sku).filter(Boolean))];
+  const bySku = new Map<string, string>();
+  for (let i = 0; i < skus.length; i += 400) {
+    const rows = await db.variant.findMany({
+      where: { sku: { in: skus.slice(i, i + 400) } },
+      select: { id: true, sku: true },
+    });
+    for (const r of rows) bySku.set(r.sku, r.id);
+  }
+  const keep: string[] = [];
+  let notInSugami = 0;
+  for (const it of items) {
+    const variantId = bySku.get(it.sku);
+    if (!variantId) {
+      notInSugami++;
+      continue;
+    }
+    keep.push(it.externalId);
+    if (opts.dryRun) continue;
+    await db.externalRef.upsert({
+      where: {
+        provider_entityType_externalId: {
+          provider: 'pancake',
+          entityType: 'variant',
+          externalId: it.externalId,
+        },
+      },
+      create: {
+        provider: 'pancake',
+        entityType: 'variant',
+        externalId: it.externalId,
+        entityId: variantId,
+        externalCode: it.sku.slice(0, 128),
+      },
+      update: { entityId: variantId, externalCode: it.sku.slice(0, 128) },
+    });
+  }
+  const stale = { provider: 'pancake', entityType: 'variant', externalId: { notIn: keep } };
+  const removed = opts.dryRun
+    ? await db.externalRef.count({ where: stale })
+    : (await db.externalRef.deleteMany({ where: stale })).count;
+  return { onPancake: keep.length, notInSugami, removed };
 }

@@ -1,6 +1,5 @@
-import { Body, Controller, Get, HttpCode, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
 import type { Prisma } from '@sugami/db';
-import { toSearchKey } from '@sugami/shared';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
@@ -9,27 +8,15 @@ import { PrismaService } from '../prisma/prisma.service.js';
 const ListQuery = z.object({
   q: z.string().trim().max(64).optional(),
   shop: z.string().trim().max(191).optional(),
+  platform: z.enum(['shopee', 'tiktok']).optional(),
   /** linked = every option matched a Sugami variant, partial = some, none = no option matched. */
   link: z.enum(['linked', 'partial', 'none']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
 });
 
-const ProductQuery = z.object({
-  q: z.string().trim().max(64).optional(),
-  /** linked = has at least one marketplace listing, none = on no marketplace yet. */
-  link: z.enum(['linked', 'none']).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(30),
-});
-
-const LinkBody = z.object({
-  variationId: z.string().trim().min(1).max(36),
-  /** null removes the link. */
-  variantId: z.string().trim().min(1).max(36).nullable(),
-});
-
-const MARKET_NAME: Record<string, string> = { '-3': 'Shopee', '-9': 'TikTok' };
+/** Pancake marketplace_id → platform shown in the UI. */
+export const PLATFORM_OF: Record<string, 'shopee' | 'tiktok'> = { '-3': 'shopee', '-9': 'tiktok' };
 
 const n = (v: bigint | null) => (v === null ? null : Number(v));
 
@@ -45,6 +32,15 @@ export class ListingsController {
     const db = this.prisma.client;
     const where: Prisma.ChannelListingWhereInput = {
       ...(q.shop ? { shopKey: q.shop } : {}),
+      ...(q.platform
+        ? {
+            marketplaceId: {
+              in: Object.entries(PLATFORM_OF)
+                .filter(([, p]) => p === q.platform)
+                .map(([id]) => id),
+            },
+          }
+        : {}),
       ...(q.q
         ? {
             OR: [
@@ -92,6 +88,7 @@ export class ListingsController {
           id: l.id,
           source: l.source,
           shop: l.shopKey,
+          platform: PLATFORM_OF[l.marketplaceId ?? ''] ?? null,
           name: l.name,
           sku: l.sku,
           imageUrl: l.imageUrl,
@@ -109,148 +106,6 @@ export class ListingsController {
       shops: shops.map((s) => ({ shop: s.shopKey, listings: s._count })),
       linkedBy: Object.fromEntries(counts.map((c) => [c.linkedBy ?? 'none', c._count])),
     };
-  }
-
-  /** Sugami variants first, each with the marketplace listings linked to it. */
-  @Get('by-product')
-  @RequirePermissions('catalog.read')
-  async byProduct(@Query() raw: unknown) {
-    const q = parseInput(ProductQuery, raw);
-    const db = this.prisma.client;
-    const tokens = toSearchKey(q.q ?? '')
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 6);
-    const where: Prisma.VariantWhereInput = {
-      product: { status: { not: 'archived' } },
-      ...(tokens.length
-        ? {
-            AND: tokens.map((t) => ({
-              OR: [{ product: { searchKey: { contains: t } } }, { sku: { contains: t } }],
-            })),
-          }
-        : {}),
-      ...(q.link === 'linked' ? { listingVariants: { some: {} } } : {}),
-      ...(q.link === 'none' ? { listingVariants: { none: {} } } : {}),
-    };
-    const [rows, total] = await Promise.all([
-      db.variant.findMany({
-        where,
-        orderBy: { sku: 'asc' },
-        skip: (q.page - 1) * q.pageSize,
-        take: q.pageSize,
-        select: {
-          id: true,
-          sku: true,
-          optionValues: true,
-          imageUrls: true,
-          product: { select: { code: true, name: true } },
-          stockLevels: { select: { onHand: true } },
-          listingVariants: {
-            select: {
-              id: true,
-              name: true,
-              sku: true,
-              price: true,
-              quantity: true,
-              linkedBy: true,
-              listing: { select: { id: true, name: true, shopKey: true, marketplaceId: true } },
-            },
-          },
-        },
-      }),
-      db.variant.count({ where }),
-    ]);
-    return {
-      data: rows.map((v) => ({
-        id: v.id,
-        sku: v.sku,
-        productCode: v.product.code,
-        name: v.product.name,
-        options: Array.isArray(v.optionValues) ? (v.optionValues as string[]) : [],
-        imageUrl: Array.isArray(v.imageUrls) ? ((v.imageUrls as string[])[0] ?? null) : null,
-        onHand: v.stockLevels.reduce((a, s) => a + Number(s.onHand), 0),
-        listings: v.listingVariants.map((lv) => ({
-          variationId: lv.id,
-          listingId: lv.listing.id,
-          channel: MARKET_NAME[lv.listing.marketplaceId ?? ''] ?? lv.listing.marketplaceId ?? '?',
-          shop: lv.listing.shopKey,
-          title: lv.listing.name,
-          variationName: lv.name,
-          sku: lv.sku,
-          price: n(lv.price),
-          quantity: lv.quantity === null ? null : Number(lv.quantity),
-          linkedBy: lv.linkedBy,
-        })),
-      })),
-      page: q.page,
-      pageSize: q.pageSize,
-      total,
-    };
-  }
-
-  /** Marketplace options not matched to any Sugami variant yet (to link by hand). */
-  @Get('unlinked')
-  @RequirePermissions('catalog.read')
-  async unlinked(@Query('q') raw?: string) {
-    const q = (raw ?? '').trim().slice(0, 64);
-    const rows = await this.prisma.client.channelListingVariant.findMany({
-      where: {
-        variantId: null,
-        ...(q
-          ? {
-              OR: [
-                { sku: { contains: q } },
-                { name: { contains: q } },
-                { listing: { name: { contains: q } } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: [{ listing: { name: 'asc' } }, { name: 'asc' }],
-      take: 40,
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        price: true,
-        listing: { select: { name: true, shopKey: true, marketplaceId: true, imageUrl: true } },
-      },
-    });
-    return {
-      data: rows.map((r) => ({
-        variationId: r.id,
-        channel: MARKET_NAME[r.listing.marketplaceId ?? ''] ?? r.listing.marketplaceId ?? '?',
-        shop: r.listing.shopKey,
-        title: r.listing.name,
-        imageUrl: r.listing.imageUrl,
-        variationName: r.name,
-        sku: r.sku,
-        price: n(r.price),
-      })),
-    };
-  }
-
-  /** Link (or unlink with variantId null) a marketplace option to a Sugami variant by hand. */
-  @Post('link')
-  @HttpCode(200)
-  @RequirePermissions('catalog.write')
-  async link(@Body() raw: unknown) {
-    const body = parseInput(LinkBody, raw);
-    const db = this.prisma.client;
-    const lv = await db.channelListingVariant.findUnique({ where: { id: body.variationId } });
-    if (!lv) throw new NotFoundException('Không tìm thấy biến thể trên sàn');
-    if (body.variantId) {
-      const v = await db.variant.findUnique({ where: { id: body.variantId }, select: { id: true } });
-      if (!v) throw new NotFoundException('Không tìm thấy mã hàng');
-    }
-    await db.channelListingVariant.update({
-      where: { id: lv.id },
-      data: body.variantId
-        ? { variantId: body.variantId, linkedBy: 'manual' }
-        : { variantId: null, linkedBy: null },
-    });
-    return { ok: true };
   }
 
   @Get(':id')

@@ -1,11 +1,12 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { ImageOff, Search } from 'lucide-react';
+import { ImageOff, RefreshCw, Search, Store } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
+import { ListingsDrawer } from '@/components/listings-drawer';
 import { Badge, Button, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useQueryState } from '@/lib/use-query-state';
@@ -23,6 +24,8 @@ interface ProductRow {
   onHand: number;
   negativeSkus: number;
   lowSkus: number;
+  /** Variants on Pancake / linked by Pancake to a Shopee or TikTok listing (compare with variantCount). */
+  links: { pancake: number; shopee: number; tiktok: number };
 }
 interface ListResponse {
   data: ProductRow[];
@@ -120,6 +123,28 @@ const columns: Column<ProductRow>[] = [
     ),
   },
   {
+    key: 'links',
+    header: 'Liên kết',
+    className: 'hidden whitespace-nowrap lg:table-cell',
+    render: (p) => (
+      <div className="flex gap-1">
+        {(
+          [
+            ['pancake', 'Pancake'],
+            ['shopee', 'Shopee'],
+            ['tiktok', 'TikTok'],
+          ] as const
+        ).map(([k, label]) => (
+          <span key={k} title={`${label}: ${p.links[k]}/${p.variantCount} biến thể đã kết nối`}>
+            <Badge tone={p.links[k] === 0 ? 'neutral' : p.links[k] >= p.variantCount ? 'success' : 'warn'}>
+              {label} {p.links[k]}/{p.variantCount}
+            </Badge>
+          </span>
+        ))}
+      </div>
+    ),
+  },
+  {
     key: 'status',
     header: 'Trạng thái',
     className: 'hidden sm:table-cell',
@@ -134,6 +159,31 @@ function ProductsList() {
   const [res, setRes] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showListings, setShowListings] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
+
+  const sync = async () => {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const r = await api<{
+        listings: number;
+        matched: { link: number };
+        unmatched: number;
+        pancake: { onPancake: number; notInSugami: number };
+      }>('/pancake/sync-listings', { method: 'POST', json: { dryRun: false } });
+      setSyncMsg(
+        `Đã đồng bộ: ${r.pancake.onPancake} biến thể có trên Pancake, ${r.listings} tin đăng sàn (${r.matched.link} biến thể sàn đã nối trên Pancake, ${r.unmatched} chưa nối).`,
+      );
+      setVersion((n) => n + 1);
+    } catch (e) {
+      setSyncMsg((e as Error).message);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   // Debounce typing into the URL.
   useEffect(() => {
@@ -157,7 +207,7 @@ function ProductsList() {
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [qs.q, qs.view, qs.sort, qs.dir, qs.page]);
+  }, [qs.q, qs.view, qs.sort, qs.dir, qs.page, version]);
 
   const counts = res?.counts ?? {};
   return (
@@ -166,11 +216,21 @@ function ProductsList() {
         title="Sản phẩm"
         description={counts.all !== undefined ? `${counts.all.toLocaleString('vi-VN')} sản phẩm` : undefined}
         actions={
-          <Link href="/data/import">
-            <Button variant="secondary">Nhập từ KiotViet</Button>
-          </Link>
+          <>
+            <Button variant="secondary" disabled={syncing} onClick={sync}>
+              <RefreshCw className={`size-4 ${syncing ? 'animate-spin' : ''}`} /> Đồng bộ từ Pancake
+            </Button>
+            <Button variant="secondary" onClick={() => setShowListings(true)}>
+              <Store className="size-4" /> Tin đăng sàn
+            </Button>
+            <Link href="/data/import">
+              <Button variant="secondary">Nhập từ KiotViet</Button>
+            </Link>
+          </>
         }
       />
+      {syncMsg && <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">{syncMsg}</p>}
+      {showListings && <ListingsDrawer version={version} onClose={() => setShowListings(false)} />}
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center">
         <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
           {VIEWS.map(([v, label]) => (

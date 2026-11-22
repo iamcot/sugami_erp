@@ -27,6 +27,7 @@ import {
   runPancakeOrderSync,
   syncChannelListings,
   syncListingImages,
+  syncPancakeVariantRefs,
 } from '@sugami/sync';
 import { toSearchKey } from '@sugami/shared';
 import { z } from 'zod';
@@ -289,7 +290,17 @@ export class PancakeController {
         })),
         { dryRun },
       );
-      return { ...summary, skippedOtherCountry: listings.length - vn.length, removedOtherCountry: stale };
+      // Which SKUs exist on Pancake (the "Pancake" link shown on the product list).
+      const pancakeVariants: { externalId: string; sku: string }[] = [];
+      for await (const p of new PancakeAdapter(this.client()).pullProducts())
+        for (const v of p.variants) pancakeVariants.push({ externalId: v.externalId, sku: v.sku });
+      const pancake = await syncPancakeVariantRefs(this.prisma.client, pancakeVariants, { dryRun });
+      return {
+        ...summary,
+        pancake,
+        skippedOtherCountry: listings.length - vn.length,
+        removedOtherCountry: stale,
+      };
     });
   }
 

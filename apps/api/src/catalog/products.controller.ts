@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { StorageService } from '../media/storage.service.js';
+import { PLATFORM_OF } from '../listings/listings.controller.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 const ListQuery = z.object({
@@ -131,6 +132,7 @@ export class ProductsController {
     const coverKey = new Map<string, string>();
     for (const c of covers) if (!coverKey.has(c.productId)) coverKey.set(c.productId, c.asset.storageKey);
     const coverUrl = await this.urlsFor([...new Set(coverKey.values())]);
+    const links = await this.linkCounts(rows.map((r) => r.id));
     return {
       data: rows.map((r) => ({
         id: r.id,
@@ -146,12 +148,51 @@ export class ProductsController {
         negativeSkus: n(r.negative_skus),
         lowSkus: n(r.low_skus),
         updatedAt: r.updated_at.toISOString(),
+        links: {
+          pancake: links.get(r.id)?.pancake ?? 0,
+          shopee: links.get(r.id)?.shopee ?? 0,
+          tiktok: links.get(r.id)?.tiktok ?? 0,
+        },
       })),
       page: q.page,
       pageSize: q.pageSize,
       total: n(total[0]?.total ?? 0n),
       counts,
     };
+  }
+
+  /**
+   * Per product, how many of its variants are on Pancake and linked (by Pancake) to a Shopee or TikTok
+   * listing. The total to compare with is the product's variant count.
+   */
+  private async linkCounts(productIds: string[]) {
+    const out = new Map<string, { pancake: number; shopee: number; tiktok: number }>();
+    if (!productIds.length) return out;
+    const ids = Prisma.join(productIds);
+    const db = this.prisma.client;
+    const [pancake, market] = await Promise.all([
+      db.$queryRaw<{ product_id: string; n: bigint }[]>`
+        SELECT v.product_id, COUNT(DISTINCT v.id) AS n
+        FROM variants v JOIN external_refs e ON e.entity_id = v.id AND e.provider = 'pancake' AND e.entity_type = 'variant'
+        WHERE v.product_id IN (${ids}) GROUP BY v.product_id`,
+      db.$queryRaw<{ product_id: string; marketplace_id: string | null; n: bigint }[]>`
+        SELECT v.product_id, l.marketplace_id, COUNT(DISTINCT cv.variant_id) AS n
+        FROM channel_listing_variants cv
+        JOIN channel_listings l ON l.id = cv.listing_id
+        JOIN variants v ON v.id = cv.variant_id
+        WHERE v.product_id IN (${ids}) GROUP BY v.product_id, l.marketplace_id`,
+    ]);
+    const at = (id: string) => {
+      let r = out.get(id);
+      if (!r) out.set(id, (r = { pancake: 0, shopee: 0, tiktok: 0 }));
+      return r;
+    };
+    for (const r of pancake) at(r.product_id).pancake = Number(r.n);
+    for (const r of market) {
+      const platform = PLATFORM_OF[r.marketplace_id ?? ''];
+      if (platform) at(r.product_id)[platform] = Number(r.n);
+    }
+    return out;
   }
 
   private async viewCounts() {
