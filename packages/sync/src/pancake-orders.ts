@@ -227,6 +227,21 @@ export async function syncPancakeOrders(
     return id;
   };
 
+  /** Lines of an active order whose SKU is known and whose sale is after the SKU's opening stock snapshot. */
+  const linesToApply = (o: ExternalOrder) =>
+    isActive(o.status)
+      ? o.lines.filter((l) => {
+          const v = variantBySku.get(l.sku);
+          const at = v && snapshotAt.get(v.id);
+          return Boolean(at && o.orderedAt > at);
+        })
+      : [];
+  const lineSig = (xs: { sku: string; qty: number }[]) =>
+    xs
+      .map((x) => `${x.sku}:${x.qty}`)
+      .sort()
+      .join('|');
+
   const handle = async (o: ExternalOrder): Promise<void> => {
     for (const l of o.lines) {
       if (!l.sku) summary.unlinkedLines++;
@@ -251,13 +266,7 @@ export async function syncPancakeOrders(
     };
 
     if (!prev) {
-      const toApply = isActive(o.status)
-        ? o.lines.filter((l) => {
-            const v = variantBySku.get(l.sku);
-            const at = v && snapshotAt.get(v.id);
-            return Boolean(at && o.orderedAt > at);
-          })
-        : [];
+      const toApply = linesToApply(o);
       summary.created++;
       summary.stock.applied += toApply.length;
       if (isActive(o.status))
@@ -396,7 +405,14 @@ export async function syncPancakeOrders(
       if (buyerId && !opts.dryRun)
         await db.order.update({ where: { id: prev.id }, data: { customerId: buyerId } });
     }
+    // An order Pancake owns can have its products replaced there (e.g. an unlinked line swapped for a
+    // product with our SKU): then the lines and their stock effect are redone.
+    const relines =
+      !fromKiotViet &&
+      lineSig(prev.lines.map((l) => ({ sku: l.sku, qty: Number(l.qty) }))) !==
+        lineSig(o.lines.map((l) => ({ sku: l.sku.slice(0, 64), qty: l.quantity })));
     const changed =
+      relines ||
       prev.status !== fields.status ||
       prev.total !== fields.total ||
       prev.shippingFee !== fields.shippingFee ||
@@ -412,8 +428,10 @@ export async function syncPancakeOrders(
       return;
     }
     summary.updated++;
-    const reverse = o.status === 'cancelled' && prev.stockAppliedAt !== null;
+    const reverse = (o.status === 'cancelled' || relines) && prev.stockAppliedAt !== null;
     if (reverse) summary.stock.reversed += prev.lines.filter((l) => l.variantId).length;
+    const reApply = relines ? linesToApply(o) : [];
+    if (relines) summary.stock.applied += reApply.length;
     if (opts.dryRun) return;
     await withLedgerTx(db, async (tx) => {
       if (reverse) {
@@ -430,7 +448,41 @@ export async function syncPancakeOrders(
             type: 'return_in' as const,
             refType: 'order',
             refId: prev.id,
-            note: `Hủy đơn ${o.code}`,
+            note: relines && o.status !== 'cancelled' ? `Đổi sản phẩm đơn ${o.code}` : `Hủy đơn ${o.code}`,
+          })),
+        );
+      }
+      if (relines) {
+        await tx.orderLine.deleteMany({ where: { orderId: prev.id } });
+        await tx.orderLine.createMany({
+          data: o.lines.map((l, i) => {
+            const v = variantBySku.get(l.sku);
+            return {
+              orderId: prev.id,
+              variantId: v?.id ?? null,
+              sku: l.sku.slice(0, 64),
+              name: l.name.slice(0, 255),
+              qty: new Prisma.Decimal(l.quantity),
+              unitPrice: big(l.unitPrice),
+              discount: 0n,
+              price: big(l.unitPrice),
+              lineTotal: big(l.unitPrice * l.quantity),
+              costSnapshot: v?.costAvg ?? null,
+              sort: i,
+            };
+          }),
+        });
+        await applyMovements(
+          tx,
+          reApply.map((l) => ({
+            warehouseId: opts.warehouseId,
+            variantId: variantBySku.get(l.sku)!.id,
+            qtyDelta: -l.quantity,
+            type: 'sale_out' as const,
+            refType: 'order',
+            refId: prev.id,
+            note: `Pancake ${o.code}`,
+            occurredAt: o.orderedAt,
           })),
         );
       }
@@ -438,7 +490,14 @@ export async function syncPancakeOrders(
         where: { id: prev.id },
         data: fromKiotViet
           ? { status: fields.status, stockAppliedAt: reverse ? null : prev.stockAppliedAt }
-          : { ...fields, ...(reverse ? { stockAppliedAt: null } : {}) },
+          : {
+              ...fields,
+              ...(relines
+                ? { stockAppliedAt: reApply.length ? new Date() : null }
+                : reverse
+                  ? { stockAppliedAt: null }
+                  : {}),
+            },
       });
     });
   };
