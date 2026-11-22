@@ -34,6 +34,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 
 export default function PancakePage() {
   const [sinceDays, setSinceDays] = useState(14);
+  const [rescan, setRescan] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [res, setRes] = useState<Summary | null>(null);
@@ -46,7 +47,7 @@ export default function PancakePage() {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dryRun, sinceDays }),
+        body: JSON.stringify({ dryRun, sinceDays, rescan: rescan && dryRun }),
       });
       const body = (await r.json().catch(() => ({}))) as Summary & { message?: string };
       if (!r.ok) throw new Error(body.message ?? `Lỗi ${r.status}`);
@@ -67,7 +68,7 @@ export default function PancakePage() {
       <KiotVietTabs />
       <Card className="mb-4 flex flex-wrap items-end gap-3 p-4">
         <label className="text-xs text-slate-500">
-          Quét lùi (ngày, chỉ lần đầu)
+          Số ngày quét lùi
           <input
             type="number"
             min={1}
@@ -77,14 +78,24 @@ export default function PancakePage() {
             className="mt-1 block h-9 w-28 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
           />
         </label>
+        <label className="flex h-9 items-center gap-2 text-sm">
+          <input type="checkbox" checked={rescan} onChange={(e) => setRescan(e.target.checked)} />
+          Quét lại từ {sinceDays} ngày trước (bỏ qua con trỏ, chỉ xem trước)
+        </label>
         <Button disabled={busy} onClick={() => run(true)}>
           <RefreshCw className="size-4" /> Xem trước
         </Button>
         <Button
           variant="secondary"
-          disabled={busy || !res?.dryRun}
+          disabled={busy || !res?.dryRun || rescan}
           onClick={() => run(false)}
-          title={res?.dryRun ? undefined : 'Xem trước trước khi chạy thật'}
+          title={
+            rescan
+              ? 'Bỏ chọn quét lại để chạy thật'
+              : res?.dryRun
+                ? undefined
+                : 'Xem trước trước khi chạy thật'
+          }
         >
           Chạy thật
         </Button>

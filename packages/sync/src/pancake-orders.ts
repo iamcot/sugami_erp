@@ -283,6 +283,8 @@ export interface RunOptions {
   dryRun?: boolean;
   /** First run only: how far back to look (default 14 days). */
   sinceDays?: number;
+  /** Preview only: look back `sinceDays` ignoring the saved cursor. Never moves the cursor. */
+  ignoreCursor?: boolean;
   now?: () => Date;
 }
 
@@ -301,9 +303,10 @@ export async function runPancakeOrderSync(
   const warehouse = await db.warehouse.findUnique({ where: { code: opts.warehouseCode ?? 'KHO-CHINH' } });
   if (!warehouse) throw new Error(`Không có kho ${opts.warehouseCode ?? 'KHO-CHINH'}`);
   const saved = await db.syncCursor.findUnique({ where: { key: PANCAKE_ORDER_CURSOR } });
-  const since = saved
-    ? new Date(saved.cursor.getTime() - OVERLAP_MS)
-    : new Date(startedAt.getTime() - (opts.sinceDays ?? 14) * 86_400_000);
+  const since =
+    saved && !opts.ignoreCursor
+      ? new Date(saved.cursor.getTime() - OVERLAP_MS)
+      : new Date(startedAt.getTime() - (opts.sinceDays ?? 14) * 86_400_000);
 
   const orders: ExternalOrder[] = [];
   for await (const o of source.pullOrders(since)) orders.push(o);
@@ -315,7 +318,7 @@ export async function runPancakeOrderSync(
   }
   const summary = await syncPancakeOrders(db, orders, {
     warehouseId: warehouse.id,
-    dryRun: opts.dryRun ?? false,
+    dryRun: opts.ignoreCursor ? true : (opts.dryRun ?? false),
     skuByVariationId,
   });
   if (!summary.dryRun && summary.errors.length === 0) {

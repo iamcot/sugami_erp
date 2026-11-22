@@ -158,4 +158,23 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
     expect(await db.syncCursor.findUnique({ where: { key: 'pancake:orders' } })).not.toBeNull();
     expect(await onHand()).toBe(8);
   });
+
+  it('rescan looks back ignoring the cursor and never writes', async () => {
+    const seen: (Date | undefined)[] = [];
+    const source = {
+      pullOrders: async function* (since?: Date) {
+        seen.push(since);
+        yield mk(6);
+      },
+      pullProducts: async function* () {},
+    };
+    const before = await db.syncCursor.findUniqueOrThrow({ where: { key: 'pancake:orders' } });
+    const r = await runPancakeOrderSync(db, source, { warehouseCode: wh, ignoreCursor: true, sinceDays: 30 });
+    expect(r).toMatchObject({ dryRun: true, created: 1 });
+    expect(seen[0]!.getTime()).toBeLessThan(Date.now() - 29 * 86_400_000);
+    expect(await db.order.count({ where: { code: `PCT${run}6` } })).toBe(0);
+    expect((await db.syncCursor.findUniqueOrThrow({ where: { key: 'pancake:orders' } })).cursor).toEqual(
+      before.cursor,
+    );
+  });
 });
