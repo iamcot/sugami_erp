@@ -42,9 +42,10 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
       - run: pnpm build
       - name: Apply migrations to a fresh MySQL
         run: pnpm db:deploy
       - name: Seed (idempotent)
         run: pnpm db:seed && pnpm db:seed
+      - name: Test (unit + MySQL integration)
+        run: pnpm test

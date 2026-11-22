@@ -56,3 +56,18 @@ describe('sku', () => {
     ]);
   });
 });
+
+import { weightedAverageCost } from './index.js';
+
+describe('weightedAverageCost', () => {
+  it('averages by quantity', () => {
+    expect(weightedAverageCost(10, 100000, 10, 120000)).toBe(110000);
+  });
+  it('resets when stock is empty or negative', () => {
+    expect(weightedAverageCost(0, 100000, 5, 90000)).toBe(90000);
+    expect(weightedAverageCost(-2, 100000, 5, 90000)).toBe(90000);
+  });
+  it('ignores non-inbound quantities', () => {
+    expect(weightedAverageCost(10, 100000, 0, 1)).toBe(100000);
+  });
+});

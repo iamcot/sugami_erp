@@ -54,3 +54,18 @@ export function allocateByWeight(total: number, weights: readonly number[]): num
   }
   return parts;
 }
+
+/**
+ * Weighted average cost after receiving `qty` units at `unitCost` (VND, integers).
+ * If stock on hand is zero or negative, the new unit cost becomes the average.
+ */
+export function weightedAverageCost(
+  onHand: number,
+  currentCost: number,
+  qty: number,
+  unitCost: number,
+): number {
+  if (qty <= 0) return currentCost;
+  if (onHand <= 0) return Math.round(unitCost);
+  return Math.round((onHand * currentCost + qty * unitCost) / (onHand + qty));
+}

@@ -71,3 +71,337 @@ model AuditLog {
   @@index([userId, createdAt])
   @@map("audit_logs")
 }
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+model Category {
+  id        String     @id @default(uuid(7)) @db.Char(36)
+  parentId  String?    @map("parent_id") @db.Char(36)
+  name      String     @db.VarChar(191)
+  slug      String     @unique @db.VarChar(191)
+  sort      Int        @default(0)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Category[] @relation("CategoryTree")
+  products  Product[]
+
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Brand {
+  id        String    @id @default(uuid(7)) @db.Char(36)
+  name      String    @unique @db.VarChar(191)
+  createdAt DateTime  @default(now()) @map("created_at")
+  products  Product[]
+
+  @@map("brands")
+}
+
+enum ProductStatus {
+  draft
+  active
+  archived
+}
+
+model Product {
+  id          String          @id @default(uuid(7)) @db.Char(36)
+  /// Product code; variant SKUs are built from it (see buildSku in @sugami/shared).
+  code        String          @unique @db.VarChar(64)
+  name        String          @db.VarChar(255)
+  /// Lowercase, diacritic-free name for search ("xe dieu khien").
+  searchKey   String          @map("search_key") @db.VarChar(255)
+  categoryId  String?         @map("category_id") @db.Char(36)
+  brandId     String?         @map("brand_id") @db.Char(36)
+  status      ProductStatus   @default(draft)
+  description String?         @db.Text
+  /// Toy attributes: { ageMin, material, battery, certification, dimensionsMm, ... }
+  attributes  Json?
+  unit        String          @default("cái") @db.VarChar(32)
+  weightGrams Int?            @map("weight_grams")
+  tags        Json?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand       Brand?          @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  options     ProductOption[]
+  variants    Variant[]
+
+  @@index([searchKey])
+  @@index([categoryId])
+  @@index([status])
+  @@map("products")
+}
+
+model ProductOption {
+  id        String               @id @default(uuid(7)) @db.Char(36)
+  productId String               @map("product_id") @db.Char(36)
+  /// e.g. "Màu", "Kích thước"
+  name      String               @db.VarChar(64)
+  sort      Int                  @default(0)
+  product   Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  values    ProductOptionValue[]
+
+  @@unique([productId, name])
+  @@map("product_options")
+}
+
+model ProductOptionValue {
+  id       String        @id @default(uuid(7)) @db.Char(36)
+  optionId String        @map("option_id") @db.Char(36)
+  value    String        @db.VarChar(64)
+  sort     Int           @default(0)
+  option   ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, value])
+  @@map("product_option_values")
+}
+
+enum VariantStatus {
+  active
+  inactive
+}
+
+/// A sellable SKU. Stock, prices, orders and channel listings all hang off variants.
+model Variant {
+  id              String              @id @default(uuid(7)) @db.Char(36)
+  productId       String              @map("product_id") @db.Char(36)
+  /// SKU = KiotViet product code = seller SKU on Shopee/TikTok.
+  sku             String              @unique @db.VarChar(64)
+  barcode         String?             @unique @db.VarChar(64)
+  /// Option values in option order, e.g. ["Đỏ", "Lớn"].
+  optionValues    Json                @map("option_values")
+  /// Retail price, VND.
+  price           BigInt              @default(0)
+  /// "Was" price shown crossed out, VND.
+  compareAtPrice  BigInt?             @map("compare_at_price")
+  /// Weighted average cost, VND. Maintained by inventory receipts only.
+  costAvg         BigInt              @default(0) @map("cost_avg")
+  weightGrams     Int?                @map("weight_grams")
+  minStock        Decimal             @default(0) @map("min_stock") @db.Decimal(14, 3)
+  reorderQty      Decimal?            @map("reorder_qty") @db.Decimal(14, 3)
+  status          VariantStatus       @default(active)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  product         Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  unitConversions UnitConversion[]
+  comboItems      ComboItem[]         @relation("ComboParent")
+  usedInCombos    ComboItem[]         @relation("ComboComponent")
+  prices          PriceListItem[]
+  stockLevels     StockLevel[]
+  movements       StockMovement[]
+  documentLines   StockDocumentLine[]
+
+  @@index([productId])
+  @@map("variants")
+}
+
+/// e.g. 1 "hộp" = 12 "cái".
+model UnitConversion {
+  id        String  @id @default(uuid(7)) @db.Char(36)
+  variantId String  @map("variant_id") @db.Char(36)
+  unit      String  @db.VarChar(32)
+  factor    Decimal @db.Decimal(14, 3)
+  barcode   String? @unique @db.VarChar(64)
+  variant   Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, unit])
+  @@map("unit_conversions")
+}
+
+model ComboItem {
+  comboVariantId     String  @map("combo_variant_id") @db.Char(36)
+  componentVariantId String  @map("component_variant_id") @db.Char(36)
+  quantity           Decimal @db.Decimal(14, 3)
+  combo              Variant @relation("ComboParent", fields: [comboVariantId], references: [id], onDelete: Cascade)
+  component          Variant @relation("ComboComponent", fields: [componentVariantId], references: [id], onDelete: Restrict)
+
+  @@id([comboVariantId, componentVariantId])
+  @@index([componentVariantId])
+  @@map("combo_items")
+}
+
+model PriceList {
+  id        String          @id @default(uuid(7)) @db.Char(36)
+  name      String          @db.VarChar(191)
+  /// Channel code this list applies to (shopee, tiktok, ...), null = general.
+  channel   String?         @db.VarChar(32)
+  createdAt DateTime        @default(now()) @map("created_at")
+  items     PriceListItem[]
+
+  @@map("price_lists")
+}
+
+model PriceListItem {
+  priceListId String    @map("price_list_id") @db.Char(36)
+  variantId   String    @map("variant_id") @db.Char(36)
+  price       BigInt
+  validFrom   DateTime? @map("valid_from")
+  validTo     DateTime? @map("valid_to")
+  priceList   PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  variant     Variant   @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@id([priceListId, variantId])
+  @@map("price_list_items")
+}
+
+/// Mapping from Sugami entities to external systems (KiotViet, Shopee, TikTok).
+model ExternalRef {
+  id           String   @id @default(uuid(7)) @db.Char(36)
+  entityType   String   @map("entity_type") @db.VarChar(32)
+  entityId     String   @map("entity_id") @db.Char(36)
+  provider     String   @db.VarChar(32)
+  externalId   String   @map("external_id") @db.VarChar(128)
+  externalCode String?  @map("external_code") @db.VarChar(128)
+  /// Hash of the last synced payload, to skip unchanged records.
+  hash         String?  @db.VarChar(64)
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, entityType, externalId])
+  @@index([entityType, entityId])
+  @@map("external_refs")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory: stock_movements is the append-only ledger; stock_levels is the
+// running total per warehouse+variant, updated in the same transaction.
+// ---------------------------------------------------------------------------
+
+enum WarehouseType {
+  store
+  warehouse
+  virtual
+}
+
+model Warehouse {
+  id                String          @id @default(uuid(7)) @db.Char(36)
+  code              String          @unique @db.VarChar(32)
+  name              String          @db.VarChar(191)
+  type              WarehouseType   @default(warehouse)
+  address           String?         @db.VarChar(255)
+  isActive          Boolean         @default(true) @map("is_active")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  stockLevels       StockLevel[]
+  movements         StockMovement[]
+  documents         StockDocument[] @relation("DocumentWarehouse")
+  incomingTransfers StockDocument[] @relation("DocumentToWarehouse")
+
+  @@map("warehouses")
+}
+
+model StockLevel {
+  warehouseId    String    @map("warehouse_id") @db.Char(36)
+  variantId      String    @map("variant_id") @db.Char(36)
+  onHand         Decimal   @default(0) @map("on_hand") @db.Decimal(14, 3)
+  /// Held for confirmed but not yet shipped orders.
+  reserved       Decimal   @default(0) @db.Decimal(14, 3)
+  /// Ordered from suppliers, not yet received.
+  incoming       Decimal   @default(0) @db.Decimal(14, 3)
+  /// Last movement id applied, for auditing.
+  lastMovementId BigInt?   @map("last_movement_id")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  warehouse      Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  variant        Variant   @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@id([warehouseId, variantId])
+  @@index([variantId])
+  @@map("stock_levels")
+}
+
+enum MovementType {
+  opening
+  purchase_in
+  sale_out
+  return_in
+  return_out
+  transfer_in
+  transfer_out
+  adjust
+  count
+  damage
+  kiotviet_import
+}
+
+model StockMovement {
+  id           BigInt         @id @default(autoincrement())
+  warehouseId  String         @map("warehouse_id") @db.Char(36)
+  variantId    String         @map("variant_id") @db.Char(36)
+  /// Signed quantity change.
+  qtyDelta     Decimal        @map("qty_delta") @db.Decimal(14, 3)
+  /// Unit cost in VND for inbound movements (used for average cost).
+  unitCost     BigInt?        @map("unit_cost")
+  /// on_hand after this movement (snapshot for the stock card).
+  balanceAfter Decimal        @map("balance_after") @db.Decimal(14, 3)
+  type         MovementType
+  documentId   String?        @map("document_id") @db.Char(36)
+  refType      String?        @map("ref_type") @db.VarChar(32)
+  refId        String?        @map("ref_id") @db.VarChar(64)
+  note         String?        @db.VarChar(255)
+  occurredAt   DateTime       @default(now()) @map("occurred_at")
+  createdBy    String?        @map("created_by") @db.Char(36)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  warehouse    Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  variant      Variant        @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  document     StockDocument? @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
+  @@index([variantId, warehouseId, occurredAt])
+  @@index([documentId])
+  @@map("stock_movements")
+}
+
+enum StockDocumentType {
+  receipt
+  issue
+  transfer
+  adjustment
+  count
+}
+
+enum StockDocumentStatus {
+  draft
+  confirmed
+  cancelled
+}
+
+model StockDocument {
+  id                   String              @id @default(uuid(7)) @db.Char(36)
+  code                 String              @unique @db.VarChar(32)
+  type                 StockDocumentType
+  status               StockDocumentStatus @default(draft)
+  warehouseId          String              @map("warehouse_id") @db.Char(36)
+  toWarehouseId        String?             @map("to_warehouse_id") @db.Char(36)
+  reason               String?             @db.VarChar(255)
+  /// When this document was exported to KiotViet as an Excel import file.
+  exportedToKiotvietAt DateTime?           @map("exported_to_kiotviet_at")
+  confirmedAt          DateTime?           @map("confirmed_at")
+  cancelledAt          DateTime?           @map("cancelled_at")
+  createdBy            String?             @map("created_by") @db.Char(36)
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  warehouse            Warehouse           @relation("DocumentWarehouse", fields: [warehouseId], references: [id], onDelete: Restrict)
+  toWarehouse          Warehouse?          @relation("DocumentToWarehouse", fields: [toWarehouseId], references: [id], onDelete: Restrict)
+  lines                StockDocumentLine[]
+  movements            StockMovement[]
+
+  @@index([type, status])
+  @@map("stock_documents")
+}
+
+model StockDocumentLine {
+  id         String        @id @default(uuid(7)) @db.Char(36)
+  documentId String        @map("document_id") @db.Char(36)
+  variantId  String        @map("variant_id") @db.Char(36)
+  /// Signed for adjustments; positive for receipts/issues/transfers (direction comes from type).
+  quantity   Decimal       @db.Decimal(14, 3)
+  unitCost   BigInt?       @map("unit_cost")
+  note       String?       @db.VarChar(255)
+  document   StockDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  variant    Variant       @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([documentId])
+  @@map("stock_document_lines")
+}

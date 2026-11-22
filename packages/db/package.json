@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "7.10.1",
-    "@prisma/client": "7.10.1"
+    "@prisma/client": "7.10.1",
+    "@sugami/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

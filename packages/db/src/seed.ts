@@ -18,6 +18,13 @@ async function main(): Promise<void> {
     }
     console.log(`Seeded ${DEFAULT_ROLES.length} roles`);
 
+    await prisma.warehouse.upsert({
+      where: { code: 'KHO-CHINH' },
+      create: { code: 'KHO-CHINH', name: 'Kho chính', type: 'warehouse' },
+      update: {},
+    });
+    console.log('Seeded default warehouse KHO-CHINH');
+
     const email = process.env.SEED_OWNER_EMAIL?.trim().toLowerCase();
     const password = process.env.SEED_OWNER_PASSWORD;
     if (!email || !password) {
