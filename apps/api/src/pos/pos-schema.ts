@@ -22,6 +22,10 @@ export const PosPayload = z.object({
       id: z.string().trim().max(36).nullable().optional(),
       name: z.string().trim().max(191).nullable().optional(),
       phone: z.string().trim().max(32).nullable().optional(),
+      email: z.string().trim().max(191).nullable().optional(),
+      addressLine: z.string().trim().max(500).nullable().optional(),
+      region: z.string().trim().max(191).nullable().optional(),
+      ward: z.string().trim().max(191).nullable().optional(),
     })
     .nullable()
     .default(null),

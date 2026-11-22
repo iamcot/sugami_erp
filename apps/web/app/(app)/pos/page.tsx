@@ -24,7 +24,15 @@ import { printReceipt, type ReceiptOrder, type ReceiptTemplate } from '@/lib/rec
 
 interface Payload {
   lines: { variantId: string; qty: number; price: number }[];
-  customer: { id?: string | null; name?: string | null; phone?: string | null } | null;
+  customer: {
+    id?: string | null;
+    name?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    addressLine?: string | null;
+    region?: string | null;
+    ward?: string | null;
+  } | null;
   discount: number;
   otherIncome: number;
   paid: number;
@@ -146,19 +154,38 @@ function Thumb({ src, className = 'size-12' }: { src: string | null | undefined;
 /** Popup with the customer's details; saving edits the customer record. */
 function CustomerModal({
   id,
+  initial,
   onClose,
   onSaved,
 }: {
-  id: string;
+  /** null = a buyer typed on the sales screen, created when the order is confirmed. */
+  id: string | null;
+  initial?: Partial<CustomerFull>;
   onClose: () => void;
   onSaved: (c: CustomerFull) => void;
 }) {
-  const [c, setC] = useState<CustomerFull | null>(null);
+  const [c, setC] = useState<CustomerFull | null>(
+    id
+      ? null
+      : {
+          id: '',
+          code: null,
+          name: null,
+          phone: null,
+          email: null,
+          addressLine: null,
+          region: null,
+          ward: null,
+          kvDebt: 0,
+          ...initial,
+        },
+  );
   const [err, setErr] = useState<string | null>(null);
   const [stats, setStats] = useState<{ orders: number; spent: number } | null>(null);
   const [history, setHistory] = useState<HistoryOrder[]>([]);
   const [tab, setTab] = useState<'info' | 'history'>('info');
   useEffect(() => {
+    if (!id) return;
     api<{ customer: CustomerFull; stats: { orders: number; spent: number }; orders: HistoryOrder[] }>(
       `/customers/${id}`,
     )
@@ -171,6 +198,11 @@ function CustomerModal({
   }, [id]);
   const save = async () => {
     if (!c) return;
+    if (!id) {
+      onSaved(c);
+      onClose();
+      return;
+    }
     try {
       await api(`/customers/${id}`, {
         method: 'PATCH',
@@ -198,7 +230,8 @@ function CustomerModal({
       >
         <div className="flex items-start justify-between">
           <h2 className="text-lg font-semibold">
-            {c?.name ?? 'Khách hàng'} <span className="text-sm font-normal text-slate-500">{c?.code}</span>
+            {c?.name ?? (id ? 'Khách hàng' : 'Khách hàng mới')}{' '}
+            <span className="text-sm font-normal text-slate-500">{c?.code}</span>
           </h2>
           <button aria-label="Đóng" onClick={onClose}>
             <X className="size-5" />
@@ -212,10 +245,7 @@ function CustomerModal({
         )}
         <div className="mt-3 flex gap-6 border-b border-slate-200 text-sm dark:border-slate-700">
           {(
-            [
-              ['info', 'Thông tin'],
-              ['history', 'Lịch sử đặt hàng'],
-            ] as const
+            [['info', 'Thông tin'], ...(id ? ([['history', 'Lịch sử đặt hàng']] as const) : [])] as const
           ).map(([k, label]) => (
             <button
               key={k}
@@ -367,6 +397,7 @@ export default function PosPage() {
   const [confirming, setConfirming] = useState(false);
   const [paidInput, setPaidInput] = useState(0);
   const [done, setDone] = useState<{ code: string; order: ReceiptOrder } | null>(null);
+  /** A customer id, or 'new' for the buyer being typed. */
   const [customerOpen, setCustomerOpen] = useState<string | null>(null);
   const [recentOpen, setRecentOpen] = useState(false);
   const [recent, setRecent] = useState<RecentOrder[]>([]);
@@ -505,6 +536,7 @@ export default function PosPage() {
     const who = { id: null, name: isPhone ? null : text, phone: isPhone ? text.replace(/\s/g, '') : null };
     setCq('');
     setChits([]);
+    setCustomerOpen('new');
     patch({
       customer: who,
       ...(draft.mode === 'delivery'
@@ -908,7 +940,13 @@ export default function PosPage() {
                 </div>
 
                 {p.customer && !p.customer.id && (
-                  <div className="flex items-start gap-2 rounded-lg border border-dashed border-brand-600 p-2">
+                  <div
+                    className="flex items-start gap-2 rounded-lg border border-dashed border-brand-600 p-2"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setCustomerOpen('new')}
+                    onKeyDown={(e) => e.key === 'Enter' && setCustomerOpen('new')}
+                  >
                     <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800">
                       <User className="size-4" />
                     </span>
@@ -917,11 +955,17 @@ export default function PosPage() {
                         {p.customer.name || p.customer.phone}
                       </span>
                       <span className="block text-xs text-slate-500">
-                        Khách mới, sẽ được tạo khi xác nhận đơn
+                        Khách mới, bấm để nhập thêm thông tin; tạo khi xác nhận đơn
                         {!retail ? ' (nhập đủ thông tin người nhận bên dưới)' : ''}
                       </span>
                     </span>
-                    <button aria-label="Bỏ khách" onClick={() => patch({ customer: null })}>
+                    <button
+                      aria-label="Bỏ khách"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        patch({ customer: null });
+                      }}
+                    >
                       <X className="size-4" />
                     </button>
                   </div>
@@ -1249,13 +1293,35 @@ export default function PosPage() {
 
       {customerOpen && (
         <CustomerModal
-          id={customerOpen}
+          id={customerOpen === 'new' ? null : customerOpen}
+          initial={
+            customerOpen === 'new'
+              ? {
+                  name: p.customer?.name ?? null,
+                  phone: p.customer?.phone ?? null,
+                  email: p.customer?.email ?? null,
+                  addressLine: p.customer?.addressLine ?? null,
+                  region: p.customer?.region ?? null,
+                  ward: p.customer?.ward ?? null,
+                }
+              : undefined
+          }
           onClose={() => setCustomerOpen(null)}
           onSaved={(c) => {
-            setCinfo((cur) => ({ ...cur, [c.id]: c }));
+            if (c.id) setCinfo((cur) => ({ ...cur, [c.id]: c }));
             // saved details flow into the order: the buyer, and the receiver of a delivery
             patch({
-              customer: { id: c.id, name: c.name, phone: c.phone },
+              customer: c.id
+                ? { id: c.id, name: c.name, phone: c.phone }
+                : {
+                    id: null,
+                    name: c.name,
+                    phone: c.phone,
+                    email: c.email,
+                    addressLine: c.addressLine,
+                    region: c.region,
+                    ward: c.ward,
+                  },
               ...(draft.mode === 'delivery' ? { receiver: receiverOf(c) } : {}),
             });
           }}

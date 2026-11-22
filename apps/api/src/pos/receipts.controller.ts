@@ -56,7 +56,9 @@ export class ReceiptsController {
       await db.receiptTemplate.create({
         data: { name: 'Mẫu mặc định', paperWidth: 80, blocks: DEFAULT_BLOCKS, isDefault: true },
       });
-    const rows = await db.receiptTemplate.findMany({ orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] });
+    const rows = await db.receiptTemplate.findMany({
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+    });
     return { data: rows.map((r) => this.view(r)) };
   }
 
@@ -74,8 +76,10 @@ export class ReceiptsController {
   async update(@Param('id') id: string, @Body() raw: unknown) {
     const b = parseInput(Body_, raw);
     const db = this.prisma.client;
-    if (!(await db.receiptTemplate.findUnique({ where: { id } }))) throw new NotFoundException('Không tìm thấy mẫu');
-    if (b.isDefault) await db.receiptTemplate.updateMany({ where: { id: { not: id } }, data: { isDefault: false } });
+    if (!(await db.receiptTemplate.findUnique({ where: { id } })))
+      throw new NotFoundException('Không tìm thấy mẫu');
+    if (b.isDefault)
+      await db.receiptTemplate.updateMany({ where: { id: { not: id } }, data: { isDefault: false } });
     return this.view(await db.receiptTemplate.update({ where: { id }, data: b }));
   }
 

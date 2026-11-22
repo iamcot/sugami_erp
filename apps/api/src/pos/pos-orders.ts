@@ -84,9 +84,10 @@ export async function createPosOrder(
           data: {
             name: typedName || null,
             phone: typedPhone || null,
-            addressLine: mode === 'delivery' ? p.receiver.address || null : null,
-            region: mode === 'delivery' ? p.receiver.area || null : null,
-            ward: mode === 'delivery' ? p.receiver.ward || null : null,
+            email: p.customer.email || null,
+            addressLine: p.customer.addressLine || (mode === 'delivery' ? p.receiver.address : '') || null,
+            region: p.customer.region || (mode === 'delivery' ? p.receiver.area : '') || null,
+            ward: p.customer.ward || (mode === 'delivery' ? p.receiver.ward : '') || null,
             searchKey: toSearchKey([typedName, typedPhone].filter(Boolean).join(' ')).slice(0, 400),
             tags: ['Bán trực tiếp'],
           },

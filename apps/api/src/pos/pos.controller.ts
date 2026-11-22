@@ -136,7 +136,12 @@ export class PosController {
     const count = await db.posDraft.count();
     if (count >= 20) throw new BadRequestException('Đang mở quá nhiều đơn nháp (tối đa 20)');
     const d = await db.posDraft.create({
-      data: { label: b.label ?? `Hóa đơn ${count + 1}`, mode: b.mode, payload: b.payload, createdBy: user.id },
+      data: {
+        label: b.label ?? `Hóa đơn ${count + 1}`,
+        mode: b.mode,
+        payload: b.payload,
+        createdBy: user.id,
+      },
     });
     return { id: d.id, label: d.label, mode: d.mode, payload: d.payload };
   }
