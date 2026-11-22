@@ -29,6 +29,9 @@ const SyncBody = z.object({
   sinceDays: z.number().int().min(1).max(1500).default(14),
   /** Look back sinceDays ignoring the saved cursor (updates older orders when not a preview). */
   rescan: z.boolean().default(false),
+  /** Fixed date range YYYY-MM-DD (Vietnam time) to backfill history; the saved cursor is untouched. */
+  from: z.iso.date().optional(),
+  to: z.iso.date().optional(),
 });
 
 /** Manual, one-product-at-a-time writes to Pancake for the trial. */
@@ -117,13 +120,20 @@ export class PancakeController {
   @HttpCode(200)
   @RequirePermissions('orders.write', 'inventory.write')
   syncOrders(@Body() raw: unknown) {
-    const { dryRun, sinceDays, rescan } = parseInput(SyncBody, raw ?? {});
+    const { dryRun, sinceDays, rescan, from, to } = parseInput(SyncBody, raw ?? {});
+    const range = from
+      ? {
+          from: new Date(`${from}T00:00:00+07:00`),
+          to: new Date(new Date(`${to ?? from}T00:00:00+07:00`).getTime() + 86_400_000),
+        }
+      : undefined;
     return this.guard(() =>
       runPancakeOrderSync(this.prisma.client, new PancakeAdapter(this.client()), {
         warehouseCode: process.env.PANCAKE_SYNC_WAREHOUSE || 'KHO-CHINH',
         dryRun,
         sinceDays,
         ignoreCursor: rescan,
+        range,
       }),
     );
   }

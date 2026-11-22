@@ -82,4 +82,5 @@ pnpm pancake:probe
 
 - Tab "Đơn từ Pancake": đặt "Số ngày quét lùi" tới 1500 ngày, tick "Quét lại", bấm "Xem trước" rồi chạy thật. Quét dài được chia từng cửa sổ 30 ngày để không quá tải; chạy lại nhiều lần không tạo trùng.
 - Đơn cũ bán trước lần nhập tồn đầu của SKU thì không trừ tồn (cùng quy tắc nhập KiotViet); đơn trùng mã sàn với hóa đơn KiotViet chỉ được bổ sung thông tin (ĐVVC, địa chỉ, phí sàn, khách), giữ trạng thái và tồn của KiotViet.
+- Có thể chọn **Khoảng ngày** (từ ngày – đến ngày, giờ Việt Nam) thay vì lùi từ hiện tại, để nạp đúng giai đoạn Pancake đã kéo từ sàn; chạy khoảng ngày không đổi con trỏ đồng bộ hằng ngày.
 - Giới hạn: Pancake chỉ có đơn từ lúc shop nối sàn vào Pancake.

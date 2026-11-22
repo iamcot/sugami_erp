@@ -38,6 +38,9 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 export default function PancakePage() {
   const [sinceDays, setSinceDays] = useState(14);
   const [rescan, setRescan] = useState(false);
+  const [mode, setMode] = useState<'days' | 'range'>('days');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [res, setRes] = useState<Summary | null>(null);
@@ -50,7 +53,9 @@ export default function PancakePage() {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dryRun, sinceDays, rescan }),
+        body: JSON.stringify(
+          mode === 'range' && from ? { dryRun, from, to: to || from } : { dryRun, sinceDays, rescan },
+        ),
       });
       const body = (await r.json().catch(() => ({}))) as Summary & { message?: string };
       if (!r.ok) throw new Error(body.message ?? `Lỗi ${r.status}`);
@@ -70,22 +75,68 @@ export default function PancakePage() {
       />
       <KiotVietTabs />
       <Card className="mb-4 flex flex-wrap items-end gap-3 p-4">
-        <label className="text-xs text-slate-500">
-          Số ngày quét lùi
-          <input
-            type="number"
-            min={1}
-            max={1500}
-            value={sinceDays}
-            onChange={(e) => setSinceDays(Math.min(1500, Math.max(1, Number(e.target.value) || 14)))}
-            className="mt-1 block h-9 w-28 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
-          />
-        </label>
-        <label className="flex h-9 items-center gap-2 text-sm">
-          <input type="checkbox" checked={rescan} onChange={(e) => setRescan(e.target.checked)} />
-          Quét lại từ {sinceDays} ngày trước (bỏ qua con trỏ, dùng để cập nhật đơn cũ)
-        </label>
-        <Button disabled={busy} onClick={() => run(true)}>
+        <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+          {(
+            [
+              ['days', 'Lùi từ hiện tại'],
+              ['range', 'Khoảng ngày'],
+            ] as const
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${mode === m ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {mode === 'range' ? (
+          <>
+            <label className="text-xs text-slate-500">
+              Từ ngày
+              <input
+                type="date"
+                value={from}
+                max={to || undefined}
+                onChange={(e) => setFrom(e.target.value)}
+                className="mt-1 block h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              Đến ngày
+              <input
+                type="date"
+                value={to}
+                min={from || undefined}
+                onChange={(e) => setTo(e.target.value)}
+                className="mt-1 block h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
+              />
+            </label>
+            <span className="self-center text-xs text-slate-500">
+              Chạy lại khoảng ngày không đổi con trỏ đồng bộ hằng ngày.
+            </span>
+          </>
+        ) : (
+          <>
+            <label className="text-xs text-slate-500">
+              Số ngày quét lùi
+              <input
+                type="number"
+                min={1}
+                max={1500}
+                value={sinceDays}
+                onChange={(e) => setSinceDays(Math.min(1500, Math.max(1, Number(e.target.value) || 14)))}
+                className="mt-1 block h-9 w-28 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
+              />
+            </label>
+            <label className="flex h-9 items-center gap-2 text-sm">
+              <input type="checkbox" checked={rescan} onChange={(e) => setRescan(e.target.checked)} />
+              Quét lại từ {sinceDays} ngày trước (bỏ qua con trỏ, dùng để cập nhật đơn cũ)
+            </label>
+          </>
+        )}
+        <Button disabled={busy || (mode === 'range' && !from)} onClick={() => run(true)}>
           <RefreshCw className="size-4" /> Xem trước
         </Button>
         <Button

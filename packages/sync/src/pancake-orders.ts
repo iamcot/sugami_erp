@@ -455,6 +455,8 @@ export interface RunOptions {
   sinceDays?: number;
   /** Look back `sinceDays` ignoring the saved cursor, to update older orders. */
   ignoreCursor?: boolean;
+  /** Fixed date range (history backfill): ignores the cursor and leaves it where it is. */
+  range?: { from: Date; to: Date };
   now?: () => Date;
 }
 
@@ -473,18 +475,20 @@ export async function runPancakeOrderSync(
   const warehouse = await db.warehouse.findUnique({ where: { code: opts.warehouseCode ?? 'KHO-CHINH' } });
   if (!warehouse) throw new Error(`Không có kho ${opts.warehouseCode ?? 'KHO-CHINH'}`);
   const saved = await db.syncCursor.findUnique({ where: { key: PANCAKE_ORDER_CURSOR } });
-  const since =
-    saved && !opts.ignoreCursor
+  const since = opts.range
+    ? opts.range.from
+    : saved && !opts.ignoreCursor
       ? new Date(saved.cursor.getTime() - OVERLAP_MS)
       : new Date(startedAt.getTime() - (opts.sinceDays ?? 14) * 86_400_000);
 
   // A long look-back (history backfill) is pulled and applied one month at a time, so memory and
   // each Pancake request stay small; a short window is a single pass as before.
+  const end = opts.range?.to ?? startedAt;
   const windows: { from: Date; to?: Date }[] = [];
   for (let from = since; ;) {
     const next = new Date(from.getTime() + WINDOW_MS);
-    if (next >= startedAt || startedAt.getTime() - since.getTime() <= WINDOW_MS * 1.5) {
-      windows.push({ from, to: undefined });
+    if (next >= end || end.getTime() - since.getTime() <= WINDOW_MS * 1.5) {
+      windows.push({ from, to: opts.range ? end : undefined });
       break;
     }
     windows.push({ from, to: next });
@@ -510,7 +514,7 @@ export async function runPancakeOrderSync(
     summary = summary ? mergeSummaries(summary, part) : part;
   }
   summary ??= await syncPancakeOrders(db, [], { warehouseId: warehouse.id, dryRun: opts.dryRun ?? false });
-  if (!summary.dryRun && summary.errors.length === 0) {
+  if (!opts.range && !summary.dryRun && summary.errors.length === 0) {
     await db.syncCursor.upsert({
       where: { key: PANCAKE_ORDER_CURSOR },
       create: { key: PANCAKE_ORDER_CURSOR, cursor: startedAt },
