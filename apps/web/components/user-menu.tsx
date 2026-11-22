@@ -41,13 +41,16 @@ export function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="grid size-8 place-items-center rounded-full bg-slate-200 text-xs font-semibold dark:bg-slate-700"
+        className="flex items-center gap-2 rounded-full py-0.5 pl-0.5 pr-2 text-white hover:bg-white/20"
         aria-label="Tài khoản"
       >
-        {initials}
+        <span className="grid size-8 place-items-center rounded-full bg-white text-xs font-semibold text-brand-700">
+          {initials}
+        </span>
+        <span className="hidden max-w-32 truncate text-sm font-medium md:block">{me?.name}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-20 w-56 rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+        <div className="absolute right-0 top-11 z-20 w-56 rounded-xl border text-slate-900 dark:text-slate-100 border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
           <div className="px-3 py-2">
             <p className="truncate text-sm font-medium">{me?.name}</p>
             <p className="truncate text-xs text-slate-500">{me?.email}</p>

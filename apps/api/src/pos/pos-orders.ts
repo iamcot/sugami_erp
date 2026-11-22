@@ -193,6 +193,8 @@ export async function runPosAction(
   code: string,
   key: string,
   userId?: string,
+  /** Handing over to the carrier can set who carries it and the tracking number. */
+  extra: { carrier?: string; trackingNo?: string } = {},
 ): Promise<{ status: string }> {
   const order = await db.order.findUnique({ where: { code }, include: { lines: true } });
   if (!order) throw new PosError('Không tìm thấy đơn', 404);
@@ -245,6 +247,12 @@ export async function runPosAction(
           : action.to === 'cancelled' || action.to === 'returned'
             ? null
             : order.completedAt,
+        ...(action.key === 'ship'
+          ? {
+              ...(extra.carrier !== undefined ? { carrier: extra.carrier || null } : {}),
+              ...(extra.trackingNo !== undefined ? { trackingNo: extra.trackingNo || null } : {}),
+            }
+          : {}),
         // COD collected: a completed delivery is paid in full
         ...(done ? { paidAmount: order.total, codAmount: 0n } : {}),
       },

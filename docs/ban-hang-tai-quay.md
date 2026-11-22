@@ -30,3 +30,7 @@ Chọn Tỉnh/Thành phố và Phường/Xã (tìm không dấu) dùng danh sác
 Ô tìm hàng và ô tìm khách: ↓/↑ chọn dòng, Enter thêm/chọn, Esc xóa ô tìm (F3 quay lại ô tìm hàng). Ô chọn Tỉnh/Phường cũng dùng ↓/↑/Enter/Esc. Tab đi qua các ô nhập theo thứ tự màn hình, bỏ qua các nút nhỏ (±, xóa dòng, đóng) và dừng ở nút THANH TOÁN; trong ngăn xác nhận con trỏ vào ô "Khách thanh toán", Tab tiếp đến nút XÁC NHẬN, Esc đóng ngăn.
 
 Khi lưu khách mới mà số điện thoại đã có khách, popup báo rõ khách đã có và cho chọn "Dùng khách này" hoặc sửa số điện thoại; không tự thay âm thầm.
+
+## Header
+
+Header của cả site nền xanh (thương hiệu). Trang Bán hàng đưa thanh công cụ của nó (icon đơn gần đây, ô tìm hàng, các tab) vào header qua `#app-header-slot` của `AppShell` (React portal) thay cho ô tìm chung; tên người dùng, chuông, trạng thái đồng bộ vẫn ở bên phải header. Nút **Giao cho ĐVVC** hỏi đối tác giao hàng và mã vận đơn (điền sẵn nếu đã nhập lúc tạo đơn) rồi mới trừ tồn.

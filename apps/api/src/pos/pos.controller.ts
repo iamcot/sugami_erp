@@ -182,7 +182,14 @@ export class PosController {
   async actions(@Param('code') code: string) {
     const o = await this.prisma.client.order.findUnique({
       where: { code },
-      select: { source: true, status: true, fulfillment: true, shipAddress: true, shipPhone: true, carrier: true },
+      select: {
+        source: true,
+        status: true,
+        fulfillment: true,
+        shipAddress: true,
+        shipPhone: true,
+        carrier: true,
+      },
     });
     if (!o) throw new NotFoundException('Không tìm thấy đơn');
     if (o.source !== 'pos') return { fulfillment: null, actions: [] };
@@ -194,7 +201,19 @@ export class PosController {
   @Post('orders/:code/actions/:key')
   @HttpCode(200)
   @RequirePermissions('orders.write')
-  async act(@Param('code') code: string, @Param('key') key: string, @CurrentUser() user: AuthUser) {
-    return this.wrap(() => runPosAction(this.prisma.client, code, key, user.id));
+  async act(
+    @Param('code') code: string,
+    @Param('key') key: string,
+    @Body() raw: unknown,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const extra = parseInput(
+      z.object({
+        carrier: z.string().trim().max(255).optional(),
+        trackingNo: z.string().trim().max(255).optional(),
+      }),
+      raw ?? {},
+    );
+    return this.wrap(() => runPosAction(this.prisma.client, code, key, user.id, extra));
   }
 }

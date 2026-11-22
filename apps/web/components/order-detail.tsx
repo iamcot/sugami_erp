@@ -110,6 +110,8 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
   const [order, setOrder] = useState<Order | null>(null);
   const [actions, setActions] = useState<PosAction[]>([]);
   const [acting, setActing] = useState(false);
+  // handing a parcel to the carrier asks who carries it and the tracking number
+  const [ship, setShip] = useState<{ action: PosAction; carrier: string; trackingNo: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,15 +127,27 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
       .catch(() => setActions([]));
   }, [order?.code, order?.source, order?.status]);
 
-  const act = async (a: PosAction) => {
+  const act = async (a: PosAction, extra?: { carrier: string; trackingNo: string }) => {
     if (!order) return;
+    if (a.key === 'ship' && !extra) {
+      setShip({ action: a, carrier: order.carrier ?? '', trackingNo: order.trackingNo ?? '' });
+      return;
+    }
     const hint =
       a.stock === 'take' ? ' Tồn kho sẽ được trừ.' : a.stock === 'give' ? ' Hàng sẽ được hoàn vào kho.' : '';
-    if ((a.tone === 'danger' || a.stock) && !window.confirm(`${a.label} đơn ${order.code}?${hint}`)) return;
+    if (
+      a.key !== 'ship' &&
+      (a.tone === 'danger' || a.stock) &&
+      !window.confirm(`${a.label} đơn ${order.code}?${hint}`)
+    )
+      return;
     setActing(true);
     setError(null);
     try {
-      await api(`/pos/orders/${encodeURIComponent(order.code)}/actions/${a.key}`, { method: 'POST' });
+      await api(`/pos/orders/${encodeURIComponent(order.code)}/actions/${a.key}`, {
+        method: 'POST',
+        json: extra ?? {},
+      });
       const r = await api<{ order: Order }>(`/orders/${encodeURIComponent(order.code)}`);
       setOrder(r.order);
     } catch (e) {
@@ -204,6 +218,55 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
         }
       />
       {error && <p className="mb-2 text-sm text-rose-600">{error}</p>}
+      {ship && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+          onClick={() => setShip(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold">Giao cho đơn vị vận chuyển</h2>
+            <p className="mt-1 text-sm text-slate-500">Tồn kho sẽ được trừ khi xác nhận.</p>
+            <label className="mt-4 block text-xs text-slate-500">
+              Đối tác giao hàng
+              <input
+                autoFocus
+                className="w-full border-0 border-b border-slate-300 bg-transparent px-1 py-1.5 text-sm outline-none focus:border-brand-600 dark:border-slate-700"
+                placeholder="SHOPEE, GHN, tự giao…"
+                value={ship.carrier}
+                onChange={(e) => setShip({ ...ship, carrier: e.target.value })}
+              />
+            </label>
+            <label className="mt-3 block text-xs text-slate-500">
+              Mã vận đơn
+              <input
+                className="w-full border-0 border-b border-slate-300 bg-transparent px-1 py-1.5 text-sm outline-none focus:border-brand-600 dark:border-slate-700"
+                placeholder="Nhập mã vận đơn"
+                value={ship.trackingNo}
+                onChange={(e) => setShip({ ...ship, trackingNo: e.target.value })}
+              />
+            </label>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setShip(null)}>
+                Bỏ qua
+              </Button>
+              <Button
+                disabled={acting}
+                onClick={() => {
+                  const a = ship.action;
+                  const extra = { carrier: ship.carrier, trackingNo: ship.trackingNo };
+                  setShip(null);
+                  void act(a, extra);
+                }}
+              >
+                Xác nhận giao
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={embedded ? 'grid gap-4' : 'grid gap-4 lg:grid-cols-3'}>
         <div className={embedded ? 'space-y-4' : 'space-y-4 lg:col-span-2'}>

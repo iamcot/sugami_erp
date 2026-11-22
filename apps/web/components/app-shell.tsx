@@ -93,28 +93,30 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
       </aside>
 
-      <header className="sticky top-0 z-10 flex min-h-14 items-center pt-[env(safe-area-inset-top)] gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-sm font-bold text-white lg:hidden">
+      <header className="sticky top-0 z-10 flex min-h-14 items-center gap-3 border-b border-brand-700 bg-brand-600 px-4 pt-[env(safe-area-inset-top)] text-white">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-sm font-bold text-brand-700 lg:hidden">
           S
         </span>
-        <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500 md:max-w-md dark:border-slate-800 dark:bg-slate-900">
-          <Search className="size-4 shrink-0" />
-          <input
-            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
-            placeholder="Tìm SKU, sản phẩm, đơn, kiện hàng..."
-          />
-          <kbd className="hidden rounded border border-slate-200 px-1.5 text-[10px] sm:block dark:border-slate-700">
-            ⌘K
-          </kbd>
-        </label>
+        {/* pages can put their own toolbar here (the sales page does); others get the site search */}
+        <div id="app-header-slot" className="flex min-w-0 flex-1 items-center">
+          {!pathname.startsWith('/pos') && (
+            <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg bg-white px-3 text-sm text-slate-500 md:max-w-md dark:bg-slate-900">
+              <Search className="size-4 shrink-0" />
+              <input
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
+                placeholder="Tìm SKU, sản phẩm, đơn, kiện hàng..."
+              />
+              <kbd className="hidden rounded border border-slate-200 px-1.5 text-[10px] sm:block dark:border-slate-700">
+                ⌘K
+              </kbd>
+            </label>
+          )}
+        </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          <span className="hidden items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-emerald-700 sm:flex dark:text-emerald-300">
+          <span className="hidden items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-white/90 sm:flex">
             <RefreshCw className="size-3.5" /> Đồng bộ 2 phút trước
           </span>
-          <button
-            className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Thông báo"
-          >
+          <button className="relative rounded-lg p-2 text-white hover:bg-white/20" aria-label="Thông báo">
             <Bell className="size-5" />
             <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-rose-500" />
           </button>
