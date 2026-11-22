@@ -2,7 +2,7 @@
 
 Theo dõi tiến độ triển khai. Chi tiết từng task (phụ thuộc, tiêu chí hoàn thành) ở [docs/09-ke-hoach-trien-khai.md](docs/09-ke-hoach-trien-khai.md).
 
-**Trạng thái:** ⬜ chưa làm · 🟡 đang làm · ✅ xong · ⛔ bị chặn · 👤 cần chủ shop
+**Trạng thái:** ⬜ chưa làm · 🟡 đang làm · ✅ xong · ⏸ tạm ngưng · ⛔ bị chặn · 👤 cần chủ shop
 
 Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ `[P1-04] ...`.
 
@@ -10,8 +10,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
-| P0 — Chuẩn bị & xác minh | 4/13 | Khung dự án xong; P0-06 chờ chạy probe trên iMac |
-| P1 — Nền tảng + catalog + kết nối KiotViet | 0/22 | |
+| P0 — Chuẩn bị & xác minh | 4/13 | Khung dự án xong; P0-10 chờ duyệt; chờ file Excel KiotViet và hồ sơ app sàn |
+| P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet) | 0/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 0/12 | |
@@ -21,12 +21,12 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Đang làm
 
 - P0-10 chờ duyệt giao diện.
-- ⛔ KiotViet chỉ mở Public API ở gói Cao cấp (shop đang dùng gói Chuyên nghiệp): chờ chủ shop chọn hướng thay thế (khuyến nghị: kết nối thẳng Shopee/TikTok + trao đổi Excel với KiotViet tạm thời).
+- Tiếp theo: P1-01 đăng nhập, P1-06 schema catalog, P1-14 schema kho (không phụ thuộc file Excel).
 
 ## Bị chặn / chờ chủ shop
 
-- P0-05/P0-06: điền client_id/client_secret/tên gian hàng KiotViet vào `.env` trên iMac, chạy `pnpm kiotviet:probe`, gửi file `kiotviet-probe-report.json` (hướng dẫn: docs/ops/dev-setup.md mục 5).
-- P0-08: đăng ký app Shopee Open Platform và TikTok Shop Partner Center.
+- P0-05: xuất file Excel mẫu từ KiotViet và gửi trong chat (hàng hóa kèm tồn, hóa đơn 1–3 tháng, phiếu nhập, NCC, mẫu file import phiếu nhập/kiểm kho).
+- P0-08: **nộp hồ sơ ngay** app Shopee Open Platform và TikTok Shop Partner Center (hướng dẫn: docs/ops/dang-ky-app-san.md).
 - P0-11: cài Docker trên iMac.
 - P3-01: tạo IAM user/access key chỉ có quyền trên bucket (prefix `sugami/`), điền vào `.env` trên iMac; cho biết region và có CloudFront không.
 - P2-07: gửi 1–2 file Excel mẫu của đơn vị vận chuyển trung gian.
@@ -37,7 +37,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - 2026-11-22: Server là iMac của shop, Docker Compose, Cloudflare Tunnel. Tên miền **sugami.vn**: `erp.sugami.vn` (giao diện), `hooks.sugami.vn` (webhook).
 - 2026-11-22: MySQL 8.4 cài **native** trên iMac, không chạy trong Docker; container kết nối qua `host.docker.internal`.
 - 2026-11-22: Bỏ MinIO. Ảnh/video lưu trên **AWS S3 có sẵn của shop** (driver `s3`, prefix `sugami/`); driver `local` chỉ dùng cho dev/offline.
-- 2026-11-22: Gói KiotViet Chuyên nghiệp của shop **không có Public API** (chỉ gói Cao cấp). P0-06 probe giữ lại phòng khi nâng gói.
+- 2026-11-22: Gói KiotViet Chuyên nghiệp của shop **không có Public API** (chỉ gói Cao cấp). Chủ shop chọn: không nâng gói; **kết nối thẳng Shopee/TikTok**, trong lúc chờ duyệt app thì trao đổi với KiotViet bằng **file Excel**. P0-06 probe tạm ngưng.
 - 2026-11-22: Đơn vị trung gian không có API, chỉ có file Excel → import Excel (P2-07).
 - 2026-11-22: Stack thực tế: Node 22, pnpm 10, TypeScript 6, Next.js 16, NestJS 12, Prisma 7 (MariaDB adapter), BullMQ 6 + ioredis, Tailwind 4, Vitest 5.
 - 2026-11-22: Claude viết toàn bộ code, commit thẳng lên `main` (không PR); mỗi task cập nhật file này trong commit cuối.
@@ -63,9 +63,9 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P0-02 | Docker Compose dev | ✅ | 726704e | |
 | P0-03 | CI GitHub Actions: lint, typecheck, test, build trên mỗi PR | ✅ | 2a53d81 | |
 | P0-04 | Prisma schema khung (user, role, audit_log) + migration đầu + seed | ✅ | 2c78005 | |
-| P0-05 | Cung cấp client_id/client_secret/tên gian hàng KiotViet | 👤 ⬜ | | |
-| P0-06 | Script `scripts/kiotviet-probe.ts` | 🟡 | e3c0d6e | Script xong, chờ chạy trên iMac với thông tin KiotViet |
-| P0-07 | Báo cáo xác minh KiotViet `docs/kiotviet-verification.md` | ⬜ | | |
+| P0-05 | Xuất file Excel mẫu từ KiotViet (hàng hóa + tồn, hóa đơn, phiếu nhập, NCC, mẫu import) | 👤 ⬜ | | |
+| P0-06 | Script probe KiotViet Public API | ⏸ | e3c0d6e | Tạm ngưng: gói hiện tại không có API |
+| P0-07 | Phân tích file Excel KiotViet (`docs/kiotviet-excel.md`) | ⬜ | | Chờ P0-05 |
 | P0-08 | Đăng ký app Shopee Open Platform và TikTok Shop Partner Center | 👤 ⬜ | | |
 | P0-09 | Rà soát SKU | ⬜ | | |
 | P0-10 | Prototype UI 5 màn hình | 🟡 | 84065e7 | Chờ chủ shop duyệt giao diện |
@@ -73,7 +73,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P0-12 | Cloudflare Tunnel | ⬜ | | |
 | P0-13 | Compose production + script sao lưu đêm | ⬜ | | |
 
-## P1 — Nền tảng + catalog + kết nối KiotViet
+## P1 — Nền tảng + catalog + kho (dữ liệu từ Excel KiotViet)
 
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
@@ -87,18 +87,18 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P1-08 | API + màn hình danh sách sản phẩm (bảng + lưới ảnh), tìm không dấu | ⬜ | | |
 | P1-09 | Chi tiết sản phẩm | ⬜ | | |
 | P1-10 | Import/export Excel sản phẩm, sửa hàng loạt | ⬜ | | |
-| P1-11 | Package `channels/kiotviet` | ⬜ | | |
-| P1-12 | Màn hình kết nối KiotViet | ⬜ | | |
-| P1-13 | Import ban đầu | ⬜ | | |
-| P1-14 | Schema kho | ⬜ | | |
-| P1-15 | Đồng bộ tăng dần | ⬜ | | |
-| P1-16 | Webhook receiver `/webhooks/kiotviet/ | ⬜ | | |
-| P1-17 | Reconcile đêm + bảng `sync_issue` + màn hình Trung tâm đồng bộ | ⬜ | | |
+| P1-11 | Import Excel hàng hóa + tồn từ KiotViet | ⬜ | | |
+| P1-12 | Import Excel hóa đơn/đặt hàng KiotViet → đơn hàng | ⬜ | | |
+| P1-13 | Export Excel phiếu nhập/kiểm kho theo mẫu import KiotViet | ⬜ | | |
+| P1-14 | Schema kho: warehouse, stock_level, stock_movement | ⬜ | | |
+| P1-15 | Đối chiếu tồn file KiotViet ↔ sổ kho Sugami | ⬜ | | |
+| P1-16 | Trung tâm dữ liệu: lịch sử import/export | ⬜ | | |
+| P1-17 | Nhắc việc đồng bộ Excel trên dashboard | ⬜ | | |
 | P1-18 | Danh sách tồn kho (ma trận SKU × kho, tô màu mức tồn) | ⬜ | | |
-| P1-19 | Danh sách đơn hàng (từ KiotViet), chi tiết đơn, lọc theo kênh | ⬜ | | |
+| P1-19 | Danh sách đơn hàng, chi tiết đơn, lọc theo kênh | ⬜ | | |
 | P1-20 | Dashboard cơ bản | ⬜ | | |
 | P1-21 | Báo cáo sức khỏe dữ liệu: SKU trùng/thiếu, thiếu ảnh, tồn âm | ⬜ | | |
-| P1-22 | Deploy production lên iMac, chạy song song 7 ngày | ⬜ | | |
+| P1-22 | Deploy production lên iMac, dùng thật 1 tuần | 👤 ⬜ | | |
 
 ## P2 — Nguồn hàng Taobao/1688 + kho
 
@@ -135,7 +135,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P3-07 | Xem trước content như trên Shopee/TikTok | ⬜ | | |
 | P3-08 |  | ⬜ | | |
 
-## P4 — Kết nối sàn trực tiếp
+## P4 — Kết nối sàn trực tiếp (bắt đầu ngay khi app được duyệt, chạy song song P2–P3)
 
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|

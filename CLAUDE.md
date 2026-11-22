@@ -1,6 +1,6 @@
 # CLAUDE.md — Sugami ERP
 
-Hệ thống quản lý shop đồ chơi (vài trăm SKU, < 10 đơn/ngày): kho & xuất nhập tồn, nguồn hàng Taobao/1688 qua đơn vị trung gian, media & content, đơn hàng đa kênh. Giai đoạn đầu kết nối Shopee/TikTok thông qua KiotViet Public API; dài hạn kết nối sàn trực tiếp và **thay KiotViet**.
+Hệ thống quản lý shop đồ chơi (vài trăm SKU, < 10 đơn/ngày): kho & xuất nhập tồn, nguồn hàng Taobao/1688 qua đơn vị trung gian, media & content, đơn hàng đa kênh. Gói KiotViet của shop **không có Public API**: Sugami trao đổi dữ liệu với KiotViet bằng **file Excel** (import hàng hóa/tồn/hóa đơn, export phiếu nhập/kiểm kho); KiotViet vẫn đồng bộ với sàn. Kết nối thẳng Shopee Open Platform và TikTok Shop API ngay khi app được duyệt, rồi **thay KiotViet**.
 
 Claude viết toàn bộ code và **commit thẳng lên `main`** (không mở PR, theo yêu cầu chủ shop). Chủ shop (iamcot) xem lại qua lịch sử commit và PROGRESS.
 
@@ -34,7 +34,7 @@ Claude viết toàn bộ code và **commit thẳng lên `main`** (không mở PR
 - Tiền: số nguyên (`BIGINT`) theo đồng VND; CNY theo xu. Số lượng: `DECIMAL(14,3)`.
 - **Không bao giờ sửa tồn trực tiếp.** Mọi biến động tồn đi qua `stock_movement` (append-only) trong cùng transaction với `stock_level`.
 - Mỗi thời điểm chỉ một hệ thống đẩy tồn lên sàn (hiện là KiotViet).
-- Mọi chi tiết KiotViet/sàn nằm trong `packages/channels/*`; lõi chỉ dùng interface `ChannelAdapter`.
+- Mọi chi tiết KiotViet/sàn nằm trong `packages/channels/*` (Excel KiotViet: `packages/channels/kiotviet`); lõi chỉ dùng interface `ChannelAdapter`.
 - Gọi API ngoài: qua rate limiter + retry có backoff; ghi ra ngoài qua `outbox` với idempotency key.
 - Không commit secret. `.env` chỉ có trên máy chạy; cập nhật `.env.example` khi thêm biến.
 - Dữ liệu mẫu từ KiotViet/sàn phải ẩn thông tin khách (tên, SĐT, địa chỉ) trước khi commit.

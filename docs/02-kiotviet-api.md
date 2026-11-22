@@ -1,5 +1,7 @@
 # 2. KiotViet Public API: khả năng, giới hạn, chiến lược
 
+> ⚠️ **Cập nhật 22/11/2026:** Public API chỉ có ở gói KiotViet **Cao cấp**; gói Chuyên nghiệp shop đang dùng **không có**. Lộ trình hiện tại không dùng API này: Sugami trao đổi dữ liệu với KiotViet bằng file Excel và kết nối thẳng Shopee/TikTok (xem [07](07-lo-trinh.md)). Tài liệu dưới đây giữ lại để tham khảo nếu sau này nâng gói. Mục 2.5 (liên kết sàn của KiotViet) vẫn đúng.
+
 > Ghi chú độ tin cậy: thông tin dưới đây tổng hợp từ tài liệu Public API công khai của KiotViet, SDK cộng đồng và các tích hợp mã nguồn mở. Những mục đánh dấu **(cần xác minh)** phải được kiểm tra trên cửa hàng KiotViet thật ở Giai đoạn 0 trước khi viết code đồng bộ.
 
 > Bối cảnh: shop chỉ có vài trăm SKU và dưới 10 đơn/ngày, nên hạn mức request không phải vấn đề. KiotViet là **giải pháp chuyển tiếp**; dài hạn Sugami kết nối thẳng Shopee/TikTok và thay KiotViet (xem [07](07-lo-trinh.md), GĐ5).

@@ -8,35 +8,48 @@ Claude viết toàn bộ code, commit thẳng lên `main`. Thời lượng dư�
 
 | GĐ | Tên | Thời lượng | Kết quả chính |
 |----|-----|-----------|---------------|
-| 0 | Chuẩn bị & xác minh | 1–2 tuần | Xác minh KiotViet API, đăng ký app Shopee/TikTok, prototype UI, khung dự án |
-| 1 | Nền tảng + catalog + kết nối KiotViet | 3–4 tuần | Đăng nhập, sản phẩm/biến thể, import & đồng bộ từ KiotViet, tồn, đơn |
+| 0 | Chuẩn bị | 1–2 tuần | Khung dự án, prototype UI, file Excel mẫu KiotViet, **nộp hồ sơ app Shopee/TikTok** |
+| 1 | Nền tảng + catalog + kho | 3–4 tuần | Đăng nhập, sản phẩm/biến thể, sổ kho; import/export **Excel** với KiotViet |
 | 2 | Nguồn hàng Taobao/1688 + kho | 3–4 tuần | Đơn đặt hàng TQ, kiện hàng qua trung gian, landed cost, nhập kho, kiểm kho |
 | 3 | Media & content | 2–3 tuần | Thư viện ảnh, preset ảnh sàn, content theo kênh |
-| 4 | Kết nối sàn trực tiếp (TikTok Shop, Shopee) | 4–6 tuần | Đọc đơn, đẩy tồn, đẩy listing/ảnh, lấy phí sàn trực tiếp |
+| 4 | Kết nối sàn trực tiếp (TikTok Shop, Shopee) | 4–6 tuần | Bắt đầu ngay khi app được duyệt, song song GĐ2–3: đọc đơn, phí sàn, đẩy listing/ảnh |
 | 5 | Thay KiotViet | 2–3 tuần | Sugami là master tồn & đơn, tắt liên kết sàn của KiotViet, hủy gói |
 | 6 | Mở rộng | liên tục | Facebook/Zalo, website, báo cáo nâng cao, AI |
 
-## GĐ0 — Chuẩn bị & xác minh (tuần 1–2)
+## Thay đổi 22/11/2026: không dùng KiotViet Public API
 
-- [ ] Lấy client_id/secret KiotViet, viết script gọi thử `/branches`, `/products?includeInventory=true`, `/orders`, `/invoices`, `/purchaseorders`, `/webhooks`; lưu payload mẫu vào `docs/kiotviet-samples/`.
-- [ ] Xác minh đơn Shopee/TikTok trong KiotViet có mã đơn sàn, kênh bán, phí không.
-- [ ] **Đăng ký sớm** app trên **Shopee Open Platform** và **TikTok Shop Partner Center** (loại app cho hệ thống nội bộ của người bán). Việc duyệt có thể mất vài tuần nên làm ngay từ đầu. Kiểm tra điều kiện đăng ký với shop cá nhân/hộ kinh doanh **(cần xác minh)**.
+Gói KiotViet Chuyên nghiệp của shop không có Public API (chỉ gói Cao cấp). Chủ shop chọn: **kết nối thẳng Shopee/TikTok** sớm nhất có thể, trong lúc chờ duyệt app thì Sugami trao đổi dữ liệu với KiotViet bằng **file Excel**:
+
+| Chiều | File | Tần suất (với < 10 đơn/ngày) |
+|-------|------|------------------------------|
+| KiotViet → Sugami | Danh sách hàng hóa kèm tồn | Lần đầu, sau đó khi cần đối chiếu |
+| KiotViet → Sugami | Hóa đơn / đặt hàng | Hằng tuần (để làm báo cáo, lãi theo kênh) |
+| Sugami → KiotViet | Phiếu nhập hàng (sau khi nhận kiện) | Mỗi lần nhận hàng |
+| Sugami → KiotViet | Kiểm kho / điều chỉnh, sản phẩm mới | Khi có |
+
+KiotViet vẫn giữ việc đồng bộ tồn và đơn với sàn cho tới GĐ5. Mỗi lần thao tác chỉ vài phút.
+
+## GĐ0 — Chuẩn bị (tuần 1–2)
+
+- [x] Khởi tạo monorepo, CI, Docker Compose (Redis; MySQL native).
+- [x] Prototype 5 màn hình (chờ duyệt).
+- [ ] **Nộp hồ sơ app Shopee Open Platform và TikTok Shop Partner Center ngay**, vì duyệt có thể mất vài tuần (hướng dẫn: [docs/ops/dang-ky-app-san.md](ops/dang-ky-app-san.md)).
+- [ ] Xuất file Excel mẫu từ KiotViet (hàng hóa + tồn, hóa đơn, phiếu nhập, NCC, mẫu import) và phân tích định dạng.
 - [ ] Rà soát SKU KiotViet ↔ Shopee ↔ TikTok, chuẩn hóa quy tắc đặt mã.
-- [ ] Prototype 5 màn hình, chủ shop duyệt.
-- [ ] Khởi tạo monorepo, CI, Docker Compose (Redis; MySQL native).
-- [ ] Chuẩn bị iMac làm server: cài Docker, tắt ngủ, UPS, tên miền + Cloudflare Tunnel, lịch sao lưu ra ngoài.
+- [ ] Chuẩn bị iMac làm server: cài Docker, MySQL native, tắt ngủ, UPS, Cloudflare Tunnel cho `erp.sugami.vn`, lịch sao lưu.
 
-**Hoàn thành khi:** có báo cáo xác minh API, hồ sơ app sàn đã nộp, prototype đã duyệt.
+**Hoàn thành khi:** hồ sơ app sàn đã nộp, có file Excel mẫu, prototype đã duyệt.
 
-## GĐ1 — Nền tảng + catalog + kết nối KiotViet (tuần 3–6)
+## GĐ1 — Nền tảng + catalog + kho (tuần 3–6)
 
 - [ ] Auth, người dùng, vai trò, audit log.
-- [ ] Catalog: sản phẩm, biến thể, nhóm, thương hiệu, thuộc tính đồ chơi (độ tuổi, chất liệu, pin, chứng nhận).
-- [ ] Kết nối KiotViet: token, import một lần (vài trăm SKU chỉ tốn vài request), đồng bộ tăng dần 10 phút/lần + webhook.
-- [ ] **Sổ kho của Sugami chạy song song** ngay từ đầu: mọi biến động từ KiotViet ghi thành movement, để sau này chuyển master không mất lịch sử.
+- [ ] Catalog: sản phẩm, biến thể, nhóm, thương hiệu, thuộc tính đồ chơi.
+- [ ] Sổ kho Sugami (append-only) ngay từ đầu.
+- [ ] Import Excel hàng hóa + tồn và hóa đơn từ KiotViet; export Excel phiếu nhập/kiểm kho đúng mẫu import của KiotViet.
+- [ ] Đối chiếu tồn giữa file KiotViet và sổ kho Sugami.
 - [ ] Danh sách đơn, tồn kho, dashboard cơ bản.
 
-**Hoàn thành khi:** tồn và đơn trong Sugami khớp KiotViet 100% sau 7 ngày.
+**Hoàn thành khi:** import file thật khớp 100% SKU và tồn; một phiếu nhập xuất từ Sugami import vào KiotViet thành công và tồn trên sàn cập nhật.
 
 ## GĐ2 — Nguồn hàng Taobao/1688 + kho (tuần 7–10)
 
@@ -58,9 +71,9 @@ Claude viết toàn bộ code, commit thẳng lên `main`. Thời lượng dư�
 
 **Hoàn thành khi:** mọi SKU đang bán có đủ ảnh chuẩn và mô tả theo từng sàn.
 
-## GĐ4 — Kết nối sàn trực tiếp (tuần 14–19)
+## GĐ4 — Kết nối sàn trực tiếp
 
-Phụ thuộc: app Shopee/TikTok đã được duyệt ở GĐ0.
+Bắt đầu **ngay khi app được duyệt**, có thể chạy song song GĐ2–3. Khi đơn đọc thẳng từ sàn, bỏ bước import Excel hóa đơn.
 
 - [ ] Adapter **TikTok Shop**: OAuth shop, sản phẩm, đơn, phí/đối soát, webhook, đẩy listing + ảnh.
 - [ ] Adapter **Shopee Open Platform**: OAuth shop, sản phẩm, đơn, phí/đối soát, push, đẩy listing + ảnh.

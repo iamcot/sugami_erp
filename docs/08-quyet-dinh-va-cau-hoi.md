@@ -5,7 +5,7 @@
 | Câu hỏi | Trả lời | Ảnh hưởng tới kế hoạch |
 |---------|---------|------------------------|
 | Quy mô | Vài trăm SKU, dưới 10 đơn/ngày | Hạn mức API KiotViet không còn là rủi ro; chạy trên iMac của shop là đủ; bỏ pick list gom đơn, kanban đơn phức tạp |
-| Gói KiotViet | Đã có API và đã kết nối sàn | Làm được GĐ1 ngay |
+| Gói KiotViet | Gói Chuyên nghiệp, đã liên kết sàn, **không có Public API** (chỉ gói Cao cấp) | Trao đổi dữ liệu bằng Excel; kết nối thẳng Shopee/TikTok sớm |
 | Ngành hàng | Đồ chơi | Thuộc tính: độ tuổi, chất liệu, pin, kích thước, chứng nhận/CR (hợp quy); cảnh báo an toàn trong content; không cần lô/hạn dùng |
 | Nguồn hàng | Taobao/1688 qua đơn vị vận chuyển trung gian | Module sourcing là trọng tâm: CNY, tỷ giá, kiện hàng, phí theo kg/m³, landed cost |
 | Server | iMac bật cả ngày, Docker, MySQL | Docker Compose trên iMac, MySQL 8 thay PostgreSQL, Cloudflare Tunnel cho webhook, sao lưu ra ngoài |
@@ -23,6 +23,7 @@
 | D6 | Mỗi thời điểm chỉ **một** hệ thống đẩy tồn lên sàn | Tránh bán âm; khi Sugami bật đẩy tồn thì tắt của KiotViet cùng lúc |
 | D7 | TypeScript monorepo: Next.js + NestJS + **MySQL 8 native** + Redis/BullMQ + ảnh trên AWS S3 có sẵn, chạy bằng **Docker trên iMac** của shop, ra internet qua Cloudflare Tunnel | Chủ shop chọn; không tốn tiền server; chuyển lên VPS sau dễ |
 | D8 | Web app + PWA cho kho, chưa làm app native | Đủ cho quy mô hiện tại |
+| D9 | Không nâng gói KiotViet. Trao đổi với KiotViet bằng **file Excel** cho tới khi kết nối thẳng Shopee/TikTok; nộp hồ sơ app sàn ngay (chủ shop chọn 22/11/2026) | Không tăng chi phí; đơn ít nên thao tác tay vài phút/tuần |
 
 ## 8.3 Câu hỏi còn mở
 

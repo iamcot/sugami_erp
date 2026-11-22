@@ -29,13 +29,14 @@
                        │                          │
           ┌────────────▼───────────┐   ┌──────────▼──────────────┐
           │ Channel adapters        │   │ Webhook receiver         │
-          │ KiotViet (GĐ1)          │◀──│ /webhooks/kiotviet/:tok  │
+          │ KiotViet: file Excel    │   │ (không có webhook KV)    │
           │ TikTok Shop API (GĐ4)   │   │ /webhooks/tiktok (GĐ4)   │
           │ Shopee Open API (GĐ4)   │   │ /webhooks/shopee (GĐ4)   │
           │ Trung gian ship (GĐ2)   │   └──────────────────────────┘
           └────────────┬───────────┘
                        ▼
-   GĐ1–4: KiotViet ⇄ Shopee / TikTok (liên kết sàn của KiotViet)
+   GĐ1–4: KiotViet ⇄ Shopee / TikTok (liên kết sàn của KiotViet);
+          Sugami ⇄ KiotViet bằng import/export Excel
    GĐ5+:  Sugami ⇄ Shopee / TikTok trực tiếp, gỡ KiotViet
 ```
 
