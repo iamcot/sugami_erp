@@ -24,7 +24,7 @@ Shopee / TikTok ⇄ Pancake POS ⇄ Sugami
 |---------|--------|---------|
 | `variation.display_id` | SKU | Khi nhập hàng từ KiotViet sang Pancake phải giữ mã hàng KiotViet (D10) |
 | `variations_warehouses[].actual_remain_quantity` | tồn thực theo kho | `remain_quantity` là tồn có thể bán |
-| `order.marketplace_id` | kênh | `-3` = Shopee (theo tài liệu). TikTok: xác nhận bằng `probe` |
+| `order.marketplace_id` | kênh | `-3` = Shopee (cả 3 shop VN, MY, PH dùng chung). `-9` = TikTok (suy ra từ `probe` sau khi nối TikTok, chờ xác nhận bằng đơn thật) |
 | `invoice_info_list[].order_sn` | mã đơn sàn | |
 | `fee_marketplace` | phí sàn | |
 | `status` | trạng thái đơn | Bảng `ORDER_STATUS` trong `packages/channels/pancake/src/mapping.ts` |
@@ -34,7 +34,7 @@ Không đọc thông tin khách (tên, SĐT, địa chỉ) vào Sugami.
 ## Chưa kiểm chứng (cần dữ liệu thật)
 
 1. Pancake có tự đẩy tồn lên Shopee/TikTok khi tồn đổi qua API không (thử với 1 SKU).
-2. `marketplace_id` của TikTok.
+2. `marketplace_id` của TikTok: tạm là `-9`, cần một đơn TikTok thật để xác nhận.
 3. `total_price` là tổng trước hay sau giảm giá; ý nghĩa đơn vị `start_time_update` (giây hay mili giây).
 4. Dạng body của webhook `orders` (bọc trong `data` hay không).
 

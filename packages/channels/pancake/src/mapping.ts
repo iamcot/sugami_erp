@@ -36,7 +36,11 @@ export const ORDER_STATUS: Record<number, string> = {
  * Pancake marketplace_id → Sugami channel code. Only Shopee (-3) is shown in the docs; the others
  * are confirmed with `pnpm pancake:probe` on the real shop and added here.
  */
-export const MARKETPLACES: Record<string, string> = { '-3': 'shopee' };
+export const MARKETPLACES: Record<string, string> = {
+  '-3': 'shopee',
+  // Appeared when the TikTok Shop account was connected (probe, 2026-11-22); confirm with a real TikTok order.
+  '-9': 'tiktok',
+};
 
 export function channelOfOrder(o: Order): string {
   if (o.marketplace_id) return MARKETPLACES[o.marketplace_id] ?? `pancake:${o.marketplace_id}`;

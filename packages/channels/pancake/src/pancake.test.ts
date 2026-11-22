@@ -144,6 +144,7 @@ describe('mapping', () => {
 
   it('labels unknown marketplaces and rejects unknown statuses', () => {
     expect(toExternalOrder(Order.parse(order({ marketplace_id: '-99' }))).saleChannel).toBe('pancake:-99');
+    expect(toExternalOrder(Order.parse(order({ marketplace_id: '-9' }))).saleChannel).toBe('tiktok');
     expect(toExternalOrder(Order.parse(order({ marketplace_id: null }))).saleChannel).toBe('store');
     expect(() => toExternalOrder(Order.parse(order({ status: 99 })))).toThrow('Unknown Pancake order status 99');
   });

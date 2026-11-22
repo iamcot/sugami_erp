@@ -49,8 +49,8 @@ console.log('Đơn 7 ngày theo trạng thái:', byStatus);
 const listings: Record<string, number> = {};
 let linked = 0;
 try {
-  for await (const l of client.paginate<{ marketplace_shop_name?: string | null; linked_product_custom_id?: string | null }>('/marketplace/products')) {
-    const k = l.marketplace_shop_name ?? '?';
+  for await (const l of client.paginate<{ marketplace_id?: string | null; marketplace_shop_name?: string | null; linked_product_custom_id?: string | null }>('/marketplace/products')) {
+    const k = `${l.marketplace_shop_name ?? '?'} (marketplace_id ${l.marketplace_id ?? '?'})`;
     listings[k] = (listings[k] ?? 0) + 1;
     if (l.linked_product_custom_id) linked++;
   }
