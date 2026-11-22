@@ -29,7 +29,9 @@ export const Variation = z.looseObject({
   fields: z.array(z.looseObject({ name: str, value: str })).nullish(),
   images: z.array(z.string()).nullish(),
   variations_warehouses: z.array(VariationWarehouse).nullish(),
-  product: z.looseObject({ name: str, display_id: str, custom_id: str, is_published: z.boolean().nullish() }).nullish(),
+  product: z
+    .looseObject({ name: str, display_id: str, custom_id: str, is_published: z.boolean().nullish() })
+    .nullish(),
 });
 export type Variation = z.infer<typeof Variation>;
 
@@ -40,7 +42,7 @@ export const OrderItem = z.looseObject({
   is_discount_percent: z.boolean().nullish(),
   is_bonus_product: z.boolean().nullish(),
   variation_info: z
-    .looseObject({ name: str, display_id: str, barcode: str, retail_price: int })
+    .looseObject({ name: str, display_id: str, custom_id: str, barcode: str, retail_price: int })
     .nullish(),
 });
 

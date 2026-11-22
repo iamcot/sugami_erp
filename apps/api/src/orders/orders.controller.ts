@@ -40,6 +40,7 @@ export class OrdersController {
               { code: { contains: q.q } },
               { externalCode: { contains: q.q } },
               { trackingNo: { contains: q.q } },
+              { customer: { OR: [{ phone: { contains: q.q } }, { kiotvietCode: { contains: q.q } }] } },
               { lines: { some: { sku: { contains: q.q } } } },
             ],
           }
@@ -59,6 +60,7 @@ export class OrdersController {
         take: q.pageSize,
         include: {
           channel: { select: { code: true, name: true } },
+          customer: { select: { kiotvietCode: true, name: true, phone: true } },
           lines: { select: { sku: true, name: true, qty: true }, orderBy: { sort: 'asc' } },
         },
       }),
@@ -75,6 +77,9 @@ export class OrdersController {
         code: o.code,
         externalCode: o.externalCode,
         channel: o.channel,
+        customer: o.customer
+          ? { code: o.customer.kiotvietCode, name: o.customer.name, phone: o.customer.phone }
+          : null,
         status: o.status,
         shippingStatus: o.shippingStatus,
         trackingNo: o.trackingNo,
@@ -98,7 +103,7 @@ export class OrdersController {
       where: { OR: [{ id: code }, { code }] },
       include: {
         channel: true,
-        customer: { select: { kiotvietCode: true } },
+        customer: { select: { id: true, kiotvietCode: true, name: true, phone: true } },
         lines: { orderBy: { sort: 'asc' } },
       },
     });

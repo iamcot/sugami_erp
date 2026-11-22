@@ -14,6 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import {
   exportTimeFromFilename,
   KiotVietFormatError,
+  parseCustomerList,
   parseInvoiceDetails,
   parseProductList,
 } from '@sugami/channels-kiotviet';
@@ -22,6 +23,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { CustomerImportBlockedError, importKiotVietCustomers } from './kiotviet-customers.importer.js';
 import { importKiotVietInvoices, InvoiceImportBlockedError } from './kiotviet-invoices.importer.js';
 import { ImportBlockedError, importKiotVietProducts } from './kiotviet-products.importer.js';
 
@@ -64,7 +66,11 @@ export class ImportsController {
       return { file: file.originalname, warehouse: wh.code, ...(await fn(file, wh.id, dryRun)) };
     } catch (err) {
       if (err instanceof KiotVietFormatError) throw new UnprocessableEntityException(err.message);
-      if (err instanceof ImportBlockedError || err instanceof InvoiceImportBlockedError) {
+      if (
+        err instanceof ImportBlockedError ||
+        err instanceof InvoiceImportBlockedError ||
+        err instanceof CustomerImportBlockedError
+      ) {
         throw new UnprocessableEntityException({ message: err.message, issues: err.errors });
       }
       throw err;
@@ -107,5 +113,16 @@ export class ImportsController {
       const parsed = await parseInvoiceDetails(f.buffer);
       return importKiotVietInvoices(this.prisma.client, parsed, { warehouseId, dryRun, userId: user.id });
     });
+  }
+
+  /** Customer list (Khách hàng → Xuất file). Run before or after invoices: both match by customer code. */
+  @Post('customers')
+  @HttpCode(200)
+  @RequirePermissions('customers.write')
+  @UseInterceptors(upload())
+  customers(@UploadedFile() file: UploadedXlsx | undefined, @Query() query: unknown) {
+    return this.run(file, query, async (f, _warehouseId, dryRun) =>
+      importKiotVietCustomers(this.prisma.client, await parseCustomerList(f.buffer), { dryRun }),
+    );
   }
 }

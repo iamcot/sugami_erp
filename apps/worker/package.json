@@ -12,7 +12,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sugami/channels-pancake": "workspace:*",
+    "@sugami/db": "workspace:*",
+    "@sugami/notify": "workspace:*",
     "@sugami/shared": "workspace:*",
+    "@sugami/sync": "workspace:*",
     "bullmq": "^6.7.8",
     "ioredis": "^5.11.1"
   },

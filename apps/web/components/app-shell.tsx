@@ -14,6 +14,7 @@ import {
   Settings,
   ShoppingBag,
   Truck,
+  Users,
   BarChart3,
   Bell,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ const nav = [
   { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/inventory', label: 'Kho', icon: Boxes },
   { href: '/orders', label: 'Đơn hàng', icon: ShoppingBag },
+  { href: '/customers', label: 'Khách hàng', icon: Users },
   { href: '#sourcing', label: 'Nguồn hàng', icon: Truck },
   { href: '/media', label: 'Media', icon: Images },
   { href: '#content', label: 'Content', icon: PenLine },

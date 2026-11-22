@@ -80,6 +80,13 @@ export async function importKiotVietInvoices(
   ]);
   const variantBySku = new Map(variants.map((v) => [v.sku, v]));
   const orderByCode = new Map(existing.map((o) => [o.kiotvietInvoiceCode!, o]));
+  // Orders the Pancake sync created before this invoice arrived: same marketplace order number.
+  const marketplaceCodes = invoices.map((i) => i.externalCode).filter((c): c is string => !!c);
+  const fromPancake = await db.order.findMany({
+    where: { externalCode: { in: marketplaceCodes }, kiotvietInvoiceCode: null, source: 'pancake' },
+    include: { lines: true, channel: { select: { code: true } } },
+  });
+  const pancakeByMarketplace = new Map(fromPancake.map((o) => [`${o.channel.code}:${o.externalCode}`, o]));
   const channelByCode = new Map(channels.map((c) => [c.code, c]));
   const snapshotAt = new Map(openings.map((o) => [o.variantId, o._min.occurredAt]));
   const unknown = new Set<string>();
@@ -117,7 +124,9 @@ export async function importKiotVietInvoices(
       shippingFee: big(inv.shippingFee),
       completedAt: inv.status === 'completed' || inv.status === 'delivered' ? inv.orderedAt : null,
     };
-    const prev = orderByCode.get(inv.code);
+    const prev =
+      orderByCode.get(inv.code) ??
+      (inv.externalCode ? pancakeByMarketplace.get(`${inv.channel}:${inv.externalCode}`) : undefined);
 
     // Lines that should move stock: active order, known SKU, sale after the SKU's opening snapshot.
     const saleLines = (o: KvInvoice) =>
@@ -190,7 +199,10 @@ export async function importKiotVietInvoices(
     }
 
     // Existing order: update header fields; reverse stock if it got cancelled.
+    // Linking an order that Pancake created counts as a change even if the fields match.
+    const linking = prev.kiotvietInvoiceCode === null;
     const changed =
+      linking ||
       prev.status !== fields.status ||
       prev.shippingStatus !== fields.shippingStatus ||
       prev.trackingNo !== fields.trackingNo ||
@@ -241,7 +253,11 @@ export async function importKiotVietInvoices(
       }
       await tx.order.update({
         where: { id: prev.id },
-        data: { ...fields, ...(reverse ? { stockAppliedAt: null } : {}) },
+        data: {
+          ...fields,
+          ...(linking ? { kiotvietInvoiceCode: inv.code, kiotvietOrderCode: inv.orderCode } : {}),
+          ...(reverse ? { stockAppliedAt: null } : {}),
+        },
       });
     });
   }

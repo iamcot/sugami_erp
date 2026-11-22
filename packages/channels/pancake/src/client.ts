@@ -65,7 +65,9 @@ export class PancakeClient {
 
   /** Path relative to /shops/{shopId}, e.g. `/orders`. */
   buildUrl(path: string, query: Query = {}): string {
-    const url = new URL(`${this.apiBase}/shops/${encodeURIComponent(this.opts.shopId)}${path.startsWith('/') ? path : `/${path}`}`);
+    const url = new URL(
+      `${this.apiBase}/shops/${encodeURIComponent(this.opts.shopId)}${path.startsWith('/') ? path : `/${path}`}`,
+    );
     for (const [k, v] of Object.entries(query)) {
       if (v === undefined) continue;
       if (Array.isArray(v)) for (const item of v) url.searchParams.append(`${k}[]`, item);
@@ -79,6 +81,11 @@ export class PancakeClient {
     return this.request<T>('GET', path, query);
   }
 
+  /** Write call. Pancake has no idempotency keys: callers check before they create. */
+  async post<T>(path: string, body: unknown, query: Query = {}): Promise<T> {
+    return this.request<T>('POST', path, query, body);
+  }
+
   private async request<T>(method: string, path: string, query: Query, body?: unknown): Promise<T> {
     const url = this.buildUrl(path, query);
     const label = `Pancake ${method} ${path}`;
@@ -89,7 +96,10 @@ export class PancakeClient {
         this.requestCount++;
         res = await this.fetchImpl(url, {
           method,
-          headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+          headers: {
+            Accept: 'application/json',
+            ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+          },
           body: body !== undefined ? JSON.stringify(body) : undefined,
         });
       } catch {
@@ -112,7 +122,11 @@ export class PancakeClient {
       }
       const env = json as { success?: boolean; message?: string; error_code?: number } | undefined;
       if (!res.ok || env?.success === false) {
-        throw new PancakeError(`${label} failed (${res.status}): ${env?.message ?? 'unknown error'}`, res.status, env?.error_code);
+        throw new PancakeError(
+          `${label} failed (${res.status}): ${env?.message ?? 'unknown error'}`,
+          res.status,
+          env?.error_code,
+        );
       }
       return json as T;
     }

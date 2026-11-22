@@ -64,7 +64,7 @@ Bản **chi tiết**: một dòng cho mỗi dòng hàng, thông tin hóa đơn l
 | `Mã hàng`, `Số lượng`, `Đơn giá`, `Giảm giá`, `Giá bán`, `Thành tiền` | Dòng đơn | Mọi mã hàng trong mẫu đều có trong danh sách hàng hóa |
 | `Tổng tiền hàng`, `Giảm giá hóa đơn`, `Thu khác`, `Khách cần trả`, `Còn cần thu (COD)` | Tổng đơn | |
 | `Mã khách hàng` | `customer.external_code` | `KHSPE…` |
-| Tên/SĐT/địa chỉ khách và người nhận, `Ghi chú` | **Không lưu** | Đã bị che hoặc chứa username Shopee |
+| Tên/SĐT/địa chỉ khách và người nhận, `Ghi chú` | **Không lưu từ file hóa đơn** | Đã bị che hoặc chứa username Shopee; hồ sơ khách lấy từ file Khách hàng (mục 2b) |
 
 ### Cách Sugami import (P1-12)
 
@@ -72,10 +72,19 @@ Màn hình **Nhập KiotViet → Hóa đơn** hoặc `POST /api/imports/kiotviet
 
 - Mỗi hóa đơn thành một `order` (mã = mã hóa đơn, khớp lại theo `kiotviet_invoice_code`, chạy lại an toàn). Kênh: `HDSPE_` → Shopee (mã đơn Shopee vào `external_code`), `HDTTS_`/`HDTTK_` hoặc đối tác giao TikTok → TikTok (giả định, chưa thấy trong mẫu), còn lại → Bán trực tiếp.
 - Trạng thái: `Đã hủy` → cancelled; `Hoàn thành` → completed; `Đang xử lý` + giao `Giao thành công` → delivered, `Đang giao hàng` → shipped, khác → confirmed.
-- Khách: chỉ lưu `Mã khách hàng` (`customers.kiotviet_code`). Tên, SĐT, địa chỉ, `Ghi chú` không lưu.
+- Khách: file hóa đơn chỉ cho `Mã khách hàng`; Sugami tạo khách theo mã đó và đơn được nối với khách. Hồ sơ (tên, SĐT...) được điền khi nhập file Khách hàng (mục 2b), trước hay sau hóa đơn đều được.
 - **Trừ tồn**: dòng hàng chỉ trừ tồn (`sale_out`) nếu hóa đơn **sau** lần nhập tồn đầu kỳ của mã đó (thời điểm xuất file danh sách hàng hóa, lấy từ tên file `_KVddMMyyyy-HHmmss`). Hóa đơn trước đó đã nằm trong số tồn KiotViet nên không trừ lại. Hóa đơn hủy không trừ; hóa đơn đã trừ mà sau đó bị hủy thì hoàn tồn (`return_in`).
 - Mã hàng chưa có trong Sugami: vẫn tạo dòng đơn, không trừ tồn, báo cảnh báo.
 - Đã thử với file thật (38 hóa đơn, 47 dòng): doanh thu 6.859.255 đ khớp file tổng quan; Shopee 34 đơn, bán trực tiếp 4 đơn.
+
+### 2b. Danh sách khách hàng — `DanhSachKhachHang_KV*.xlsx` (P1-24)
+
+Khách hàng → Xuất file. Một dòng một khách, khóa là `Mã khách hàng` (`KHSPE…` cho khách Shopee). File mẫu 22/11: 5.415 khách, 36 cột.
+
+- KiotViet **che** phần lớn `Tên khách hàng` (khoảng 78%, dạng `T******u`) và `Địa chỉ` (khoảng 78%); `Điện thoại` thường để trống (khoảng 17% có số, không bị che). Sugami lưu đúng như file; xuất lại file đầy đủ rồi nhập lại thì thông tin được cập nhật.
+- Lưu: mã, tên, SĐT, email, giới tính, ngày sinh, Facebook, địa chỉ, khu vực, phường/xã, nhóm khách (tách theo `|`), ngày tạo, ngày giao dịch cuối, tổng bán, nợ cần thu, trạng thái.
+- **Không lưu** `Ghi chú` (với khách sàn là tên đăng nhập người mua, đã che một phần) và các cột thông tin xuất hóa đơn công ty.
+- Nhập ở **KiotViet → Khách hàng** hoặc `POST /api/imports/kiotviet/customers?dryRun=…` (quyền `customers.write`). Khớp theo mã khách nên chạy lại an toàn, và khách đã được tạo từ hóa đơn được điền hồ sơ, giữ nguyên liên kết với đơn.
 
 ## 3. Phiếu nhập hàng — `DanhSachChiTietNhapHang_KV*.xlsx`
 

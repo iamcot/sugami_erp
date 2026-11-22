@@ -59,6 +59,9 @@ importers:
       '@sugami/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@sugami/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -142,9 +145,21 @@ importers:
 
   apps/worker:
     dependencies:
+      '@sugami/channels-pancake':
+        specifier: workspace:*
+        version: link:../../packages/channels/pancake
+      '@sugami/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@sugami/notify':
+        specifier: workspace:*
+        version: link:../../packages/notify
       '@sugami/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@sugami/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
       bullmq:
         specifier: ^6.7.8
         version: 6.7.8(ioredis@5.11.1)
@@ -259,6 +274,25 @@ importers:
         specifier: ^3.1175.0
         version: 3.1175.0
     devDependencies:
+      '@types/node':
+        specifier: ^22.20.5
+        version: 22.20.5
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@types/node@22.20.5)(vite@8.3.8(@types/node@22.20.5)(jiti@2.7.0))
+
+  packages/sync:
+    dependencies:
+      '@sugami/channels-core':
+        specifier: workspace:*
+        version: link:../channels/core
+      '@sugami/db':
+        specifier: workspace:*
+        version: link:../db
+    devDependencies:
+      '@sugami/channels-pancake':
+        specifier: workspace:*
+        version: link:../channels/pancake
       '@types/node':
         specifier: ^22.20.5
         version: 22.20.5

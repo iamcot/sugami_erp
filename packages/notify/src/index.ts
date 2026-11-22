@@ -46,7 +46,11 @@ export function isValidEndpoint(endpoint: string): boolean {
   }
 }
 
-type SendFn = (sub: BrowserSubscription, body: string, opts: webpush.RequestOptions) => Promise<{ statusCode: number }>;
+type SendFn = (
+  sub: BrowserSubscription,
+  body: string,
+  opts: webpush.RequestOptions,
+) => Promise<{ statusCode: number }>;
 
 export interface SendResult {
   sent: number;
@@ -70,8 +74,19 @@ export class PushSender {
 
   async saveSubscription(userId: string, sub: BrowserSubscription, userAgent?: string) {
     if (!isValidEndpoint(sub.endpoint)) throw new Error('Invalid push endpoint');
-    const data = { userId, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, userAgent: userAgent?.slice(0, 255) ?? null, failCount: 0 };
-    return this.db.pushSubscription.upsert({ where: { endpointHash: endpointHash(sub.endpoint) }, create: { ...data, endpointHash: endpointHash(sub.endpoint) }, update: data });
+    const data = {
+      userId,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys.p256dh,
+      auth: sub.keys.auth,
+      userAgent: userAgent?.slice(0, 255) ?? null,
+      failCount: 0,
+    };
+    return this.db.pushSubscription.upsert({
+      where: { endpointHash: endpointHash(sub.endpoint) },
+      create: { ...data, endpointHash: endpointHash(sub.endpoint) },
+      update: data,
+    });
   }
 
   async removeSubscription(userId: string, endpoint: string) {
@@ -79,11 +94,28 @@ export class PushSender {
   }
 
   /** Send to the given users, or to every active user holding one of `permissions` ("*" counts). */
-  async notify(target: { userIds: string[] } | { permissions: string[] }, payload: PushPayload): Promise<SendResult> {
+  async notify(
+    target: { userIds: string[] } | { permissions: string[] },
+    payload: PushPayload,
+  ): Promise<SendResult> {
     const where =
       'userIds' in target
         ? { userId: { in: target.userIds } }
-        : { user: { isActive: true, roles: { some: { role: { OR: [{ permissions: { array_contains: '*' } }, ...target.permissions.map((p) => ({ permissions: { array_contains: p } }))] } } } } };
+        : {
+            user: {
+              isActive: true,
+              roles: {
+                some: {
+                  role: {
+                    OR: [
+                      { permissions: { array_contains: '*' } },
+                      ...target.permissions.map((p) => ({ permissions: { array_contains: p } })),
+                    ],
+                  },
+                },
+              },
+            },
+          };
     const subs = await this.db.pushSubscription.findMany({ where });
     const body = JSON.stringify(payload);
     const result: SendResult = { sent: 0, removed: 0, failed: 0 };
@@ -97,7 +129,10 @@ export class PushSender {
             timeout: 10_000,
           });
           result.sent++;
-          await this.db.pushSubscription.update({ where: { id: s.id }, data: { lastSuccessAt: new Date(), failCount: 0 } });
+          await this.db.pushSubscription.update({
+            where: { id: s.id },
+            data: { lastSuccessAt: new Date(), failCount: 0 },
+          });
         } catch (err) {
           const status = (err as { statusCode?: number }).statusCode;
           if ((status && GONE.has(status)) || s.failCount >= 9) {
@@ -105,7 +140,10 @@ export class PushSender {
             await this.db.pushSubscription.delete({ where: { id: s.id } }).catch(() => undefined);
           } else {
             result.failed++;
-            await this.db.pushSubscription.update({ where: { id: s.id }, data: { failCount: { increment: 1 } } });
+            await this.db.pushSubscription.update({
+              where: { id: s.id },
+              data: { failCount: { increment: 1 } },
+            });
           }
         }
       }),

@@ -213,7 +213,10 @@ export async function confirmStockDocument(
         if (!delta.isZero()) lines.push({ ...l, quantity: delta });
       }
       if (lines.length === 0) {
-        await tx.stockDocument.update({ where: { id: doc.id }, data: { status: 'confirmed', confirmedAt: new Date() } });
+        await tx.stockDocument.update({
+          where: { id: doc.id },
+          data: { status: 'confirmed', confirmedAt: new Date() },
+        });
         return;
       }
     }

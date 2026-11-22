@@ -44,6 +44,17 @@ Tên gợi nhớ đặt trong Pancake (Cài đặt → Danh sách kênh bán); S
 
 Ba shop Shopee dùng chung `marketplace_id` -3, nên phân biệt đơn theo ID tài khoản, không theo `marketplace_id`. Cần một đơn thật để xác nhận đơn Pancake mang ID tài khoản nào.
 
+## Đẩy sản phẩm và tồn từ Sugami sang Pancake (bản thử)
+
+Trang chi tiết sản phẩm có nút **Pancake**, làm từng sản phẩm một, luôn xem trước rồi mới ghi:
+
+- **Tạo sản phẩm**: `POST /shops/{id}/products` với `custom_id` = mã sản phẩm / SKU Sugami, giá bán, giá vốn, phân loại, tồn Sugami vào kho đã chọn. Từ chối nếu SKU đã có trên Pancake (không tạo trùng); sau khi tạo, Sugami đọc lại để xác nhận vì Pancake không trả về id.
+- **Đồng bộ tồn**: `POST /shops/{id}/variations/update_quantity` với `is_actual_remain_quantity: true` (tồn thực, không phải tồn có thể bán), rồi đọc lại tồn để báo trước/sau.
+- Kho Pancake: lấy từ `GET /warehouses`; nếu shop có nhiều kho thì chọn trong giao diện hoặc đặt `PANCAKE_WAREHOUSE_ID`.
+- API: `POST /api/pancake/products/:code/push` và `/stock` (`{"dryRun": true}` mặc định).
+- **Liên kết với listing Shopee/TikTok không có trong API công khai** (chỉ đọc được `linked_variation_custom_id`): sau khi tạo, liên kết bằng tay trên Pancake, rồi đổi tồn và xem sàn cập nhật sau bao lâu.
+- Chưa kiểm chứng với shop thật: các trường bắt buộc của `product`, Pancake khớp listing theo `custom_id` hay `display_id`, đơn vị `weight` (không gửi).
+
 ## Chưa kiểm chứng (cần dữ liệu thật)
 
 1. Pancake có tự đẩy tồn lên Shopee/TikTok khi tồn đổi qua API không (thử với 1 SKU).

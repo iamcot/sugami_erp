@@ -29,9 +29,24 @@ describe.skipIf(!process.env.DATABASE_URL)('stock documents and KiotViet export 
   beforeAll(async () => {
     app = await createTestApp();
     db = app.get(PrismaService).client;
-    const role = await db.role.upsert({ where: { code: 'owner' }, create: { code: 'owner', name: 'o', permissions: ['*'] }, update: {} });
-    await db.user.create({ data: { email, name: 'Docs', passwordHash: await hashPassword('docs-pass-123'), roles: { create: { roleId: role.id } } } });
-    cookie = ((await http().post('/api/auth/login').send({ email, password: 'docs-pass-123' }).expect(200)).headers['set-cookie'] as unknown as string[])
+    const role = await db.role.upsert({
+      where: { code: 'owner' },
+      create: { code: 'owner', name: 'o', permissions: ['*'] },
+      update: {},
+    });
+    await db.user.create({
+      data: {
+        email,
+        name: 'Docs',
+        passwordHash: await hashPassword('docs-pass-123'),
+        roles: { create: { roleId: role.id } },
+      },
+    });
+    cookie = (
+      (await http().post('/api/auth/login').send({ email, password: 'docs-pass-123' }).expect(200)).headers[
+        'set-cookie'
+      ] as unknown as string[]
+    )
       .map((c) => c.split(';')[0])
       .join('; ');
     await db.warehouse.create({ data: { code: wh, name: 'Kho test phiếu' } });
@@ -52,7 +67,14 @@ describe.skipIf(!process.env.DATABASE_URL)('stock documents and KiotViet export 
       include: { variants: { orderBy: { sku: 'asc' } } },
     });
     // Only the first SKU is known to KiotViet.
-    await db.externalRef.create({ data: { provider: 'kiotviet', entityType: 'variant', entityId: product.variants[0]!.id, externalId: sku('1') } });
+    await db.externalRef.create({
+      data: {
+        provider: 'kiotviet',
+        entityType: 'variant',
+        entityId: product.variants[0]!.id,
+        externalId: sku('1'),
+      },
+    });
   });
 
   afterAll(async () => {
@@ -75,9 +97,21 @@ describe.skipIf(!process.env.DATABASE_URL)('stock documents and KiotViet export 
   let receiptCode = '';
 
   it('validates lines', async () => {
-    await post('/api/stock-documents', { type: 'receipt', warehouseCode: wh, lines: [{ sku: 'NOPE-X', quantity: 1, unitCost: 1 }] }).expect(400);
-    await post('/api/stock-documents', { type: 'receipt', warehouseCode: wh, lines: [{ sku: sku('1'), quantity: 1 }] }).expect(400);
-    await post('/api/stock-documents', { type: 'count', warehouseCode: wh, lines: [{ sku: sku('1'), quantity: 1.5 }] }).expect(400);
+    await post('/api/stock-documents', {
+      type: 'receipt',
+      warehouseCode: wh,
+      lines: [{ sku: 'NOPE-X', quantity: 1, unitCost: 1 }],
+    }).expect(400);
+    await post('/api/stock-documents', {
+      type: 'receipt',
+      warehouseCode: wh,
+      lines: [{ sku: sku('1'), quantity: 1 }],
+    }).expect(400);
+    await post('/api/stock-documents', {
+      type: 'count',
+      warehouseCode: wh,
+      lines: [{ sku: sku('1'), quantity: 1.5 }],
+    }).expect(400);
     await post('/api/stock-documents', { type: 'receipt', warehouseCode: wh, lines: [] }).expect(400);
   });
 
@@ -94,18 +128,35 @@ describe.skipIf(!process.env.DATABASE_URL)('stock documents and KiotViet export 
     }).expect(201);
     receiptCode = res.body.document.code;
     expect(receiptCode).toMatch(/^NH\d{6}-\d{3}$/);
-    expect(res.body.document).toMatchObject({ status: 'confirmed', lines: [{ onHand: 10, inKiotviet: true }, { onHand: 4, inKiotviet: false }] });
+    expect(res.body.document).toMatchObject({
+      status: 'confirmed',
+      lines: [
+        { onHand: 10, inKiotviet: true },
+        { onHand: 4, inKiotviet: false },
+      ],
+    });
     expect(res.body.kiotviet.missingSkus).toEqual([sku('2')]);
     const v = await db.variant.findUniqueOrThrow({ where: { sku: sku('1') } });
     expect(Number(v.costAvg)).toBe(80000);
   });
 
   it('exports the receipt in the KiotViet purchase template and marks it exported', async () => {
-    const list = await http().get('/api/stock-documents?notExported=1&type=receipt').set('Cookie', cookie).expect(200);
+    const list = await http()
+      .get('/api/stock-documents?notExported=1&type=receipt')
+      .set('Cookie', cookie)
+      .expect(200);
     expect(list.body.data.map((d: { code: string }) => d.code)).toContain(receiptCode);
     const file = await download(`/api/stock-documents/${receiptCode}/kiotviet.xlsx`);
     const { headers, rows } = await readFirstSheet(file);
-    expect(headers).toEqual(['Mã hàng', 'Tên hàng', 'Đơn vị tính', 'Đơn giá', 'Giảm giá', 'Giảm giá (%)', 'Số lượng']);
+    expect(headers).toEqual([
+      'Mã hàng',
+      'Tên hàng',
+      'Đơn vị tính',
+      'Đơn giá',
+      'Giảm giá',
+      'Giảm giá (%)',
+      'Số lượng',
+    ]);
     expect(rows.map((r) => [r.values['Mã hàng'], r.values['Đơn giá'], r.values['Số lượng']])).toEqual([
       [sku('1'), 80000, 10],
       [sku('2'), 82000, 4],
@@ -117,31 +168,52 @@ describe.skipIf(!process.env.DATABASE_URL)('stock documents and KiotViet export 
   });
 
   it('counts stock: draft, edit, confirm books the difference; export has counted quantities', async () => {
-    const draft = await post('/api/stock-documents', { type: 'count', warehouseCode: wh, lines: [{ sku: sku('1'), quantity: 9 }] }).expect(201);
+    const draft = await post('/api/stock-documents', {
+      type: 'count',
+      warehouseCode: wh,
+      lines: [{ sku: sku('1'), quantity: 9 }],
+    }).expect(201);
     const code = draft.body.document.code as string;
     expect(code).toMatch(/^KK/);
     await http().get(`/api/stock-documents/${code}/kiotviet.xlsx`).set('Cookie', cookie).expect(409);
     await http()
       .put(`/api/stock-documents/${code}`)
       .set('Cookie', cookie)
-      .send({ lines: [{ sku: sku('1'), quantity: 7 }, { sku: sku('2'), quantity: 4 }], confirm: true })
+      .send({
+        lines: [
+          { sku: sku('1'), quantity: 7 },
+          { sku: sku('2'), quantity: 4 },
+        ],
+        confirm: true,
+      })
       .expect(200);
     const levels = await http().get(`/api/inventory?q=${run}`).set('Cookie', cookie).expect(200);
     expect(levels.body.data.map((r: { sku: string; onHand: number }) => [r.sku, r.onHand])).toEqual([
       [sku('1'), 7],
       [sku('2'), 4],
     ]);
-    const { headers, rows } = await readFirstSheet(await download(`/api/stock-documents/${code}/kiotviet.xlsx`));
+    const { headers, rows } = await readFirstSheet(
+      await download(`/api/stock-documents/${code}/kiotviet.xlsx`),
+    );
     expect(headers).toEqual(['Mã hàng', 'Số lượng']);
     expect(rows.map((r) => [r.values['Mã hàng'], r.values['Số lượng']])).toEqual([
       [sku('1'), 7],
       [sku('2'), 4],
     ]);
-    await http().put(`/api/stock-documents/${code}`).set('Cookie', cookie).send({ lines: [{ sku: sku('1'), quantity: 1 }] }).expect(409);
+    await http()
+      .put(`/api/stock-documents/${code}`)
+      .set('Cookie', cookie)
+      .send({ lines: [{ sku: sku('1'), quantity: 1 }] })
+      .expect(409);
   });
 
   it('cancels a confirmed receipt with reversing movements', async () => {
-    const r = await post('/api/stock-documents', { type: 'receipt', warehouseCode: wh, lines: [{ sku: sku('2'), quantity: 2, unitCost: 82000 }], confirm: true }).expect(201);
+    const r = await post('/api/stock-documents', {
+      type: 'receipt',
+      warehouseCode: wh,
+      lines: [{ sku: sku('2'), quantity: 2, unitCost: 82000 }],
+      confirm: true,
+    }).expect(201);
     await post(`/api/stock-documents/${r.body.document.code}/cancel`, {}).expect(200);
     await post(`/api/stock-documents/${r.body.document.code}/cancel`, {}).expect(409);
     const levels = await http().get(`/api/inventory?q=${run}2`).set('Cookie', cookie).expect(200);
@@ -151,7 +223,9 @@ describe.skipIf(!process.env.DATABASE_URL)('stock documents and KiotViet export 
   it('lists and exports SKUs KiotViet does not have yet, in the product template', async () => {
     const res = await http().get('/api/exports/kiotviet/new-products').set('Cookie', cookie).expect(200);
     const mine = res.body.data.filter((r: { sku: string }) => r.sku.startsWith(run));
-    expect(mine).toEqual([{ sku: sku('2'), name: 'Xe đua thử', price: 150000, cost: 82000, parentSku: null }]);
+    expect(mine).toEqual([
+      { sku: sku('2'), name: 'Xe đua thử', price: 150000, cost: 82000, parentSku: null },
+    ]);
     const parsed = await parseProductList(await download('/api/exports/kiotviet/new-products.xlsx'));
     const v = parsed.groups.flatMap((g) => g.variants).find((x) => x.sku === sku('2'));
     expect(v).toMatchObject({ price: 150000, onHand: 0, active: true, optionValues: ['Xanh'] });

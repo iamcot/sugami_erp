@@ -15,8 +15,13 @@ if (!apiKey || !shopId) {
 const client = new PancakeClient({ apiKey, shopId });
 const adapter = new PancakeAdapter(client);
 
-const accounts = await client.get<{ data?: { marketplace_id?: string; name?: string }[] }>('/marketplace/get_account_info');
-console.log('Sàn đã nối:', (accounts.data ?? []).map((a) => `${a.name} (marketplace_id ${a.marketplace_id})`).join(', ') || 'chưa có');
+const accounts = await client.get<{ data?: { marketplace_id?: string; name?: string }[] }>(
+  '/marketplace/get_account_info',
+);
+console.log(
+  'Sàn đã nối:',
+  (accounts.data ?? []).map((a) => `${a.name} (marketplace_id ${a.marketplace_id})`).join(', ') || 'chưa có',
+);
 
 const warehouses = await client.get<{ data?: { id: string; name?: string }[] }>('/warehouses');
 console.log('Kho:', (warehouses.data ?? []).map((w) => `${w.name} (${w.id})`).join(', '));
@@ -49,23 +54,34 @@ console.log('Đơn 7 ngày theo trạng thái:', byStatus);
 const listings: Record<string, number> = {};
 let linked = 0;
 try {
-  for await (const l of client.paginate<{ marketplace_id?: string | null; marketplace_shop_name?: string | null; linked_product_custom_id?: string | null }>('/marketplace/products')) {
+  for await (const l of client.paginate<{
+    marketplace_id?: string | null;
+    marketplace_shop_name?: string | null;
+    linked_product_custom_id?: string | null;
+  }>('/marketplace/products')) {
     const k = `${l.marketplace_shop_name ?? '?'} (marketplace_id ${l.marketplace_id ?? '?'})`;
     listings[k] = (listings[k] ?? 0) + 1;
     if (l.linked_product_custom_id) linked++;
   }
-  console.log('Listing trên sàn (đã kéo về Pancake):', listings, `đã liên kết với sản phẩm Pancake: ${linked}`);
+  console.log(
+    'Listing trên sàn (đã kéo về Pancake):',
+    listings,
+    `đã liên kết với sản phẩm Pancake: ${linked}`,
+  );
 } catch (e) {
   console.log('Không đọc được listing sàn:', (e as Error).message);
 }
 
 // Orders in the last 30 days by marketplace and currency (MY/PH shops sell in other currencies).
 const mix: Record<string, number> = {};
-for await (const o of client.paginate<{ marketplace_id?: string | null; order_currency?: string | null }>('/orders', {
-  updateStatus: 'updated_at',
-  startDateTime: Math.floor((Date.now() - 30 * 86_400_000) / 1000),
-  endDateTime: Math.floor(Date.now() / 1000),
-})) {
+for await (const o of client.paginate<{ marketplace_id?: string | null; order_currency?: string | null }>(
+  '/orders',
+  {
+    updateStatus: 'updated_at',
+    startDateTime: Math.floor((Date.now() - 30 * 86_400_000) / 1000),
+    endDateTime: Math.floor(Date.now() / 1000),
+  },
+)) {
   const k = `${o.marketplace_id ?? 'không-sàn'} ${o.order_currency ?? '?'}`;
   mix[k] = (mix[k] ?? 0) + 1;
 }

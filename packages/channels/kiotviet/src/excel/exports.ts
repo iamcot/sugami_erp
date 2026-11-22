@@ -5,7 +5,15 @@
 import { writeSheet } from './sheet.js';
 
 export const PURCHASE_ORDER_SHEET = 'PurchaseOrderTemplate';
-export const PURCHASE_ORDER_HEADERS = ['Mã hàng', 'Tên hàng', 'Đơn vị tính', 'Đơn giá', 'Giảm giá', 'Giảm giá (%)', 'Số lượng'] as const;
+export const PURCHASE_ORDER_HEADERS = [
+  'Mã hàng',
+  'Tên hàng',
+  'Đơn vị tính',
+  'Đơn giá',
+  'Giảm giá',
+  'Giảm giá (%)',
+  'Số lượng',
+] as const;
 
 export const STOCK_TAKE_SHEET = 'StockTakeTemplate';
 export const STOCK_TAKE_HEADERS = ['Mã hàng', 'Số lượng'] as const;
@@ -60,14 +68,26 @@ export function purchaseOrderFile(lines: readonly PurchaseLine[]): Promise<Buffe
     m.value += l.quantity * l.unitCost;
     merged.set(l.sku, m);
   }
-  const rows = [...merged].map(([sku, m]) => [sku, m.name ?? null, null, m.qty ? Math.round(m.value / m.qty) : 0, null, null, m.qty]);
+  const rows = [...merged].map(([sku, m]) => [
+    sku,
+    m.name ?? null,
+    null,
+    m.qty ? Math.round(m.value / m.qty) : 0,
+    null,
+    null,
+    m.qty,
+  ]);
   return writeSheet(PURCHASE_ORDER_SHEET, PURCHASE_ORDER_HEADERS, rows);
 }
 
 /** Phiếu kiểm kho: `quantity` is the counted (actual) stock; KiotViet computes the difference itself. */
 export function stockTakeFile(lines: readonly { sku: string; quantity: number }[]): Promise<Buffer> {
   const last = new Map(lines.map((l) => [l.sku, l.quantity]));
-  return writeSheet(STOCK_TAKE_SHEET, STOCK_TAKE_HEADERS, [...last].map(([sku, q]) => [sku, q]));
+  return writeSheet(
+    STOCK_TAKE_SHEET,
+    STOCK_TAKE_HEADERS,
+    [...last].map(([sku, q]) => [sku, q]),
+  );
 }
 
 export interface NewProductRow {
@@ -111,7 +131,9 @@ export function productTemplateFile(rows: readonly NewProductRow[]): Promise<Buf
         ĐVT: null,
         'Mã ĐVT Cơ bản': null,
         'Quy đổi': 1,
-        'Thuộc tính': r.attributes?.length ? r.attributes.map(([n, val]) => `${clean(n)}:${val.replace(/\|/g, ' ')}`).join('|') : null,
+        'Thuộc tính': r.attributes?.length
+          ? r.attributes.map(([n, val]) => `${clean(n)}:${val.replace(/\|/g, ' ')}`).join('|')
+          : null,
         'Mã HH Liên quan': r.parentSku ?? null,
         'Hình ảnh (url1,url2...)': r.imageUrls?.length ? r.imageUrls.join(',') : null,
         'Trọng lượng': r.weightGrams ?? null,

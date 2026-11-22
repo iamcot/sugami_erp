@@ -1,10 +1,17 @@
 import { timingSafeEqual } from 'node:crypto';
-import type { ChannelAdapter, ChannelEvent, ExternalOrder, ExternalProduct, RawRequest } from '@sugami/channels-core';
+import type {
+  ChannelAdapter,
+  ChannelEvent,
+  ExternalOrder,
+  ExternalProduct,
+  RawRequest,
+} from '@sugami/channels-core';
 import type { PancakeClient } from './client.js';
 import { groupVariations, toExternalOrder } from './mapping.js';
 import { Order, Variation } from './schemas.js';
 
-export type PancakeWebhookType = 'orders' | 'products' | 'variations_warehouses' | 'customers' | 'einvoices' | 'auto_call' | 'unknown';
+export type PancakeWebhookType =
+  'orders' | 'products' | 'variations_warehouses' | 'customers' | 'einvoices' | 'auto_call' | 'unknown';
 
 export interface PancakeAdapterOptions {
   /** Value Pancake sends in `webhookHeader` (set in Pancake under webhook_headers). */
@@ -43,14 +50,18 @@ export class PancakeAdapter implements ChannelAdapter {
   async *pullProducts(since?: Date): AsyncIterable<ExternalProduct> {
     const query = since ? { start_time_update: unix(since), end_time_update: unix(new Date()) } : {};
     const variations: Variation[] = [];
-    for await (const raw of this.client.paginate<unknown>('/products/variations', query)) variations.push(Variation.parse(raw));
+    for await (const raw of this.client.paginate<unknown>('/products/variations', query))
+      variations.push(Variation.parse(raw));
     yield* groupVariations(variations);
   }
 
   /** Orders updated since `since` (all orders when omitted). */
   async *pullOrders(since?: Date): AsyncIterable<ExternalOrder> {
-    const query = since ? { updateStatus: 'updated_at', startDateTime: unix(since), endDateTime: unix(new Date()) } : {};
-    for await (const raw of this.client.paginate<unknown>('/orders', query)) yield toExternalOrder(Order.parse(raw));
+    const query = since
+      ? { updateStatus: 'updated_at', startDateTime: unix(since), endDateTime: unix(new Date()) }
+      : {};
+    for await (const raw of this.client.paginate<unknown>('/orders', query))
+      yield toExternalOrder(Order.parse(raw));
   }
 
   verifyWebhook(req: RawRequest): boolean {
@@ -68,7 +79,11 @@ export class PancakeAdapter implements ChannelAdapter {
 }
 
 /** Pancake does not sign webhooks; we check a shared secret header we configure on their side. */
-export function verifyPancakeWebhook(req: Pick<RawRequest, 'headers'>, secret: string | undefined, header = 'x-sugami-secret'): boolean {
+export function verifyPancakeWebhook(
+  req: Pick<RawRequest, 'headers'>,
+  secret: string | undefined,
+  header = 'x-sugami-secret',
+): boolean {
   if (!secret) return false;
   const got = req.headers[header.toLowerCase()];
   const value = Array.isArray(got) ? got[0] : got;
@@ -79,8 +94,16 @@ export function verifyPancakeWebhook(req: Pick<RawRequest, 'headers'>, secret: s
 }
 
 export function webhookType(body: Record<string, unknown>): PancakeWebhookType {
-  const known: PancakeWebhookType[] = ['orders', 'products', 'variations_warehouses', 'customers', 'einvoices', 'auto_call'];
-  if (typeof body.type === 'string' && known.includes(body.type as PancakeWebhookType)) return body.type as PancakeWebhookType;
+  const known: PancakeWebhookType[] = [
+    'orders',
+    'products',
+    'variations_warehouses',
+    'customers',
+    'einvoices',
+    'auto_call',
+  ];
+  if (typeof body.type === 'string' && known.includes(body.type as PancakeWebhookType))
+    return body.type as PancakeWebhookType;
   const obj = (body.data && typeof body.data === 'object' ? body.data : body) as Record<string, unknown>;
   if ('items' in obj && 'status' in obj) return 'orders';
   if ('variation_id' in obj && 'warehouse_id' in obj) return 'variations_warehouses';

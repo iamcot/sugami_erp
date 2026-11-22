@@ -50,7 +50,11 @@ export class DashboardController {
         FROM (SELECT v.price, p.status, COALESCE(SUM(sl.on_hand), 0) AS on_hand
               FROM variants v JOIN products p ON p.id = v.product_id AND p.status <> 'archived'
               LEFT JOIN stock_levels sl ON sl.variant_id = v.id GROUP BY v.id) t`,
-      db.order.findFirst({ where: { source: 'kiotviet_excel' }, orderBy: { createdAt: 'desc' }, select: { createdAt: true, orderedAt: true } }),
+      db.order.findFirst({
+        where: { source: 'kiotviet_excel' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true, orderedAt: true },
+      }),
     ]);
 
     const sum = (since: Date) => {
@@ -75,11 +79,21 @@ export class DashboardController {
       today: sum(today),
       last7: sum(new Date(today.getTime() - 6 * DAY)),
       last30: sum(d30),
-      grossMargin30: { revenue: n(m?.revenue), cost: n(m?.cost), profit: n(m?.revenue) - n(m?.cost), linesWithoutCost: n(m?.missing) },
+      grossMargin30: {
+        revenue: n(m?.revenue),
+        cost: n(m?.cost),
+        profit: n(m?.revenue) - n(m?.cost),
+        linesWithoutCost: n(m?.missing),
+      },
       stock: { value: n(stock[0]?.value), units: n(stock[0]?.units) },
       series,
       todo: { negativeSkus: n(t?.negative), outOfStockActive: n(t?.out_active), zeroPrice: n(t?.zero_price) },
-      lastInvoiceImport: lastImport ? { importedAt: lastImport.createdAt.toISOString(), latestOrderAt: lastImport.orderedAt.toISOString() } : null,
+      lastInvoiceImport: lastImport
+        ? {
+            importedAt: lastImport.createdAt.toISOString(),
+            latestOrderAt: lastImport.orderedAt.toISOString(),
+          }
+        : null,
     };
   }
 }

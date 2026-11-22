@@ -41,7 +41,18 @@ interface InvoiceSummary {
   unknownSkus: string[];
   issues: Issue[];
 }
-type Summary = ProductSummary | InvoiceSummary;
+interface CustomerSummary {
+  kind: 'customers';
+  file: string;
+  dryRun: boolean;
+  rows: number;
+  customers: Counts;
+  withPhone: number;
+  maskedNames: number;
+  linkedToOrders: number;
+  issues: Issue[];
+}
+type Summary = ProductSummary | InvoiceSummary | CustomerSummary;
 type Kind = Summary['kind'];
 
 const KINDS: Record<Kind, { label: string; hint: string; file: string }> = {
@@ -54,6 +65,11 @@ const KINDS: Record<Kind, { label: string; hint: string; file: string }> = {
     label: 'Hóa đơn',
     hint: 'Hóa đơn → Xuất file chi tiết. Tạo đơn hàng, trừ tồn cho đơn sau lần nhập tồn đầu kỳ.',
     file: 'DanhSachChiTietHoaDon_KV….xlsx',
+  },
+  customers: {
+    label: 'Khách hàng',
+    hint: 'Khách hàng → Xuất file. Tạo hồ sơ khách, nối với đơn hàng qua mã khách. Nhập trước hay sau hóa đơn đều được.',
+    file: 'DanhSachKhachHang_KV….xlsx',
   },
 };
 const CHANNEL_LABEL: Record<string, string> = {
@@ -208,7 +224,13 @@ export default function ImportPage() {
             {errors.length > 0 && <Badge tone="danger">{errors.length} lỗi</Badge>}
             {warnings.length > 0 && <Badge tone="warn">{warnings.length} cảnh báo</Badge>}
           </div>
-          {shown.kind === 'products' ? <ProductStats s={shown} /> : <InvoiceStats s={shown} />}
+          {shown.kind === 'products' ? (
+            <ProductStats s={shown} />
+          ) : shown.kind === 'invoices' ? (
+            <InvoiceStats s={shown} />
+          ) : (
+            <CustomerStats s={shown} />
+          )}
 
           {!done && (
             <div className="mt-4 flex gap-2">
@@ -322,6 +344,26 @@ function InvoiceStats({ s }: { s: InvoiceSummary }) {
           </Badge>
         ))}
       </div>
+    </>
+  );
+}
+
+function CustomerStats({ s }: { s: CustomerSummary }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Stat
+          label="Khách hàng"
+          value={`${fmt(s.customers.created)} mới`}
+          hint={`${fmt(s.customers.updated)} cập nhật · ${fmt(s.customers.unchanged)} giữ nguyên`}
+        />
+        <Stat label="Có số điện thoại" value={fmt(s.withPhone)} />
+        <Stat label="Tên bị KiotViet che" value={fmt(s.maskedNames)} hint="Giữ nguyên như file xuất" />
+        <Stat label="Đã nối với đơn" value={fmt(s.linkedToOrders)} />
+      </div>
+      <p className="mt-3 text-xs text-slate-500">
+        Cột Ghi chú không được lưu (với khách sàn đó là tên đăng nhập người mua).
+      </p>
     </>
   );
 }

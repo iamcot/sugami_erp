@@ -38,9 +38,11 @@ export class PushController {
 
   @Post('test')
   async test(@CurrentUser() user: AuthUser) {
-    return this.push.get().notify(
-      { userIds: [user.id] },
-      { title: 'Sugami', body: 'Thông báo đã bật trên thiết bị này.', url: '/', tag: 'test' },
-    );
+    return this.push
+      .get()
+      .notify(
+        { userIds: [user.id] },
+        { title: 'Sugami', body: 'Thông báo đã bật trên thiết bị này.', url: '/', tag: 'test' },
+      );
   }
 }

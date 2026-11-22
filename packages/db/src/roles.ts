@@ -9,7 +9,14 @@ export const DEFAULT_ROLES = [
   {
     code: 'operations',
     name: 'Vận hành / CSKH',
-    permissions: ['catalog.read', 'inventory.read', 'orders.read', 'orders.write', 'customers.write'],
+    permissions: [
+      'catalog.read',
+      'inventory.read',
+      'orders.read',
+      'orders.write',
+      'customers.read',
+      'customers.write',
+    ],
   },
   {
     code: 'content',

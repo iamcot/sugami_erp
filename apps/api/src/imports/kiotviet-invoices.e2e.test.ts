@@ -210,6 +210,36 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet invoice import (MySQL)', ()
     expect(o).toMatchObject({ status: 'cancelled', stockAppliedAt: null });
   });
 
+  it('links an order the Pancake sync created earlier instead of duplicating it', async () => {
+    const channel = await db.channel.findUniqueOrThrow({ where: { code: 'shopee' } });
+    const w = await db.warehouse.findUniqueOrThrow({ where: { code: wh } });
+    await db.order.create({
+      data: {
+        code: `PCX${run}`,
+        externalCode: `${run}9`,
+        channelId: channel.id,
+        warehouseId: w.id,
+        status: 'confirmed',
+        orderedAt: new Date('2026-11-21T13:00:00Z'),
+        total: 100000,
+        source: 'pancake',
+      },
+    });
+    const file = await writeSheet(
+      'S',
+      IH,
+      inv(code('9'), '2026-11-21 20:00:00', 'Hoàn thành', 'Giao thành công', [[A, 1, 100000]]),
+    );
+    const res = await post('invoices', file, 'x.xlsx').expect(200);
+    expect(res.body.orders).toMatchObject({ created: 0, updated: 1 });
+    expect(await db.order.findUniqueOrThrow({ where: { code: `PCX${run}` } })).toMatchObject({
+      kiotvietInvoiceCode: code('9'),
+      status: 'completed',
+    });
+    expect(await db.order.count({ where: { externalCode: `${run}9` } })).toBe(1);
+    expect(await onHand(A)).toBe(10);
+  });
+
   it('rejects the summary invoice file', async () => {
     const summaryFile = await writeSheet(
       'S',

@@ -58,6 +58,7 @@ Quy ước:
 | P1-21 | Báo cáo sức khỏe dữ liệu: SKU trùng/thiếu, thiếu ảnh, tồn âm | P1-11 | – |
 | P1-22 | Deploy production lên iMac, dùng thật 1 tuần (import/export Excel với KiotViet) | P0-13, P1-13 | 👤 Chủ shop xác nhận dữ liệu khớp |
 | P1-23 | PWA cài lên điện thoại + thông báo đẩy (Web Push): đăng ký thiết bị, API gửi theo người/quyền, nút bật/tắt/thử | P1-01 | Thông báo thử tới được điện thoại thật (iOS 16.4+ mở từ màn hình chính) |
+| P1-24 | Quản lý khách hàng: import Excel khách KiotViet, trang danh sách/chi tiết/sửa, nối khách với đơn | P1-12 | Nhập file khách thật, đơn hiện đúng khách, tìm theo tên/SĐT/mã đơn |
 
 ## P2 — Nguồn hàng Taobao/1688 + kho
 

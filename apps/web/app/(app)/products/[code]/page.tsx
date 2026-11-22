@@ -1,10 +1,11 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CloudUpload } from 'lucide-react';
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
-import { Badge, Card, PageHeader } from '@/components/ui';
+import { Badge, Button, Card, PageHeader } from '@/components/ui';
+import { PancakePush } from '@/components/pancake-push';
 import { api } from '@/lib/api';
 
 interface Variant {
@@ -90,6 +91,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ code: 
   const [product, setProduct] = useState<Product | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pancakeOpen, setPancakeOpen] = useState(false);
 
   useEffect(() => {
     api<{ product: Product }>(`/products/${encodeURIComponent(decodeURIComponent(code))}`)
@@ -117,11 +119,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ code: 
         title={product.name}
         description={[product.code, product.category?.name, product.brand?.name].filter(Boolean).join(' · ')}
         actions={
-          <Badge tone={product.status === 'active' ? 'success' : 'neutral'}>
-            {product.status === 'active' ? 'Đang bán' : product.status === 'draft' ? 'Nháp' : 'Lưu trữ'}
-          </Badge>
+          <>
+            <Button variant="secondary" onClick={() => setPancakeOpen((o) => !o)}>
+              <CloudUpload className="size-4" /> Pancake
+            </Button>
+            <Badge tone={product.status === 'active' ? 'success' : 'neutral'}>
+              {product.status === 'active' ? 'Đang bán' : product.status === 'draft' ? 'Nháp' : 'Lưu trữ'}
+            </Badge>
+          </>
         }
       />
+      {pancakeOpen && <PancakePush code={product.code} onClose={() => setPancakeOpen(false)} />}
 
       <Card className="mb-4 overflow-hidden">
         <div className="border-b border-slate-200 px-4 py-2.5 text-sm font-medium dark:border-slate-800">

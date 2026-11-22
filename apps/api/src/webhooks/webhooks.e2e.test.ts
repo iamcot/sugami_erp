@@ -17,7 +17,9 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake webhook inbox (MySQL)', () =
     db = app.get(PrismaService).client;
   });
   afterAll(async () => {
-    await db?.webhookEvent.deleteMany({ where: { provider: 'pancake', body: { path: '$.id', equals: marker } } });
+    await db?.webhookEvent.deleteMany({
+      where: { provider: 'pancake', body: { path: '$.id', equals: marker } },
+    });
     await app?.close();
   });
 
@@ -31,7 +33,9 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake webhook inbox (MySQL)', () =
   it('stores an event once, even when Pancake retries', async () => {
     await post().set('x-sugami-secret', 'hook-secret').expect(200, { ok: true });
     await post().set('x-sugami-secret', 'hook-secret').expect(200, { ok: true, duplicate: true });
-    const rows = await db.webhookEvent.findMany({ where: { provider: 'pancake', body: { path: '$.id', equals: marker } } });
+    const rows = await db.webhookEvent.findMany({
+      where: { provider: 'pancake', body: { path: '$.id', equals: marker } },
+    });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ eventType: 'orders', processedAt: null });
   });

@@ -30,7 +30,13 @@ const CHANNELS = [
 ];
 const channelKey = (code: string) => (code === 'shopee' || code === 'tiktok' ? code : 'other');
 
-const dateFmt = new Intl.DateTimeFormat('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' });
+const dateFmt = new Intl.DateTimeFormat('vi-VN', {
+  weekday: 'long',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: 'Asia/Ho_Chi_Minh',
+});
 const dayLabel = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 const ago = (iso: string) => {
   const days = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
@@ -44,7 +50,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     api<Dashboard>('/dashboard').then(setD, (e: Error) => setError(e.message));
-    api<InventoryResponse>('/inventory?view=negative&sort=stock&dir=asc&pageSize=8').then(setNegative, () => {});
+    api<InventoryResponse>('/inventory?view=negative&sort=stock&dir=asc&pageSize=8').then(
+      setNegative,
+      () => {},
+    );
   }, []);
 
   const kpis = d
@@ -58,7 +67,11 @@ export default function DashboardPage() {
             ? `${Math.round((d.grossMargin30.profit / d.grossMargin30.revenue) * 100)}% doanh thu ${formatVnd(d.grossMargin30.revenue)}`
             : 'chưa có đơn',
         },
-        { label: 'Giá trị tồn kho', value: formatVnd(d.stock.value), sub: `${d.stock.units.toLocaleString('vi-VN')} sản phẩm` },
+        {
+          label: 'Giá trị tồn kho',
+          value: formatVnd(d.stock.value),
+          sub: `${d.stock.units.toLocaleString('vi-VN')} sản phẩm`,
+        },
       ]
     : [];
 
@@ -66,11 +79,28 @@ export default function DashboardPage() {
   const max = Math.max(1, ...totals);
   const todo = d
     ? [
-        { count: d.todo.negativeSkus, label: 'SKU tồn âm, cần kiểm kho', href: '/inventory?view=negative', tone: 'danger' as const },
-        { count: d.todo.outOfStockActive, label: 'SKU đang bán nhưng hết hàng', href: '/inventory?view=out', tone: 'warn' as const },
+        {
+          count: d.todo.negativeSkus,
+          label: 'SKU tồn âm, cần kiểm kho',
+          href: '/inventory?view=negative',
+          tone: 'danger' as const,
+        },
+        {
+          count: d.todo.outOfStockActive,
+          label: 'SKU đang bán nhưng hết hàng',
+          href: '/inventory?view=out',
+          tone: 'warn' as const,
+        },
         { count: d.todo.zeroPrice, label: 'SKU chưa có giá bán', href: '/products', tone: 'warn' as const },
         ...(d.grossMargin30.linesWithoutCost > 0
-          ? [{ count: d.grossMargin30.linesWithoutCost, label: 'dòng đơn 30 ngày chưa có giá vốn', href: '/orders', tone: 'neutral' as const }]
+          ? [
+              {
+                count: d.grossMargin30.linesWithoutCost,
+                label: 'dòng đơn 30 ngày chưa có giá vốn',
+                href: '/orders',
+                tone: 'neutral' as const,
+              },
+            ]
           : []),
       ].filter((t) => t.count > 0)
     : [];
@@ -83,7 +113,10 @@ export default function DashboardPage() {
         <Card className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm">
           <span>
             Hóa đơn KiotViet nhập lần cuối <b>{ago(d.lastInvoiceImport.importedAt)}</b>, đơn mới nhất ngày{' '}
-            {new Date(d.lastInvoiceImport.latestOrderAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}.
+            {new Date(d.lastInvoiceImport.latestOrderAt).toLocaleDateString('vi-VN', {
+              timeZone: 'Asia/Ho_Chi_Minh',
+            })}
+            .
           </span>
           <Link href="/data/import" className="font-medium text-brand-600 hover:underline">
             Nhập file mới
@@ -115,7 +148,8 @@ export default function DashboardPage() {
           <div className="mt-6 flex h-48 items-end gap-1 sm:gap-2">
             {d?.series.map((s, i) => {
               const parts: Record<string, number> = {};
-              for (const [code, v] of Object.entries(s.byChannel)) parts[channelKey(code)] = (parts[channelKey(code)] ?? 0) + v;
+              for (const [code, v] of Object.entries(s.byChannel))
+                parts[channelKey(code)] = (parts[channelKey(code)] ?? 0) + v;
               return (
                 <div key={s.date} className="flex flex-1 flex-col items-center gap-2">
                   <div
@@ -124,10 +158,16 @@ export default function DashboardPage() {
                     title={`${dayLabel(s.date)}: ${formatVnd(totals[i] ?? 0)} · ${s.orders} đơn`}
                   >
                     {CHANNELS.map((c) => (
-                      <div key={c.code} className={c.className} style={{ height: `${((parts[c.code] ?? 0) / max) * 100}%` }} />
+                      <div
+                        key={c.code}
+                        className={c.className}
+                        style={{ height: `${((parts[c.code] ?? 0) / max) * 100}%` }}
+                      />
                     ))}
                   </div>
-                  <span className={`text-[10px] text-slate-500 sm:text-xs ${i % 2 ? 'hidden sm:block' : ''}`}>{dayLabel(s.date)}</span>
+                  <span className={`text-[10px] text-slate-500 sm:text-xs ${i % 2 ? 'hidden sm:block' : ''}`}>
+                    {dayLabel(s.date)}
+                  </span>
                 </div>
               );
             })}
@@ -136,7 +176,9 @@ export default function DashboardPage() {
 
         <Card className="p-4">
           <h2 className="font-medium">Việc cần làm</h2>
-          {d && todo.length === 0 && <p className="mt-3 text-sm text-slate-500">Không có việc gì tồn đọng.</p>}
+          {d && todo.length === 0 && (
+            <p className="mt-3 text-sm text-slate-500">Không có việc gì tồn đọng.</p>
+          )}
           <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
             {todo.map((t) => (
               <li key={t.label}>
@@ -172,13 +214,20 @@ export default function DashboardPage() {
                 {negative.data.map((r) => (
                   <tr key={r.id}>
                     <td className="py-2">
-                      <Link href={`/products/${encodeURIComponent(r.productCode)}`} className="line-clamp-1 hover:text-brand-600">
+                      <Link
+                        href={`/products/${encodeURIComponent(r.productCode)}`}
+                        className="line-clamp-1 hover:text-brand-600"
+                      >
                         {r.productName}
-                        {r.optionValues?.length ? <span className="text-slate-500"> · {r.optionValues.join(' / ')}</span> : null}
+                        {r.optionValues?.length ? (
+                          <span className="text-slate-500"> · {r.optionValues.join(' / ')}</span>
+                        ) : null}
                       </Link>
                     </td>
                     <td className="hidden py-2 font-mono text-xs sm:table-cell">{r.sku}</td>
-                    <td className="py-2 text-right font-medium tabular-nums text-rose-600">{r.onHand.toLocaleString('vi-VN')}</td>
+                    <td className="py-2 text-right font-medium tabular-nums text-rose-600">
+                      {r.onHand.toLocaleString('vi-VN')}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -22,5 +22,7 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   // Everything except the API proxy, Next internals, static files and the PWA files.
-  matcher: ['/((?!api/|_next/|favicon.ico|sw.js|manifest.webmanifest|icons/|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt)$).*)'],
+  matcher: [
+    '/((?!api/|_next/|favicon.ico|sw.js|manifest.webmanifest|icons/|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt)$).*)',
+  ],
 };
