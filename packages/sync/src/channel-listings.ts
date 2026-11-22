@@ -34,6 +34,10 @@ export interface ListingSyncSummary {
   unmatched: number;
   /** Unmatched seller SKUs (sample). */
   unmatchedSkus: string[];
+  /** Link values Pancake reported on listing options that matched no Sugami SKU (sample). */
+  unmatchedLinks: string[];
+  /** How many options carry a Pancake link at all. */
+  withLink: number;
 }
 
 const clean = (v: string | null | undefined) => v?.trim() || undefined;
@@ -56,6 +60,8 @@ export async function syncChannelListings(
     matched: { link: 0, sku: 0, barcode: 0, orders: 0 },
     unmatched: 0,
     unmatchedSkus: [],
+    unmatchedLinks: [],
+    withLink: 0,
   };
   const sellerSku = (l: ListingInput, v: ListingVariationInput) =>
     clean(v.sku) ?? (l.variations.length === 1 ? clean(l.sku) : undefined);
@@ -111,6 +117,11 @@ export async function syncChannelListings(
     }
     for (const v of l.variations) {
       const m = match(l, v);
+      const linkVal = clean(v.linkedCustomId);
+      if (linkVal) {
+        summary.withLink++;
+        if (!m && summary.unmatchedLinks.length < 8) summary.unmatchedLinks.push(linkVal);
+      }
       if (m) summary.matched[m.by]++;
       else {
         summary.unmatched++;
@@ -145,7 +156,7 @@ export async function syncPancakeVariantRefs(
   db: PrismaClient,
   items: { externalId: string; sku: string }[],
   opts: { dryRun: boolean },
-): Promise<{ onPancake: number; notInSugami: number; removed: number }> {
+): Promise<{ onPancake: number; notInSugami: number; removed: number; sampleNotInSugami: string[] }> {
   const skus = [...new Set(items.map((i) => i.sku).filter(Boolean))];
   const bySku = new Map<string, string>();
   for (let i = 0; i < skus.length; i += 400) {
@@ -157,10 +168,12 @@ export async function syncPancakeVariantRefs(
   }
   const keep: string[] = [];
   let notInSugami = 0;
+  const sampleNotInSugami: string[] = [];
   for (const it of items) {
     const variantId = bySku.get(it.sku);
     if (!variantId) {
       notInSugami++;
+      if (sampleNotInSugami.length < 8) sampleNotInSugami.push(it.sku);
       continue;
     }
     keep.push(it.externalId);
@@ -187,5 +200,5 @@ export async function syncPancakeVariantRefs(
   const removed = opts.dryRun
     ? await db.externalRef.count({ where: stale })
     : (await db.externalRef.deleteMany({ where: stale })).count;
-  return { onPancake: keep.length, notInSugami, removed };
+  return { onPancake: keep.length, notInSugami, removed, sampleNotInSugami };
 }
