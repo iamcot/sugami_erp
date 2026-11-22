@@ -254,7 +254,9 @@ export class ProductsController {
         price: true,
         quantity: true,
         variantId: true,
-        listing: { select: { id: true, name: true, shopKey: true, imageUrl: true } },
+        listing: {
+          select: { id: true, name: true, shopKey: true, imageUrl: true, marketplaceId: true },
+        },
       },
     });
     const stored = await this.urlsFor([...new Set(media.map((m) => m.asset.storageKey))]);
@@ -277,6 +279,7 @@ export class ProductsController {
           id: l.listing.id,
           name: l.listing.name,
           shop: l.listing.shopKey,
+          platform: PLATFORM_OF[l.listing.marketplaceId ?? ''] ?? null,
           imageUrl: l.listing.imageUrl,
           variantId: l.variantId,
           option: l.name,

@@ -1,5 +1,6 @@
 'use client';
 
+import { ShopeeIcon, TikTokIcon } from '@/components/platform-icons';
 import { formatVnd } from '@sugami/shared';
 import { CloudUpload } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -35,6 +36,7 @@ interface Product {
     id: string;
     name: string;
     shop: string;
+    platform: 'shopee' | 'tiktok' | null;
     imageUrl: string | null;
     variantId: string;
     option: string | null;
@@ -252,36 +254,50 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
             Đang đăng trên sàn ({new Set(product.listings.map((l) => l.id)).size} tin)
           </div>
           <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
-            {product.listings.map((l) => (
-              <li key={`${l.id}-${l.variantId}-${l.option}`}>
-                <button
-                  onClick={() => open('listing', l.id)}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                >
-                  {l.imageUrl && (
-                    <img
-                      src={l.imageUrl}
-                      alt=""
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      className="size-9 shrink-0 rounded border border-slate-200 object-cover dark:border-slate-800"
-                    />
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="line-clamp-1">{l.name}</span>
-                    <span className="text-xs text-slate-500">
-                      {[l.shop, l.option, l.marketplaceSku].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-right tabular-nums">
-                    {l.price === null ? '–' : formatVnd(l.price)}
-                    {l.quantity !== null && (
-                      <span className="block text-xs text-slate-500">tồn sàn {l.quantity}</span>
+            {[...product.listings]
+              .sort((a, b) => (a.platform ?? '').localeCompare(b.platform ?? ''))
+              .map((l) => (
+                <li key={`${l.id}-${l.variantId}-${l.option}`}>
+                  <button
+                    onClick={() => open('listing', l.id)}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  >
+                    {l.imageUrl && (
+                      <img
+                        src={l.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        className="size-9 shrink-0 rounded border border-slate-200 object-cover dark:border-slate-800"
+                      />
                     )}
-                  </span>
-                </button>
-              </li>
-            ))}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        {l.platform === 'shopee' && <ShopeeIcon className="size-4 shrink-0" />}
+                        {l.platform === 'tiktok' && <TikTokIcon className="size-4 shrink-0" />}
+                        <span className="line-clamp-1">{l.name}</span>
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {[
+                          l.platform === 'shopee' ? 'Shopee' : l.platform === 'tiktok' ? 'TikTok' : null,
+                          l.option,
+                          l.marketplaceSku,
+                          product.variants.find((v) => v.id === l.variantId)?.sku &&
+                            `→ ${product.variants.find((v) => v.id === l.variantId)?.sku}`,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right tabular-nums">
+                      {l.price === null ? '–' : formatVnd(l.price)}
+                      {l.quantity !== null && (
+                        <span className="block text-xs text-slate-500">tồn sàn {l.quantity}</span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              ))}
           </ul>
         </Card>
       )}
