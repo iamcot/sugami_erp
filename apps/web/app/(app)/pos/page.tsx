@@ -69,6 +69,14 @@ interface CustomerFull {
   ward: string | null;
   kvDebt: number;
 }
+interface HistoryOrder {
+  code: string;
+  channel: { name: string };
+  status: string;
+  total: number;
+  orderedAt: string;
+  items: { sku: string; name: string; qty: number }[];
+}
 interface RecentOrder {
   code: string;
   status: string;
@@ -147,11 +155,16 @@ function CustomerModal({
   const [c, setC] = useState<CustomerFull | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [stats, setStats] = useState<{ orders: number; spent: number } | null>(null);
+  const [history, setHistory] = useState<HistoryOrder[]>([]);
+  const [tab, setTab] = useState<'info' | 'history'>('info');
   useEffect(() => {
-    api<{ customer: CustomerFull; stats: { orders: number; spent: number } }>(`/customers/${id}`)
+    api<{ customer: CustomerFull; stats: { orders: number; spent: number }; orders: HistoryOrder[] }>(
+      `/customers/${id}`,
+    )
       .then((r) => {
         setC(r.customer);
         setStats(r.stats);
+        setHistory(r.orders);
       })
       .catch((e: Error) => setErr(e.message));
   }, [id]);
@@ -189,8 +202,60 @@ function CustomerModal({
             <b>{fmt(stats.spent)}</b>
           </p>
         )}
+        <div className="mt-3 flex gap-6 border-b border-slate-200 text-sm dark:border-slate-700">
+          {(
+            [
+              ['info', 'Thông tin'],
+              ['history', 'Lịch sử đặt hàng'],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              className={`-mb-px border-b-2 px-1 pb-2 ${tab === k ? 'border-brand-600 font-medium text-brand-700' : 'border-transparent text-slate-500'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         {err && <p className="mt-2 text-sm text-rose-600">{err}</p>}
-        {c && (
+        {tab === 'history' && (
+          <div className="mt-3 max-h-80 overflow-auto">
+            {history.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">Chưa có đơn hàng nào.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs text-slate-500">
+                  <tr>
+                    <th className="py-1.5 font-medium">Mã đơn</th>
+                    <th className="py-1.5 font-medium">Thời gian</th>
+                    <th className="py-1.5 font-medium">Sản phẩm</th>
+                    <th className="py-1.5 text-right font-medium">Tổng tiền</th>
+                    <th className="py-1.5 pl-3 font-medium">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((o) => (
+                    <tr key={o.code} className="border-t border-slate-100 align-top dark:border-slate-800">
+                      <td className="py-1.5 font-medium">{o.code}</td>
+                      <td className="whitespace-nowrap py-1.5">{formatRelativeDateTime(o.orderedAt)}</td>
+                      <td className="py-1.5 text-xs text-slate-600">
+                        {o.items
+                          .slice(0, 3)
+                          .map((it) => `${it.qty} × ${it.name}`)
+                          .join('; ')}
+                        {o.items.length > 3 ? ` … (+${o.items.length - 3})` : ''}
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums">{fmt(o.total)}</td>
+                      <td className="py-1.5 pl-3">{STATUS_LABEL[o.status] ?? o.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+        {tab === 'info' && c && (
           <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
             <label className="text-xs text-slate-500">
               Mã khách hàng
@@ -945,7 +1010,8 @@ export default function PosPage() {
         </>
       )}
 
-      {/* recent orders slide out from the left */}
+      {/* recent orders slide out from the left; a click outside closes them */}
+      {recentOpen && <div className="absolute inset-0 z-30" onClick={() => setRecentOpen(false)} />}
       <div
         className={`absolute inset-y-0 left-0 z-40 w-80 transform bg-white shadow-xl transition-transform duration-200 dark:bg-slate-900 ${recentOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
@@ -1141,7 +1207,11 @@ export default function PosPage() {
           onClose={() => setCustomerOpen(null)}
           onSaved={(c) => {
             setCinfo((cur) => ({ ...cur, [c.id]: c }));
-            patch({ customer: { id: c.id, name: c.name, phone: c.phone } });
+            // saved details flow into the order: the buyer, and the receiver of a delivery
+            patch({
+              customer: { id: c.id, name: c.name, phone: c.phone },
+              ...(draft.mode === 'delivery' ? { receiver: receiverOf(c) } : {}),
+            });
           }}
         />
       )}
