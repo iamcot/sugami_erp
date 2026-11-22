@@ -2,7 +2,7 @@
 
 Không dùng `pnpm dev` để chạy hằng ngày: dev chậm, tốn máy và không tự bật lại khi iMac khởi động. Chạy thật dùng bản build + **pm2** (giữ 3 tiến trình `sugami-api`, `sugami-web`, `sugami-worker`, tự bật lại khi lỗi hoặc khi mở máy).
 
-Điều kiện: MySQL native đang chạy, file `.env` đã điền đủ (xem `.env.example`), Docker Desktop mở cùng máy (cho Redis).
+Điều kiện: MySQL native đang chạy, file `.env` đã điền đủ (xem `.env.example`), Docker Desktop đang mở (cho Redis).
 
 ## Cài một lần
 
@@ -14,7 +14,17 @@ pm2 startup                # in ra 1 lệnh sudo, copy chạy đúng lệnh đó
 pm2 save
 ```
 
-Để Docker Desktop tự mở khi đăng nhập: Docker Desktop > Settings > General > "Start Docker Desktop when you sign in". Và iMac nên tự đăng nhập + không ngủ (System Settings > Energy).
+### Mở máy là tự chạy
+
+Docker Desktop và pm2 (chạy theo tài khoản người dùng) chỉ bật **sau khi đăng nhập**, nên:
+
+1. System Settings > Users & Groups > bật **Automatically log in as** cho tài khoản chạy Sugami (cần tắt FileVault).
+2. Docker Desktop > Settings > General > bật "Start Docker Desktop when you sign in".
+3. System Settings > Energy: không cho ngủ, và bật "Start up automatically after a power failure".
+
+Lúc mới mở máy, Redis (Docker) lên chậm hơn API/worker nên chúng có thể lỗi vài lần đầu: pm2 tự thử lại, giãn dần, khoảng một hai phút là ổn. MySQL native tự chạy từ lúc khởi động.
+
+Nếu không muốn bật tự đăng nhập: chạy Redis native (`brew install redis && brew services start redis`, bỏ Docker) thì Redis và MySQL lên lúc khởi động. Nhưng pm2 vẫn cần đăng nhập, trừ khi chuyển sang dịch vụ hệ thống (phức tạp hơn, chưa cần).
 
 ## Hằng ngày
 

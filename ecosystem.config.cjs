@@ -8,7 +8,8 @@ const node = (name, dir, extra = {}) => ({
   node_args: `--env-file=${root}/.env`,
   env: { NODE_ENV: 'production' },
   autorestart: true,
-  restart_delay: 3000,
+  // chưa có MySQL/Redis lúc mới mở máy thì tự thử lại, giãn dần tới 15 giây
+  exp_backoff_restart_delay: 500,
   max_memory_restart: '700M',
   ...extra,
 });
@@ -24,7 +25,7 @@ module.exports = {
       args: 'start --port 3000',
       env: { NODE_ENV: 'production' },
       autorestart: true,
-      restart_delay: 3000,
+      exp_backoff_restart_delay: 500,
       max_memory_restart: '700M',
     },
   ],
