@@ -2,6 +2,8 @@
 
 > Ghi chú độ tin cậy: thông tin dưới đây tổng hợp từ tài liệu Public API công khai của KiotViet, SDK cộng đồng và các tích hợp mã nguồn mở. Những mục đánh dấu **(cần xác minh)** phải được kiểm tra trên cửa hàng KiotViet thật ở Giai đoạn 0 trước khi viết code đồng bộ.
 
+> Bối cảnh: shop chỉ có vài trăm SKU và dưới 10 đơn/ngày, nên hạn mức request không phải vấn đề. KiotViet là **giải pháp chuyển tiếp**; dài hạn Sugami kết nối thẳng Shopee/TikTok và thay KiotViet (xem [07](07-lo-trinh.md), GĐ5).
+
 ## 2.1 Xác thực
 
 - Lấy `client_id` và `client_secret` trong KiotViet: **Thiết lập cửa hàng → Thiết lập kết nối API**.
@@ -68,15 +70,15 @@ KiotViet có sẵn tính năng kết nối sàn TMĐT trong giao diện (không 
 
 ## 2.6 Nguồn sự thật (source of truth)
 
-| Dữ liệu | Giai đoạn 1–2 | Giai đoạn 3+ (tùy chọn) |
+| Dữ liệu | GĐ1–4 (còn KiotViet) | GĐ5+ (sau khi thay KiotViet) |
 |---------|---------------|-------------------------|
-| Mã hàng, tên, giá bán, biến thể cơ bản | KiotViet (Sugami đọc, có thể tạo mới đẩy sang) | Sugami là master, đẩy sang KiotViet |
+| Mã hàng, tên, giá bán, biến thể cơ bản | KiotViet (Sugami đọc, có thể tạo mới đẩy sang) | Sugami, đẩy thẳng lên sàn |
 | Ảnh, video, mô tả theo kênh, thông số, SEO | **Sugami** | Sugami, đẩy thẳng lên sàn |
-| Tồn kho số lượng | **KiotViet** (Sugami mirror + sổ kho đối chiếu) | Sugami (nếu chuyển kho vật lý sang Sugami hoàn toàn) |
+| Tồn kho số lượng | **KiotViet** (Sugami giữ sổ kho song song) | **Sugami**, đẩy tồn thẳng lên sàn |
 | Giá vốn, lô nhập, hạn dùng | Sugami tính từ phiếu nhập | Sugami |
 | Nhà cung cấp, báo giá, đặt hàng NCC, công nợ | **Sugami** (đẩy phiếu nhập hoàn tất sang KiotViet) | Sugami |
-| Đơn hàng | KiotViet (Sugami mirror, bổ sung trạng thái xử lý nội bộ) | Sugami nhận trực tiếp từ sàn |
-| Khách hàng | KiotViet | KiotViet/Sugami |
+| Đơn hàng | KiotViet (Sugami mirror, bổ sung trạng thái xử lý nội bộ) | **Sugami** nhận trực tiếp từ sàn |
+| Khách hàng | KiotViet | Sugami |
 
 ## 2.7 Chiến lược đồng bộ
 
@@ -95,7 +97,7 @@ KiotViet có sẵn tính năng kết nối sàn TMĐT trong giao diện (không 
 | API thay đổi hoặc tài liệu không khớp | Giai đoạn 0 viết "contract test" chạy với store thật; adapter cô lập mọi chi tiết KiotViet |
 | Hết hạn mức 5.000/giờ khi dữ liệu lớn | Đồng bộ tăng dần, webhook, cache, theo dõi request đã dùng |
 | Lệch tồn giữa Sugami và KiotViet | KiotViet là master tồn ở giai đoạn đầu; mọi điều chỉnh từ Sugami đi bằng phiếu sang KiotViet; reconcile đêm |
-| Phụ thuộc gói KiotViet (gói có API/liên kết sàn) | Xác nhận gói đang dùng; thiết kế adapter để có thể kết nối sàn trực tiếp sau này |
+| Phụ thuộc gói KiotViet, chi phí tăng | Sổ kho riêng từ đầu, adapter kênh, lộ trình thay KiotViet ở GĐ5 |
 | Không có dữ liệu phí sàn | Nhập file đối soát Shopee/TikTok, sau đó dùng API sàn |
 
 ## 2.9 Nguồn tham khảo

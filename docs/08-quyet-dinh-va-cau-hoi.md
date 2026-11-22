@@ -1,36 +1,39 @@
-# 8. Quyết định đã đề xuất & câu hỏi mở
+# 8. Quyết định & câu hỏi mở
 
-## 8.1 Quyết định đề xuất (có thể thay đổi nếu chủ shop không đồng ý)
+## 8.1 Thông tin chủ shop đã xác nhận (22/11/2026)
+
+| Câu hỏi | Trả lời | Ảnh hưởng tới kế hoạch |
+|---------|---------|------------------------|
+| Quy mô | Vài trăm SKU, dưới 10 đơn/ngày | Hạn mức API KiotViet không còn là rủi ro; chạy trên iMac của shop là đủ; bỏ pick list gom đơn, kanban đơn phức tạp |
+| Gói KiotViet | Đã có API và đã kết nối sàn | Làm được GĐ1 ngay |
+| Ngành hàng | Đồ chơi | Thuộc tính: độ tuổi, chất liệu, pin, kích thước, chứng nhận/CR (hợp quy); cảnh báo an toàn trong content; không cần lô/hạn dùng |
+| Nguồn hàng | Taobao/1688 qua đơn vị vận chuyển trung gian | Module sourcing là trọng tâm: CNY, tỷ giá, kiện hàng, phí theo kg/m³, landed cost |
+| Server | iMac bật cả ngày, Docker, MySQL | Docker Compose trên iMac, MySQL 8 thay PostgreSQL, Cloudflare Tunnel cho webhook, sao lưu ra ngoài |
+| Dài hạn | Thay KiotViet khi có API sàn (chi phí app tăng) | Sugami giữ sổ kho đầy đủ từ đầu; thêm GĐ5 "Thay KiotViet"; đăng ký app sàn ngay GĐ0 |
+
+## 8.2 Quyết định
 
 | # | Quyết định | Lý do |
 |---|-----------|-------|
-| D1 | Sugami là lớp điều hành **trên** KiotViet, không thay KiotViet | KiotViet đã liên kết sàn và POS ổn định; giảm rủi ro, ra mắt nhanh |
-| D2 | KiotViet là master **tồn kho và đơn hàng** ở GĐ1–3; Sugami là master **content, media, nguồn hàng, giá vốn** | Tránh hai hệ thống cùng ghi tồn, gây lệch trên sàn |
-| D3 | Mọi thay đổi tồn từ Sugami ghi sang KiotViet bằng **phiếu** (nhập, điều chỉnh, chuyển), không sửa số tồn trực tiếp | Có chứng từ, truy vết được, khớp sổ kho |
-| D4 | **SKU = mã hàng KiotViet = SKU người bán trên sàn** | Cách KiotViet tự liên kết sàn; một khóa xuyên suốt |
-| D5 | TypeScript monorepo: Next.js + NestJS + PostgreSQL + Redis/BullMQ + R2 | Một ngôn ngữ, hệ sinh thái lớn, dễ tuyển người |
-| D6 | Modular monolith, 1 VPS + Docker Compose | Đủ cho quy mô shop, chi phí thấp; tách service khi thật sự cần |
-| D7 | Kết nối **TikTok Shop trực tiếp** ở GĐ4 cho content/listing/phí sàn; tồn vẫn đi qua KiotViet | Public API KiotViet không quản lý listing sàn |
-| D8 | Web app responsive + PWA cho kho, chưa làm app native | Một code base; camera quét mã trên trình duyệt đã đủ tốt |
+| D1 | Giai đoạn đầu Sugami chạy **trên** KiotViet; dài hạn **thay thế** KiotViet | Ra mắt nhanh nhờ liên kết sàn sẵn có, nhưng không bị khóa vào KiotViet |
+| D2 | Sugami **tự giữ sổ kho** từ ngày đầu, dù KiotViet đang là master tồn | Chuyển master không mất lịch sử, giá vốn |
+| D3 | KiotViet chỉ là một adapter kênh như Shopee/TikTok | Gỡ KiotViet không đụng lõi |
+| D4 | Không xây POS đầy đủ, chỉ tạo đơn thủ công | Đơn ít, chủ yếu bán online |
+| D5 | **SKU = mã hàng KiotViet = SKU người bán trên sàn** | Khớp liên kết sàn hiện tại và dễ chuyển đổi sau |
+| D6 | Mỗi thời điểm chỉ **một** hệ thống đẩy tồn lên sàn | Tránh bán âm; khi Sugami bật đẩy tồn thì tắt của KiotViet cùng lúc |
+| D7 | TypeScript monorepo: Next.js + NestJS + **MySQL 8** + Redis/BullMQ + MinIO, chạy bằng **Docker trên iMac** của shop, ra internet qua Cloudflare Tunnel | Chủ shop chọn; không tốn tiền server; chuyển lên VPS sau dễ |
+| D8 | Web app + PWA cho kho, chưa làm app native | Đủ cho quy mô hiện tại |
 
-## 8.2 Câu hỏi mở cho chủ shop
+## 8.3 Câu hỏi còn mở
 
-1. **Quy mô**: khoảng bao nhiêu SKU (tính cả biến thể), bao nhiêu đơn/ngày, bao nhiêu kho/chi nhánh, bao nhiêu người dùng?
-2. **Gói KiotViet** đang dùng có Public API và kết nối sàn chưa? Đã liên kết Shopee trong KiotViet chưa?
-3. **SKU hiện tại** giữa KiotViet và Shopee đã khớp nhau chưa, hay cần một đợt chuẩn hóa?
-4. **Ngành hàng** là gì (thời trang, mỹ phẩm, đồ gia dụng...)? Có cần quản lý lô/hạn dùng, serial/IMEI không?
-5. **Nguồn hàng** chủ yếu từ đâu (1688/Taobao qua đơn vị order, xưởng, đại lý trong nước)? Có cần tính tiền tệ CNY và phí vận chuyển TQ–VN không?
-6. Shop có muốn sau này **bỏ KiotViet** và để Sugami làm master toàn bộ không, hay giữ KiotViet lâu dài?
-7. Các **kênh bán khác** cụ thể: Facebook, Zalo, website, Lazada, Tiki, cửa hàng offline?
-8. **Content**: ai làm, quy trình hiện tại ra sao? Có muốn dùng AI viết mô tả/caption không?
-9. **Hosting**: tự thuê VPS hay muốn dùng cloud (AWS/GCP), có ngân sách hàng tháng dự kiến?
-10. **Đội phát triển**: ai sẽ code (tự làm, thuê ngoài, hay để Claude làm từng phần qua PR)? Điều này ảnh hưởng tới thời lượng các giai đoạn.
-11. Cần **đăng nhập nhiều shop** (nhiều gian hàng KiotViet) trong cùng hệ thống không, hay chỉ một shop?
+1. Đơn vị vận chuyển trung gian có **API hoặc file Excel** tra cứu kiện hàng không? Họ tính phí theo kg, theo m³, hay lấy số lớn hơn? Có phí mua hộ (% giá trị) không?
+2. Bạn đặt hàng trực tiếp trên Taobao/1688 rồi gửi về kho trung gian, hay đưa link để họ mua hộ?
+3. Ngoài Shopee và TikTok Shop, hiện có bán qua Facebook/Zalo hay cửa hàng không?
+4. Shop đăng ký dạng hộ kinh doanh hay công ty? (Ảnh hưởng điều kiện đăng ký app Shopee Open Platform/TikTok Partner.)
+5. Shop đã có **tên miền** chưa (cần cho Cloudflare Tunnel và webhook)? iMac là Intel hay Apple Silicon, RAM bao nhiêu?
+6. Ai làm phần code: để Claude làm từng giai đoạn qua PR và bạn duyệt, hay có dev khác?
 
-## 8.3 Việc cần xác minh kỹ thuật (GĐ0)
+## 8.4 Việc cần xác minh kỹ thuật (GĐ0)
 
-- Tên sự kiện webhook Retail, header chữ ký, cách băm body.
-- Đường dẫn chính xác: tồn theo chi nhánh, bảng giá, chuyển hàng, trả hàng, kênh bán.
-- Đơn sàn trong KiotViet: kiểu bản ghi, trường kênh bán, mã đơn sàn, phí.
-- Giới hạn cho request ghi; thời hạn token thực tế.
-- Tạo phiếu nhập/điều chỉnh qua API có tự cập nhật tồn lên sàn không, độ trễ bao lâu.
+- KiotViet: tên sự kiện webhook Retail, header chữ ký, cách băm body; đơn sàn là order hay invoice, có mã đơn sàn/phí không; tạo phiếu nhập qua API có tự đẩy tồn lên sàn không.
+- Shopee Open Platform và TikTok Shop Partner: loại app cho hệ thống nội bộ người bán, điều kiện, thời gian duyệt, giới hạn API.

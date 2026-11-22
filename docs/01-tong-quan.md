@@ -13,7 +13,7 @@ KiotViet đã giải quyết tốt phần bán hàng, tồn kho cơ bản và li
 
 ## 1.2 Mục tiêu
 
-Sugami ERP là "lớp điều hành" nằm trên KiotViet:
+Sugami ERP ban đầu là "lớp điều hành" nằm trên KiotViet, sau đó trở thành hệ thống chính thay KiotViet:
 
 1. **Một nơi duy nhất** cho dữ liệu sản phẩm đầy đủ: SKU, biến thể, ảnh, video, mô tả theo từng kênh, thông số, nguồn hàng.
 2. **Xuất nhập tồn chính xác** theo kho/chi nhánh, có sổ kho (ledger) truy vết từng biến động, giá vốn bình quân hoặc theo lô.
@@ -23,7 +23,13 @@ Sugami ERP là "lớp điều hành" nằm trên KiotViet:
 6. **Báo cáo** lãi gộp theo SKU/kênh/thời gian, cảnh báo hết hàng, hàng chậm bán.
 7. **Giao diện** trực quan, đơn giản, hiện đại, dùng tốt trên cả máy tính và điện thoại (kho dùng điện thoại quét mã).
 
-## 1.3 Người dùng
+## 1.3 Bối cảnh shop (đã xác nhận)
+
+- Ngành đồ chơi, vài trăm SKU, dưới 10 đơn/ngày, bán chủ yếu qua Shopee và TikTok Shop.
+- Nhập hàng từ Taobao/1688 qua một đơn vị vận chuyển trung gian.
+- Đang dùng KiotViet (đã có API và liên kết sàn). Mục tiêu dài hạn: **thay KiotViet** bằng Sugami khi đã kết nối được API sàn trực tiếp, để cắt chi phí phần mềm.
+
+## 1.4 Người dùng
 
 | Vai trò | Việc chính |
 |---------|-----------|
@@ -33,18 +39,18 @@ Sugami ERP là "lớp điều hành" nằm trên KiotViet:
 | Nhân viên content | Quản lý ảnh/video, viết mô tả, chuẩn bị listing cho sàn |
 | Nhân viên mua hàng | Làm việc với NCC, đặt hàng, theo dõi hàng về |
 
-## 1.4 Nguyên tắc thiết kế
+## 1.5 Nguyên tắc thiết kế
 
-- **Không làm lại những gì KiotViet đã làm tốt.** Giai đoạn đầu KiotViet vẫn là nơi bán hàng và nơi liên kết sàn; Sugami đọc và bổ sung.
+- **Dùng KiotViet làm bàn đạp, không phụ thuộc lâu dài.** Giai đoạn đầu KiotViet vẫn là nơi liên kết sàn; Sugami đọc, bổ sung và tự giữ sổ kho để sau này thay thế KiotViet.
 - **Nguồn sự thật rõ ràng cho từng loại dữ liệu** (xem mục 2.6 trong [02](02-kiotviet-api.md)). Không để hai hệ thống cùng ghi một trường.
 - **Mọi biến động kho đi qua sổ kho** (append-only), không sửa số tồn trực tiếp.
 - **Đồng bộ chịu lỗi**: webhook + quét định kỳ (reconcile) + idempotency, không tin webhook 100%.
 - **Thiết kế adapter theo kênh** để thêm TikTok Shop, Shopee Open Platform trực tiếp, Lazada... mà không đổi lõi.
 - **Đơn giản trước**: mỗi màn hình phục vụ một việc, ít bước nhất có thể.
 
-## 1.5 Ngoài phạm vi (ít nhất trong năm đầu)
+## 1.6 Ngoài phạm vi (ít nhất trong năm đầu)
 
 - Kế toán đầy đủ (sổ cái, báo cáo thuế). Chỉ làm công nợ NCC, thu chi đơn giản và xuất dữ liệu cho kế toán.
 - Hóa đơn điện tử (dùng của KiotViet hoặc nhà cung cấp HĐĐT).
-- POS bán tại quầy (dùng KiotViet).
+- POS bán tại quầy đầy đủ (đơn ít, chỉ cần tạo đơn thủ công).
 - Quản lý nhân sự, chấm công, lương.

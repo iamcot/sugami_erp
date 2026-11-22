@@ -27,9 +27,12 @@ Mỗi module ghi: mục đích, chức năng chính, giai đoạn (GĐ) dự ki�
 - **Thẻ kho** từng SKU: mọi biến động theo thời gian, lọc theo loại.
 - **Báo cáo xuất nhập tồn** theo kỳ: tồn đầu, nhập, xuất, tồn cuối, giá trị.
 - **Cảnh báo**: dưới mức tối thiểu, đề xuất số lượng đặt dựa trên tốc độ bán 30 ngày và lead time NCC.
-- Lô/hạn dùng (tùy chọn theo ngành hàng).
+- Không cần lô/hạn dùng cho đồ chơi; giữ thiết kế bảng `lot` để bật sau nếu cần.
 
-## M4. Nguồn hàng (Sourcing) — GĐ2
+## M4. Nguồn hàng (Sourcing) — GĐ2 (trọng tâm vì shop nhập Taobao/1688 qua trung gian)
+
+- **Kiện hàng qua trung gian**: nhập mã vận đơn TQ, theo dõi trạng thái kiện (đã gửi → kho TQ → đang về → đã về VN), cân nặng/khối, phí; nhập từ file Excel của đơn vị trung gian nếu họ không có API.
+- Phân bổ phí kiện về từng SKU theo cân nặng hoặc giá trị.
 
 - Danh bạ NCC: nguồn (1688, Taobao, xưởng, đại lý trong nước), liên hệ, điều khoản, thời gian giao, đánh giá.
 - Liên kết SKU ↔ NCC: link sản phẩm gốc, mã NCC, MOQ, giá lần cuối, lịch sử giá.
@@ -43,13 +46,13 @@ Mỗi module ghi: mục đích, chức năng chính, giai đoạn (GĐ) dự ki�
 
 - Danh sách đơn hợp nhất từ mọi kênh, lọc theo kênh, trạng thái, ngày, kho.
 - Quy trình nội bộ: xác nhận → soạn hàng → đóng gói (quét mã đối chiếu SKU) → bàn giao vận chuyển.
-- Phiếu soạn hàng gom nhiều đơn (pick list), in phiếu đóng gói.
+- In phiếu đóng gói (chưa cần gom đơn vì < 10 đơn/ngày).
 - Đổi trả: nhận hàng hoàn, kiểm tra tình trạng, nhập lại kho hoặc ghi hỏng.
 - Ghi chú nội bộ, tag đơn, lịch sử khách.
 - Tạo đơn thủ công cho kênh Facebook/Zalo/điện thoại → đẩy sang KiotViet thành đơn đặt hàng.
 - Đối soát: nhập file đối soát của Shopee/TikTok để có phí sàn, tiền thực nhận.
 
-## M6. Kênh bán hàng — GĐ1 (KiotViet), GĐ4 (TikTok trực tiếp), GĐ5 (khác)
+## M6. Kênh bán hàng — GĐ1 (KiotViet), GĐ4 (TikTok + Shopee trực tiếp), GĐ5 (gỡ KiotViet)
 
 - Quản lý kết nối: KiotViet (qua Public API), sau đó TikTok Shop, Shopee Open Platform, Lazada.
 - Trạng thái đồng bộ từng kênh, lần chạy gần nhất, số request đã dùng, lỗi.

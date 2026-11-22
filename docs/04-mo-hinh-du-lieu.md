@@ -1,6 +1,6 @@
 # 4. Mô hình dữ liệu
 
-Các bảng chính, nhóm theo module. Mọi bảng có `id` (UUID v7), `created_at`, `updated_at`, `created_by`. Tiền lưu `bigint` theo đồng (VND không có số lẻ), số lượng `numeric(14,3)` để hỗ trợ đơn vị lẻ (kg, mét).
+Các bảng chính, nhóm theo module. Cơ sở dữ liệu: **MySQL 8.4**, InnoDB, `utf8mb4` / `utf8mb4_0900_ai_ci`. Mọi bảng có `id` (UUID v7 lưu `BINARY(16)`, hoặc `BIGINT` tự tăng nếu muốn đơn giản), `created_at`, `updated_at`, `created_by`. Tiền lưu `BIGINT` theo đồng (VND không có số lẻ; CNY lưu theo xu), số lượng `DECIMAL(14,3)` để hỗ trợ đơn vị lẻ. Các cột ghi `jsonb` hay `text[]` bên dưới là kiểu `JSON` trong MySQL.
 
 ## 4.1 Sản phẩm (catalog)
 
@@ -9,7 +9,7 @@ category            (id, parent_id, name, slug, sort, external_ids jsonb)
 brand               (id, name)
 product             (id, code, name, category_id, brand_id, status[draft|active|archived],
                      description_base, attributes jsonb, unit, weight_g, dims_mm jsonb,
-                     tags text[], origin, hs_note)
+                     tags text[], origin, hs_note)   -- attributes đồ chơi: age_min, material, battery, cert_cr...
 product_option      (id, product_id, name)            -- vd: Màu, Size
 product_option_value(id, option_id, value, sort)
 variant (SKU)       (id, product_id, sku UNIQUE, barcode, option_values jsonb,
@@ -28,7 +28,7 @@ warehouse           (id, code, name, address, type[store|warehouse|virtual],
                      kiotviet_branch_id)
 location            (id, warehouse_id, code, name)            -- kệ/ô (tùy chọn)
 stock_level         (warehouse_id, variant_id, on_hand, reserved, incoming,
-                     available GENERATED, updated_at)          -- bảng tổng hợp
+                     available (cột generated: on_hand − reserved), updated_at)          -- bảng tổng hợp
 stock_movement      (id, warehouse_id, variant_id, qty_delta, unit_cost,
                      type[purchase_in|sale_out|return_in|return_out|transfer_in|
                           transfer_out|adjust|count|combo_build|damage],
@@ -64,9 +64,17 @@ purchase_order      (id, code, supplier_id, warehouse_id,
 purchase_order_line (id, po_id, variant_id, qty, unit_price, received_qty)
 landed_cost         (id, po_id, type[ship_cn|ship_vn|tax|service], amount, allocation[by_value|by_qty|by_weight])
 supplier_payment    (id, supplier_id, po_id?, amount, method, paid_at, note)
+forwarder           (id, name, contact, pricing jsonb)       -- đơn vị vận chuyển trung gian TQ–VN
+                                                             -- pricing: giá/kg, giá/m³, phí mua hộ %, phí kiểm đếm, gỗ...
+fx_rate             (date, currency, rate)                   -- tỷ giá CNY/VND dùng khi tính giá vốn
+inbound_parcel      (id, forwarder_id, po_id?, cn_tracking_no, parcel_code,
+                     weight_kg, volume_m3, chargeable_basis[kg|m3],
+                     status[ordered|shipped_cn|at_cn_warehouse|in_transit|arrived_vn|received|lost],
+                     ship_fee_vnd, extra_fees jsonb, shipped_at, arrived_at)
+inbound_parcel_line (parcel_id, po_line_id, qty)             -- một PO có thể về nhiều kiện, một kiện chứa nhiều PO
 ```
 
-Nhận hàng từ PO tạo `stock_document(type=receipt)` → movement `purchase_in` với `unit_cost` đã phân bổ landed cost → đẩy phiếu nhập sang KiotViet.
+Với đồ chơi nhập Taobao/1688: giá vốn VND = giá CNY × tỷ giá + phí mua hộ + ship nội địa TQ + phí trung gian (phân bổ theo cân nặng hoặc khối của kiện) + ship VN. Nhận kiện tạo `stock_document(type=receipt)` → movement `purchase_in` với `unit_cost` đã phân bổ landed cost → đẩy phiếu nhập sang KiotViet.
 
 ## 4.4 Kênh bán & đơn hàng
 

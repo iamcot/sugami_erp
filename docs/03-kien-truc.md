@@ -16,8 +16,8 @@
                     └──┬─────────────┬───────────────┬─────────┘
                        │             │               │
               ┌────────▼───┐  ┌──────▼─────┐  ┌──────▼──────────┐
-              │ PostgreSQL │  │ Redis      │  │ Object storage  │
-              │ (dữ liệu,  │  │ (queue,    │  │ (S3/R2: ảnh,    │
+              │ MySQL 8    │  │ Redis      │  │ Object storage  │
+              │ (dữ liệu,  │  │ (queue,    │  │ (MinIO: ảnh,    │
               │  sổ kho)   │  │  cache,    │  │  video, file)   │
               └────────▲───┘  │  rate-lim) │  └──────▲──────────┘
                        │      └──────▲─────┘         │
@@ -31,10 +31,12 @@
           │ Channel adapters        │   │ Webhook receiver         │
           │ KiotViet (GĐ1)          │◀──│ /webhooks/kiotviet/:tok  │
           │ TikTok Shop API (GĐ4)   │   │ /webhooks/tiktok (GĐ4)   │
-          │ Shopee Open API (GĐ4+)  │   └──────────────────────────┘
+          │ Shopee Open API (GĐ4)   │   │ /webhooks/shopee (GĐ4)   │
+          │ Trung gian ship (GĐ2)   │   └──────────────────────────┘
           └────────────┬───────────┘
                        ▼
-           KiotViet ⇄ Shopee / TikTok / Lazada (liên kết sàn của KiotViet)
+   GĐ1–4: KiotViet ⇄ Shopee / TikTok (liên kết sàn của KiotViet)
+   GĐ5+:  Sugami ⇄ Shopee / TikTok trực tiếp, gỡ KiotViet
 ```
 
 ## 3.2 Tech stack đề xuất
@@ -48,17 +50,17 @@
 | Form | React Hook Form + Zod | Validate dùng chung schema với backend |
 | Backend | **NestJS** (modular monolith) | Cấu trúc module rõ, DI, dễ test; tách service sau nếu cần |
 | ORM | **Prisma** (hoặc Drizzle) | Migration rõ ràng, type-safe |
-| Database | **PostgreSQL 16** | Giao dịch chắc chắn cho sổ kho, JSONB cho thuộc tính linh hoạt, full-text search |
+| Database | **MySQL 8.4 LTS** (InnoDB, `utf8mb4_0900_ai_ci`) | Chủ shop chọn; đủ giao dịch cho sổ kho, cột `JSON` cho thuộc tính linh hoạt; collation `ai_ci` giúp tìm tiếng Việt không dấu sẵn |
 | Queue/cache | **Redis** + **BullMQ** | Job đồng bộ, retry, lịch chạy, rate limit |
-| Lưu file | S3-compatible (**Cloudflare R2** hoặc MinIO tự host) | Rẻ, không phí egress (R2) |
+| Lưu file | **MinIO** (S3-compatible) chạy trên iMac, sao lưu ra ngoài | Miễn phí, cùng API với S3/R2 nên chuyển lên cloud sau không phải sửa code |
 | Xử lý ảnh | **imgproxy** hoặc sharp trong worker | Resize, crop vuông 1:1 cho sàn, nén WebP, watermark |
-| Tìm kiếm | PostgreSQL full-text + `pg_trgm` (GĐ1); Meilisearch nếu cần | Tìm tiếng Việt không dấu |
+| Tìm kiếm | MySQL `LIKE` trên collation `ai_ci` + FULLTEXT (ngram) | Tìm tiếng Việt không dấu; dư sức cho vài trăm SKU |
 | Auth | Session cookie + RBAC tự quản (Lucia/better-auth) | Phân quyền theo vai trò, theo kho |
 | Biểu đồ | Recharts / Tremor | Dashboard gọn |
 | Quét mã | Camera trình duyệt (ZXing) trên PWA | Nhân viên kho dùng điện thoại, không cần máy quét |
 | In ấn | HTML → PDF (Playwright) | Tem mã vạch, phiếu nhập, phiếu kiểm kho |
 | Quan sát | Sentry + log JSON (pino) + Grafana/Uptime Kuma | Bắt lỗi đồng bộ sớm |
-| Triển khai | Docker Compose trên 1 VPS (GĐ1–3), CI GitHub Actions | Chi phí thấp, đủ cho 1 shop; nâng cấp sau |
+| Triển khai | Docker Compose trên **iMac của shop** + Cloudflare Tunnel; CI GitHub Actions | Không tốn tiền server; chuyển lên VPS chỉ cần copy compose + dữ liệu |
 
 ## 3.3 Cấu trúc repo dự kiến
 
@@ -75,7 +77,8 @@ sugami_erp/
 │  └─ channels/
 │     ├─ core/      # Interface ChannelAdapter
 │     ├─ kiotviet/  # Client KiotViet: auth, rate limit, mapper
-│     └─ tiktok/    # (GĐ4)
+│     ├─ tiktok/    # (GĐ4)
+│     └─ shopee/    # (GĐ4)
 ├─ docs/
 ├─ docker-compose.yml
 └─ .github/workflows/
@@ -109,10 +112,37 @@ interface ChannelAdapter {
 - RBAC: vai trò + quyền theo module + giới hạn theo kho/chi nhánh.
 - Nhật ký thao tác (audit log) cho mọi thay đổi giá, tồn, xóa.
 - Webhook URL chứa token ngẫu nhiên + kiểm tra chữ ký HMAC.
-- Sao lưu Postgres hàng ngày (pgBackRest/`pg_dump` lên R2), giữ 30 ngày; thử khôi phục hàng tháng.
+- Sao lưu MySQL (`mysqldump`) và ảnh MinIO hàng đêm ra **ngoài iMac** (Cloudflare R2 gói miễn phí 10 GB hoặc Google Drive bằng rclone), giữ 30 ngày; thử khôi phục hàng tháng.
 
 ## 3.6 Hiệu năng mục tiêu
 
-- 20.000 SKU, 2.000 đơn/ngày, 10 người dùng đồng thời trên VPS 4 vCPU / 8 GB.
+- Quy mô hiện tại (vài trăm SKU, < 10 đơn/ngày, vài người dùng) chạy thoải mái trên iMac, cả hệ thống dùng khoảng 2–3 GB RAM. Thiết kế vẫn chịu được 20.000 SKU và 2.000 đơn/ngày khi cần.
 - Trang danh sách < 500 ms, tìm SKU < 200 ms.
 - Độ trễ đồng bộ tồn từ Sugami → KiotViet < 1 phút (sau đó tùy KiotViet → sàn).
+
+## 3.7 Chạy server trên iMac
+
+Chủ shop có một iMac bật cả ngày, dùng luôn làm server.
+
+**Các container (Docker Compose):** `web` (Next.js), `api` (NestJS), `worker`, `mysql`, `redis`, `minio`, `cloudflared`. Một lệnh `docker compose up -d` là chạy toàn bộ.
+
+**Cài đặt:**
+
+- Docker: **Docker Desktop** (miễn phí cho doanh nghiệp nhỏ) hoặc **Colima** (mã nguồn mở, nhẹ hơn). Đặt tự khởi động khi đăng nhập; container đặt `restart: unless-stopped`.
+- macOS: tắt chế độ ngủ (Cài đặt → Màn hình khóa / Năng lượng: "Ngăn máy tự ngủ", bật "Khởi động lại sau khi mất điện"), bật tự đăng nhập để Docker lên lại sau khi khởi động lại.
+- Nên có **UPS** nhỏ để chống mất điện đột ngột làm hỏng dữ liệu.
+- iMac Intel hay Apple Silicon đều chạy được; các image dùng bản multi-arch.
+
+**Truy cập từ ngoài & webhook:**
+
+- KiotViet, Shopee, TikTok cần gọi webhook vào một địa chỉ **HTTPS công khai**. Dùng **Cloudflare Tunnel** (miễn phí): không cần mở cổng modem, không cần IP tĩnh, tự có HTTPS. Cần một tên miền (khoảng 250–300 nghìn ₫/năm), ví dụ `erp.sugami.vn` cho giao diện và `hooks.sugami.vn` cho webhook.
+- Chặn truy cập giao diện bằng đăng nhập của Sugami; có thể thêm Cloudflare Access để chỉ email của shop vào được.
+
+**Rủi ro & cách giảm:**
+
+| Rủi ro | Giảm thiểu |
+|--------|-----------|
+| Mất điện/mất mạng, iMac tắt | UPS; webhook bị lỡ sẽ được job đồng bộ tăng dần và reconcile bù lại khi máy lên |
+| Hỏng ổ cứng, mất máy | Sao lưu hàng đêm ra ngoài iMac, thử khôi phục hàng tháng |
+| Cập nhật macOS tự khởi động lại | Tắt tự cài cập nhật, cập nhật thủ công ngoài giờ |
+| Cần mở rộng | Cùng file Docker Compose chạy được trên VPS; chuyển bằng dump MySQL + copy thư mục MinIO |
