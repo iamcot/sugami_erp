@@ -10,7 +10,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | Giai đoạn | Tiến độ | Ghi chú |
 |-----------|---------|---------|
-| P0 — Chuẩn bị & xác minh | 0/13 | |
+| P0 — Chuẩn bị & xác minh | 4/13 | Khung dự án xong; chờ thông tin KiotViet và iMac |
 | P1 — Nền tảng + catalog + kết nối KiotViet | 0/22 | |
 | P2 — Nguồn hàng Taobao/1688 + kho | 0/17 | |
 | P3 — Media & content | 0/8 | |
@@ -20,7 +20,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Đang làm
 
-- (chưa có)
+- Tiếp theo (không cần chủ shop): P0-10 prototype UI, P0-12 hướng dẫn Cloudflare Tunnel, P0-13 compose production + sao lưu.
 
 ## Bị chặn / chờ chủ shop
 
@@ -32,10 +32,11 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Quyết định đã chốt
 
 - 2026-11-22: Chạy trên KiotViet trước, dài hạn thay KiotViet; Sugami tự giữ sổ kho từ đầu.
-- 2026-11-22: Server là iMac của shop, Docker Compose, Cloudflare Tunnel (shop đã có tên miền).
+- 2026-11-22: Server là iMac của shop, Docker Compose, Cloudflare Tunnel. Tên miền **sugami.vn**: `erp.sugami.vn` (giao diện), `hooks.sugami.vn` (webhook).
 - 2026-11-22: MySQL 8.4 cài **native** trên iMac, không chạy trong Docker; container kết nối qua `host.docker.internal`.
 - 2026-11-22: Bỏ MinIO (đã ngừng phát hành Docker image bản cộng đồng). File lưu trên ổ đĩa iMac qua lớp storage `local`, có thể chuyển sang S3/R2 bằng cấu hình.
 - 2026-11-22: Đơn vị trung gian không có API, chỉ có file Excel → import Excel (P2-07).
+- 2026-11-22: Stack thực tế: Node 22, pnpm 10, TypeScript 6, Next.js 16, NestJS 12, Prisma 7 (MariaDB adapter), BullMQ 6 + ioredis, Tailwind 4, Vitest 5.
 - 2026-11-22: Claude viết toàn bộ code, commit thẳng lên `main` (không PR); mỗi task cập nhật file này trong commit cuối.
 
 ## Nhật ký
@@ -43,15 +44,19 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | Ngày | Việc | Commit |
 |------|------|-----------|
 | 2026-11-22 | Hoàn thành bộ tài liệu kế hoạch (docs/01–09), PROGRESS.md, CLAUDE.md | main |
+| 2026-11-22 | P0-01 monorepo: web/api/worker + shared/ui/channels-core/db | 1fea4d9 |
+| 2026-11-22 | P0-02 Docker Compose (Redis; MySQL native), bỏ MinIO, docs/ops/dev-setup.md | 726704e |
+| 2026-11-22 | P0-04 Prisma 7 + MySQL: users/roles/audit_logs, collation 0900_ai_ci, seed | 2c78005 |
+| 2026-11-22 | P0-03 CI GitHub Actions (MySQL + Redis services) | 2a53d81 |
 
 ## P0 — Chuẩn bị & xác minh
 
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
-| P0-01 | Khởi tạo monorepo | ⬜ | | |
-| P0-02 | Docker Compose dev | ⬜ | | |
-| P0-03 | CI GitHub Actions: lint, typecheck, test, build trên mỗi PR | ⬜ | | |
-| P0-04 | Prisma schema khung (user, role, audit_log) + migration đầu + seed | ⬜ | | |
+| P0-01 | Khởi tạo monorepo | ✅ | 1fea4d9 | |
+| P0-02 | Docker Compose dev | ✅ | 726704e | |
+| P0-03 | CI GitHub Actions: lint, typecheck, test, build trên mỗi PR | ✅ | 2a53d81 | |
+| P0-04 | Prisma schema khung (user, role, audit_log) + migration đầu + seed | ✅ | 2c78005 | |
 | P0-05 | Cung cấp client_id/client_secret/tên gian hàng KiotViet | 👤 ⬜ | | |
 | P0-06 | Script `scripts/kiotviet-probe.ts` | ⬜ | | |
 | P0-07 | Báo cáo xác minh KiotViet `docs/kiotviet-verification.md` | ⬜ | | |
