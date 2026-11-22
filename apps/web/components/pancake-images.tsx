@@ -9,6 +9,7 @@ interface Result {
   listings: number;
   listingSkus: number;
   matched: number;
+  matchedByBarcode: number;
   updated: number;
   keptExisting: number;
   unknownSkus: string[];
@@ -132,7 +133,8 @@ export function PancakeImages() {
         <p className="mt-3 text-sm">
           {res.dryRun ? 'Xem trước: ' : 'Đã chạy: '}
           {res.listings.toLocaleString('vi-VN')} tin đăng, {res.listingSkus.toLocaleString('vi-VN')} SKU có
-          ảnh, khớp {res.matched.toLocaleString('vi-VN')} mã hàng trong Sugami,{' '}
+          ảnh, khớp {res.matched.toLocaleString('vi-VN')} mã hàng trong Sugami (
+          {res.matchedByBarcode.toLocaleString('vi-VN')} khớp theo mã vạch),{' '}
           {res.dryRun ? 'sẽ cập nhật' : 'đã cập nhật'} {res.updated.toLocaleString('vi-VN')}, giữ ảnh cũ{' '}
           {res.keptExisting.toLocaleString('vi-VN')}.
           {res.unknownSkus.length > 0 && (

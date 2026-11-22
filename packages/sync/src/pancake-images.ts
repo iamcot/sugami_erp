@@ -11,6 +11,8 @@ export interface ImageSyncSummary {
   listingSkus: number;
   /** Sugami variants that matched one of those SKUs. */
   matched: number;
+  /** Of those, matched by barcode instead of the SKU. */
+  matchedByBarcode: number;
   /** Matched variants that got images (they had none). */
   updated: number;
   /** Matched variants that already had images and were left alone (unless `replace`). */
@@ -33,6 +35,7 @@ export async function syncListingImages(
     dryRun: opts.dryRun,
     listingSkus: skus.length,
     matched: 0,
+    matchedByBarcode: 0,
     updated: 0,
     keptExisting: 0,
     unknownSkus: [],
@@ -40,19 +43,22 @@ export async function syncListingImages(
   const known = new Set<string>();
   for (let i = 0; i < skus.length; i += 400) {
     const chunk = skus.slice(i, i + 400);
+    // The seller SKU on the marketplace is either the KiotViet code or the barcode.
     const variants = await db.variant.findMany({
-      where: { sku: { in: chunk } },
-      select: { id: true, sku: true, imageUrls: true },
+      where: { OR: [{ sku: { in: chunk } }, { barcode: { in: chunk } }] },
+      select: { id: true, sku: true, barcode: true, imageUrls: true },
     });
     for (const v of variants) {
-      known.add(v.sku);
+      const key = source.bySku.has(v.sku) ? v.sku : v.barcode!;
+      known.add(key);
+      if (key === v.barcode) summary.matchedByBarcode++;
       summary.matched++;
       const has = Array.isArray(v.imageUrls) && v.imageUrls.length > 0;
       if (has && !opts.replace) {
         summary.keptExisting++;
         continue;
       }
-      const images = source.bySku.get(v.sku)!.images.slice(0, 9);
+      const images = source.bySku.get(key)!.images.slice(0, 9);
       if (has && JSON.stringify(v.imageUrls) === JSON.stringify(images)) continue;
       summary.updated++;
       if (!opts.dryRun)
