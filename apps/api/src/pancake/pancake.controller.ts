@@ -12,9 +12,11 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  groupVariations,
   imagesBySku,
   isOtherCountryShop,
   type Listing,
+  Variation,
   PancakeAdapter,
   PancakeClient,
   PancakeError,
@@ -259,6 +261,31 @@ export class PancakeController {
   syncListings(@Body() raw: unknown) {
     const { dryRun } = parseInput(Body_, raw ?? {});
     return this.guard(async () => {
+      // Pancake variations first: they give the "on Pancake" set and let listing-level links be resolved.
+      const vars: Variation[] = [];
+      for await (const raw of this.client().paginate<unknown>('/products/variations'))
+        vars.push(Variation.parse(raw));
+      const pancakeProducts = groupVariations(vars);
+      const codeByCustomId = new Map<string, string>();
+      const codesByName = new Map<string, Set<string>>();
+      const norm = (x: string) => toSearchKey(x);
+      for (const v of vars) {
+        const code = v.product?.display_id;
+        if (!code || v.is_removed) continue;
+        const cid = v.product?.custom_id;
+        if (cid) codeByCustomId.set(String(cid), code);
+        const nm = v.product?.name ? norm(v.product.name) : '';
+        if (nm) (codesByName.get(nm) ?? codesByName.set(nm, new Set()).get(nm)!).add(code);
+      }
+      /** Product code a listing-level link points to: by Pancake product custom id, else by product name. */
+      const resolveListingLink = (l: Listing): string | undefined => {
+        const raw = l.linked_product_custom_id == null ? '' : String(l.linked_product_custom_id).trim();
+        if (raw && codeByCustomId.has(raw)) return codeByCustomId.get(raw);
+        const nm = l.linked_product_name ? norm(l.linked_product_name) : '';
+        const names = nm ? codesByName.get(nm) : undefined;
+        if (names?.size === 1) return [...names][0];
+        return raw || undefined;
+      };
       const listings: Listing[] = [];
       for await (const l of pullListings(this.client())) listings.push(l);
       // Only the Vietnam shop: PH/MY shops share the marketplace id but are other countries.
@@ -279,21 +306,34 @@ export class PancakeController {
           name: l.name ?? l.sku ?? l.id,
           sku: l.sku,
           price: l.price,
-          variations: (l.variations ?? []).map((v) => ({
-            externalId: v.id,
-            name: v.name,
-            sku: v.sku,
-            price: v.price,
-            quantity: v.quantity,
-            images: (v.images ?? []).filter((u) => /^https?:\/\//.test(u)),
-            linkedCustomId: v.linked_variation_custom_id || v.linked_product_custom_id,
-          })),
+          variations: l.variations?.length
+            ? l.variations.map((v) => ({
+                externalId: v.id,
+                name: v.name,
+                sku: v.sku,
+                price: v.price,
+                quantity: v.quantity,
+                images: (v.images ?? []).filter((u) => /^https?:\/\//.test(u)),
+                linkedCustomId: v.linked_variation_custom_id || v.linked_product_custom_id,
+              }))
+            : [
+                // A listing without options is one option; its link sits on the listing itself.
+                {
+                  externalId: l.id,
+                  name: null,
+                  sku: l.sku,
+                  price: l.price,
+                  quantity: null,
+                  images: [],
+                  linkedCustomId: resolveListingLink(l),
+                },
+              ],
         })),
         { dryRun },
       );
       // Which SKUs exist on Pancake (the "Pancake" link shown on the product list).
       const pancakeVariants: PancakeVariantInput[] = [];
-      for await (const p of new PancakeAdapter(this.client()).pullProducts())
+      for (const p of pancakeProducts)
         for (const v of p.variants)
           pancakeVariants.push({
             externalId: v.externalId,
@@ -308,9 +348,9 @@ export class PancakeController {
       for (const l of vn) {
         const c = (counts[l.marketplace_id ?? '?'] ??= { listings: 0, linked: 0 });
         c.listings++;
-        c.linked += (l.variations ?? []).filter(
-          (v) => v.linked_variation_custom_id || v.linked_product_custom_id,
-        ).length;
+        c.linked += l.variations?.length
+          ? l.variations.filter((v) => v.linked_variation_custom_id || v.linked_product_custom_id).length
+          : Number(Boolean(l.linked_product_custom_id || l.linked_product_name));
       }
       const marketplaces = Object.fromEntries(
         Object.entries(counts).map(([k, c]) => [k, `${c.listings} tin/${c.linked} nối`]),

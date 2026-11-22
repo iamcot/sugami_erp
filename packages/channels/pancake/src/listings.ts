@@ -31,6 +31,8 @@ export const Listing = z.looseObject({
   marketplace_shop_name: str,
   price: z.number().nullish(),
   linked_product_custom_id: code,
+  /** Name of the Pancake product it is linked to (listing-level link, for listings without options). */
+  linked_product_name: str,
   variations: z.array(ListingVariation).nullish(),
 });
 export type Listing = z.infer<typeof Listing>;
