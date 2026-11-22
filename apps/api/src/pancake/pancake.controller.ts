@@ -23,6 +23,7 @@ import {
 } from '@sugami/channels-pancake';
 import {
   linkUnlinkedLines,
+  type PancakeVariantInput,
   listUnlinkedLines,
   runPancakeOrderSync,
   syncChannelListings,
@@ -291,9 +292,16 @@ export class PancakeController {
         { dryRun },
       );
       // Which SKUs exist on Pancake (the "Pancake" link shown on the product list).
-      const pancakeVariants: { externalId: string; sku: string }[] = [];
+      const pancakeVariants: PancakeVariantInput[] = [];
       for await (const p of new PancakeAdapter(this.client()).pullProducts())
-        for (const v of p.variants) pancakeVariants.push({ externalId: v.externalId, sku: v.sku });
+        for (const v of p.variants)
+          pancakeVariants.push({
+            externalId: v.externalId,
+            sku: v.sku,
+            productCode: p.code,
+            siblings: p.variants.length,
+            optionValues: v.optionValues,
+          });
       const pancake = await syncPancakeVariantRefs(this.prisma.client, pancakeVariants, { dryRun });
       return {
         ...summary,

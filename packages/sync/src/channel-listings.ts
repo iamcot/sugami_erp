@@ -74,6 +74,7 @@ export async function syncChannelListings(
     ),
   ];
   const bySku = new Map<string, string>();
+  const soleByProductCode = new Map<string, string>();
   for (let i = 0; i < codes.length; i += 400) {
     const chunk = codes.slice(i, i + 400);
     const rows = await db.variant.findMany({
@@ -81,11 +82,18 @@ export async function syncChannelListings(
       select: { id: true, sku: true },
     });
     for (const r of rows) bySku.set(r.sku, r.id);
+    const prods = await db.product.findMany({
+      where: { code: { in: chunk } },
+      select: { code: true, variants: { select: { id: true } } },
+    });
+    for (const pr of prods) if (pr.variants.length === 1) soleByProductCode.set(pr.code, pr.variants[0]!.id);
   }
   // The link status comes from Pancake only (its link to a Sugami SKU); Sugami does not guess matches.
   const match = (_l: ListingInput, v: ListingVariationInput) => {
     const link = clean(v.linkedCustomId);
     if (link && bySku.has(link)) return { id: bySku.get(link)!, by: 'link' as const };
+    // Pancake links a listing to a product by its code when the product has a single variation.
+    if (link && soleByProductCode.has(link)) return { id: soleByProductCode.get(link)!, by: 'link' as const };
     return undefined;
   };
 
@@ -148,32 +156,68 @@ export async function syncChannelListings(
   return summary;
 }
 
+/** A Pancake variation. Imported ones have no seller code: the KiotViet code is the product's display id. */
+export interface PancakeVariantInput {
+  externalId: string;
+  /** Seller code of the variation (custom_id) or the best code Pancake has. */
+  sku: string;
+  /** Display id of the Pancake product (KiotViet product code after an Excel import). */
+  productCode?: string;
+  /** Variations of that Pancake product, and this one's option values, to pair with Sugami's variants. */
+  siblings?: number;
+  optionValues?: string[];
+}
+
 /**
  * Which Sugami variants exist on Pancake (matched by SKU = Pancake seller code). Kept as external refs so
  * the product list can show "x/y on Pancake" without calling Pancake. A full pull replaces the set.
  */
 export async function syncPancakeVariantRefs(
   db: PrismaClient,
-  items: { externalId: string; sku: string }[],
+  items: PancakeVariantInput[],
   opts: { dryRun: boolean },
 ): Promise<{ onPancake: number; notInSugami: number; removed: number; sampleNotInSugami: string[] }> {
-  const skus = [...new Set(items.map((i) => i.sku).filter(Boolean))];
+  const codes = [...new Set(items.flatMap((i) => [i.sku, i.productCode ?? '']).filter(Boolean))];
   const bySku = new Map<string, string>();
-  for (let i = 0; i < skus.length; i += 400) {
+  const productVariants = new Map<string, { id: string; options: string }[]>();
+  const optKey = (o: unknown) =>
+    Array.isArray(o) ? o.map((x) => String(x).trim().toLowerCase()).join('/') : '';
+  for (let i = 0; i < codes.length; i += 400) {
+    const chunk = codes.slice(i, i + 400);
     const rows = await db.variant.findMany({
-      where: { sku: { in: skus.slice(i, i + 400) } },
+      where: { sku: { in: chunk } },
       select: { id: true, sku: true },
     });
     for (const r of rows) bySku.set(r.sku, r.id);
+    const prods = await db.product.findMany({
+      where: { code: { in: chunk } },
+      select: { code: true, variants: { select: { id: true, optionValues: true } } },
+    });
+    for (const pr of prods)
+      productVariants.set(
+        pr.code,
+        pr.variants.map((v) => ({ id: v.id, options: optKey(v.optionValues) })),
+      );
   }
+  /** Sugami variant for a Pancake variation: by seller code, else by the product code (+ options). */
+  const resolve = (it: PancakeVariantInput): string | undefined => {
+    const direct = bySku.get(it.sku);
+    if (direct) return direct;
+    const vs = it.productCode ? productVariants.get(it.productCode) : undefined;
+    if (!vs) return undefined;
+    if (vs.length === 1 && (it.siblings ?? 1) === 1) return vs[0]!.id;
+    const opts = optKey(it.optionValues);
+    const same = opts ? vs.filter((v) => v.options === opts) : [];
+    return same.length === 1 ? same[0]!.id : undefined;
+  };
   const keep: string[] = [];
   let notInSugami = 0;
   const sampleNotInSugami: string[] = [];
   for (const it of items) {
-    const variantId = bySku.get(it.sku);
+    const variantId = resolve(it);
     if (!variantId) {
       notInSugami++;
-      if (sampleNotInSugami.length < 8) sampleNotInSugami.push(it.sku);
+      if (sampleNotInSugami.length < 8) sampleNotInSugami.push(it.productCode ?? it.sku);
       continue;
     }
     keep.push(it.externalId);
