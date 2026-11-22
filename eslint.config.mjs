@@ -24,4 +24,10 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-imports': ['error', { fixStyle: 'inline-type-imports' }],
     },
   },
+  {
+    // NestJS DI reads constructor param types at runtime (emitDecoratorMetadata),
+    // so `import type` would silently break injection there.
+    files: ['apps/api/**/*.ts'],
+    rules: { '@typescript-eslint/consistent-type-imports': 'off' },
+  },
 );

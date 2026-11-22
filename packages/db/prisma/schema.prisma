@@ -17,18 +17,39 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
-  id           String     @id @default(uuid(7)) @db.Char(36)
-  email        String     @unique @db.VarChar(191)
-  name         String     @db.VarChar(191)
-  passwordHash String     @map("password_hash") @db.VarChar(255)
-  isActive     Boolean    @default(true) @map("is_active")
-  lastLoginAt  DateTime?  @map("last_login_at")
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
-  roles        UserRole[]
-  auditLogs    AuditLog[]
+  id               String     @id @default(uuid(7)) @db.Char(36)
+  email            String     @unique @db.VarChar(191)
+  name             String     @db.VarChar(191)
+  passwordHash     String     @map("password_hash") @db.VarChar(255)
+  isActive         Boolean    @default(true) @map("is_active")
+  lastLoginAt      DateTime?  @map("last_login_at")
+  /// Consecutive failed logins; reset on success.
+  failedLoginCount Int        @default(0) @map("failed_login_count")
+  /// Login refused until this time after too many failures.
+  lockedUntil      DateTime?  @map("locked_until")
+  sessions         Session[]
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  roles            UserRole[]
+  auditLogs        AuditLog[]
 
   @@map("users")
+}
+
+/// Login session. The cookie holds a random token; only its SHA-256 hash is stored.
+model Session {
+  id         String   @id @db.Char(64)
+  userId     String   @map("user_id") @db.Char(36)
+  expiresAt  DateTime @map("expires_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  userAgent  String?  @map("user_agent") @db.VarChar(255)
+  ip         String?  @db.VarChar(64)
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
 }
 
 model Role {

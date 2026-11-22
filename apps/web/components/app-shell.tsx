@@ -20,6 +20,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { UserMenu } from './user-menu';
 
 const nav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
@@ -107,9 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Bell className="size-5" />
             <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-rose-500" />
           </button>
-          <span className="grid size-8 place-items-center rounded-full bg-slate-200 text-xs font-semibold dark:bg-slate-700">
-            CS
-          </span>
+          <UserMenu />
         </div>
       </header>
 
