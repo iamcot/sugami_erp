@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 const TABS = [
   { href: '/data/import', label: 'Nhập từ KiotViet' },
   { href: '/data/export', label: 'Xuất sang KiotViet' },
+  { href: '/data/pancake', label: 'Đơn từ Pancake' },
 ];
 
 /** Switch between the two directions of the KiotViet Excel exchange. */

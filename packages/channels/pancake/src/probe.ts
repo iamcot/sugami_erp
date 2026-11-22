@@ -109,7 +109,9 @@ for await (const o of client.paginate<Record<string, unknown>>('/orders', {
   if (shown++ >= 3) break;
   const items = Array.isArray(o.items) ? (o.items as Record<string, unknown>[]) : [];
   const unlinked = items.filter((i) => !i.variation_id && !i.product_id).length;
-  console.log(`Cấu trúc đơn mẫu ${shown} (${items.length} dòng hàng, ${unlinked} dòng không có variation_id/product_id):`);
+  console.log(
+    `Cấu trúc đơn mẫu ${shown} (${items.length} dòng hàng, ${unlinked} dòng không có variation_id/product_id):`,
+  );
   console.log(JSON.stringify(shape(o), null, 1));
 }
 if (shown === 0) console.log('Chưa có đơn nào để xem cấu trúc.');

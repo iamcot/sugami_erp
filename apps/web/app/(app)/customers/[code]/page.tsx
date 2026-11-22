@@ -248,8 +248,8 @@ export default function CustomerPage({ params }: { params: Promise<{ code: strin
                   </td>
                   <td className="whitespace-nowrap px-4 py-2 tabular-nums">{dt(o.orderedAt, true)}</td>
                   <td className="hidden px-4 py-2 md:table-cell">
-                    {o.items.slice(0, 2).map((i) => (
-                      <p key={i.sku} className="line-clamp-1">
+                    {o.items.slice(0, 2).map((i, n) => (
+                      <p key={`${i.sku}-${n}`} className="line-clamp-1">
                         <span className="tabular-nums text-slate-500">{i.qty}×</span> {i.name}
                       </p>
                     ))}
