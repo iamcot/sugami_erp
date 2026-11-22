@@ -498,6 +498,26 @@ export default function PosPage() {
       ...(draft.mode === 'delivery' ? { receiver: receiverOf(full) } : {}),
     });
   };
+  /** A buyer typed on the screen: created together with the order when it is confirmed. */
+  const newCustomer = (text: string) => {
+    if (!draft) return;
+    const isPhone = /^[\d\s.+-]{6,}$/.test(text);
+    const who = { id: null, name: isPhone ? null : text, phone: isPhone ? text.replace(/\s/g, '') : null };
+    setCq('');
+    setChits([]);
+    patch({
+      customer: who,
+      ...(draft.mode === 'delivery'
+        ? {
+            receiver: {
+              ...draft.payload.receiver,
+              name: who.name ?? draft.payload.receiver.name,
+              phone: who.phone ?? draft.payload.receiver.phone,
+            },
+          }
+        : {}),
+    });
+  };
   const setMode = (m: Mode) => {
     if (!draft) return;
     const c = draft.payload.customer?.id ? cinfo[draft.payload.customer.id] : undefined;
@@ -862,8 +882,16 @@ export default function PosPage() {
                       onChange={(e) => setCq(e.target.value)}
                     />
                   </label>
-                  {chits.length > 0 && (
+                  {cq.trim().length >= 2 && (
                     <ul className="absolute left-0 right-0 z-10 mt-1 rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                      <li>
+                        <button
+                          className="w-full px-3 py-2 text-left font-medium text-brand-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          onClick={() => newCustomer(cq.trim())}
+                        >
+                          + Tạo khách mới “{cq.trim()}”
+                        </button>
+                      </li>
                       {chits.map((c) => (
                         <li key={c.id}>
                           <button
@@ -878,6 +906,26 @@ export default function PosPage() {
                     </ul>
                   )}
                 </div>
+
+                {p.customer && !p.customer.id && (
+                  <div className="flex items-start gap-2 rounded-lg border border-dashed border-brand-600 p-2">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800">
+                      <User className="size-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">
+                        {p.customer.name || p.customer.phone}
+                      </span>
+                      <span className="block text-xs text-slate-500">
+                        Khách mới, sẽ được tạo khi xác nhận đơn
+                        {!retail ? ' (nhập đủ thông tin người nhận bên dưới)' : ''}
+                      </span>
+                    </span>
+                    <button aria-label="Bỏ khách" onClick={() => patch({ customer: null })}>
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                )}
 
                 {p.customer?.id && (
                   <div className="flex items-start gap-2 rounded-lg border border-slate-200 p-2 dark:border-slate-700">

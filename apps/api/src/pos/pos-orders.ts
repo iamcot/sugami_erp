@@ -31,7 +31,12 @@ export function posTotals(p: PosPayload, mode: 'retail' | 'delivery') {
   const subtotal = p.lines.reduce((a, l) => a + l.price * l.qty, 0);
   const total = Math.max(0, Math.round(subtotal) - p.discount + p.otherIncome);
   const paid = Math.min(p.paid, total);
-  return { subtotal: Math.round(subtotal), total, paid, cod: mode === 'delivery' && p.cod ? total - paid : 0 };
+  return {
+    subtotal: Math.round(subtotal),
+    total,
+    paid,
+    cod: mode === 'delivery' && p.cod ? total - paid : 0,
+  };
 }
 
 /**
@@ -53,7 +58,8 @@ export async function createPosOrder(
     select: { id: true, sku: true, costAvg: true, optionValues: true, product: { select: { name: true } } },
   });
   const byId = new Map(variants.map((v) => [v.id, v]));
-  for (const l of p.lines) if (!byId.has(l.variantId)) throw new PosError('Có sản phẩm không còn trong hệ thống');
+  for (const l of p.lines)
+    if (!byId.has(l.variantId)) throw new PosError('Có sản phẩm không còn trong hệ thống');
   const channel = await db.channel.upsert({
     where: { code: 'store' },
     create: { code: 'store', type: 'store', name: 'Bán trực tiếp' },
@@ -63,18 +69,29 @@ export async function createPosOrder(
   if (mode === 'delivery' && !p.receiver.address && !p.receiver.phone)
     throw new PosError('Bán giao hàng cần ít nhất địa chỉ hoặc số điện thoại người nhận');
 
+  // A buyer who is not in the list yet is created here: typed on the screen, or (delivery) the receiver.
   let customerId = p.customer?.id ?? null;
-  if (!customerId && (p.customer?.name || p.customer?.phone)) {
-    customerId = (
-      await db.customer.create({
-        data: {
-          name: p.customer.name || null,
-          phone: p.customer.phone || null,
-          searchKey: toSearchKey([p.customer.name, p.customer.phone].filter(Boolean).join(' ')).slice(0, 400),
-          tags: ['Bán trực tiếp'],
-        },
-      })
-    ).id;
+  const typedName = p.customer?.name || (mode === 'delivery' && p.customer ? p.receiver.name : '') || '';
+  const typedPhone = p.customer?.phone || (mode === 'delivery' && p.customer ? p.receiver.phone : '') || '';
+  if (!customerId && p.customer && (typedName || typedPhone)) {
+    const existing = typedPhone
+      ? await db.customer.findFirst({ where: { phone: typedPhone }, select: { id: true } })
+      : null;
+    customerId =
+      existing?.id ??
+      (
+        await db.customer.create({
+          data: {
+            name: typedName || null,
+            phone: typedPhone || null,
+            addressLine: mode === 'delivery' ? p.receiver.address || null : null,
+            region: mode === 'delivery' ? p.receiver.area || null : null,
+            ward: mode === 'delivery' ? p.receiver.ward || null : null,
+            searchKey: toSearchKey([typedName, typedPhone].filter(Boolean).join(' ')).slice(0, 400),
+            tags: ['Bán trực tiếp'],
+          },
+        })
+      ).id;
   }
 
   const now = new Date();
@@ -112,10 +129,11 @@ export async function createPosOrder(
             completedAt: retail ? at : null,
             source: 'pos',
             stockAppliedAt: now,
-            internalNote: [!retail && p.receiver.name ? `Người nhận: ${p.receiver.name}` : '', p.note]
-              .filter(Boolean)
-              .join('\n')
-              .slice(0, 1000) || null,
+            internalNote:
+              [!retail && p.receiver.name ? `Người nhận: ${p.receiver.name}` : '', p.note]
+                .filter(Boolean)
+                .join('\n')
+                .slice(0, 1000) || null,
             lines: {
               create: p.lines.map((l, i) => {
                 const v = byId.get(l.variantId)!;
@@ -212,12 +230,20 @@ export async function changePosOrderStatus(
       where: { id: order.id },
       data: {
         status: status as never,
-        completedAt: status === 'completed' || status === 'delivered' ? (order.completedAt ?? new Date()) : null,
+        completedAt:
+          status === 'completed' || status === 'delivered' ? (order.completedAt ?? new Date()) : null,
         stockAppliedAt: willBeActive ? (order.stockAppliedAt ?? new Date()) : order.stockAppliedAt,
         shippingStatus:
-          { new: 'Chờ xử lý', confirmed: 'Đã xác nhận', packing: 'Đang đóng gói', shipped: 'Đang giao', delivered: 'Giao thành công', completed: order.shippingStatus, cancelled: 'Đã hủy', returned: 'Hoàn hàng' }[
-            status
-          ] ?? order.shippingStatus,
+          {
+            new: 'Chờ xử lý',
+            confirmed: 'Đã xác nhận',
+            packing: 'Đang đóng gói',
+            shipped: 'Đang giao',
+            delivered: 'Giao thành công',
+            completed: order.shippingStatus,
+            cancelled: 'Đã hủy',
+            returned: 'Hoàn hàng',
+          }[status] ?? order.shippingStatus,
       },
     });
   });
