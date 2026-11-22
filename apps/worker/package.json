@@ -12,12 +12,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sugami/shared": "workspace:*",
     "bullmq": "^6.7.8",
-    "@sugami/shared": "workspace:*"
+    "ioredis": "^5.11.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "vitest": "^5.1.1",
-    "concurrently": "^9.2.0"
+    "concurrently": "^9.2.0",
+    "vitest": "^5.1.1"
   }
 }

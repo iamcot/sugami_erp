@@ -23,7 +23,7 @@ Claude viết toàn bộ code, commit thẳng lên `main`. Thời lượng dư�
 - [ ] **Đăng ký sớm** app trên **Shopee Open Platform** và **TikTok Shop Partner Center** (loại app cho hệ thống nội bộ của người bán). Việc duyệt có thể mất vài tuần nên làm ngay từ đầu. Kiểm tra điều kiện đăng ký với shop cá nhân/hộ kinh doanh **(cần xác minh)**.
 - [ ] Rà soát SKU KiotViet ↔ Shopee ↔ TikTok, chuẩn hóa quy tắc đặt mã.
 - [ ] Prototype 5 màn hình, chủ shop duyệt.
-- [ ] Khởi tạo monorepo, CI, Docker Compose (MySQL, Redis, MinIO).
+- [ ] Khởi tạo monorepo, CI, Docker Compose (Redis; MySQL native).
 - [ ] Chuẩn bị iMac làm server: cài Docker, tắt ngủ, UPS, tên miền + Cloudflare Tunnel, lịch sao lưu ra ngoài.
 
 **Hoàn thành khi:** có báo cáo xác minh API, hồ sơ app sàn đã nộp, prototype đã duyệt.

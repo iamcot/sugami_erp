@@ -1,0 +1,40 @@
+# Dev infrastructure. MySQL runs natively on the iMac (see docs/ops/dev-setup.md);
+# the `mysql` profile below is only for machines/CI without a native MySQL:
+#   docker compose up -d                    # redis
+#   docker compose --profile mysql up -d    # + mysql
+name: sugami
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports: ['127.0.0.1:6379:6379']
+    volumes: [redis-data:/data]
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  mysql:
+    profiles: [mysql]
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root-dev}
+      MYSQL_DATABASE: sugami
+      MYSQL_USER: sugami
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sugami-dev}
+    command: ['--character-set-server=utf8mb4', '--collation-server=utf8mb4_0900_ai_ci']
+    ports: ['127.0.0.1:3306:3306']
+    volumes: [mysql-data:/var/lib/mysql]
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-uroot', '-p${MYSQL_ROOT_PASSWORD:-root-dev}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  redis-data:
+  mysql-data:

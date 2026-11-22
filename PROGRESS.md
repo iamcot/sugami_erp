@@ -32,7 +32,9 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 ## Quyết định đã chốt
 
 - 2026-11-22: Chạy trên KiotViet trước, dài hạn thay KiotViet; Sugami tự giữ sổ kho từ đầu.
-- 2026-11-22: Server là iMac của shop, Docker Compose, MySQL 8.4, MinIO, Cloudflare Tunnel (shop đã có tên miền).
+- 2026-11-22: Server là iMac của shop, Docker Compose, Cloudflare Tunnel (shop đã có tên miền).
+- 2026-11-22: MySQL 8.4 cài **native** trên iMac, không chạy trong Docker; container kết nối qua `host.docker.internal`.
+- 2026-11-22: Bỏ MinIO (đã ngừng phát hành Docker image bản cộng đồng). File lưu trên ổ đĩa iMac qua lớp storage `local`, có thể chuyển sang S3/R2 bằng cấu hình.
 - 2026-11-22: Đơn vị trung gian không có API, chỉ có file Excel → import Excel (P2-07).
 - 2026-11-22: Claude viết toàn bộ code, commit thẳng lên `main` (không PR); mỗi task cập nhật file này trong commit cuối.
 
@@ -113,7 +115,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
-| P3-01 | Schema media + MinIO client, upload trực tiếp (presigned URL) | ⬜ | | |
+| P3-01 | Schema media + lớp storage (local/S3), upload qua API | ⬜ | | |
 | P3-02 | Thư viện media | ⬜ | | |
 | P3-03 | Worker xử lý ảnh | ⬜ | | |
 | P3-04 | Tab Ảnh trong chi tiết SP: sắp xếp, ảnh chính, ảnh theo biến thể/kênh | ⬜ | | |
