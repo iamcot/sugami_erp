@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+  - packages/channels/*
+
+onlyBuiltDependencies:
+  - '@swc/core'
+  - msgpackr-extract
+  - esbuild
+  - sharp
+  - prisma
+  - '@prisma/engines'
+  - unrs-resolver
