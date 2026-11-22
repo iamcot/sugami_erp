@@ -31,7 +31,7 @@
 3. Ngoài Shopee và TikTok Shop, hiện có bán qua Facebook/Zalo hay cửa hàng không?
 4. Shop đăng ký dạng hộ kinh doanh hay công ty? (Ảnh hưởng điều kiện đăng ký app Shopee Open Platform/TikTok Partner.)
 5. Đã có tên miền (đã xác nhận). Còn cần: iMac là Intel hay Apple Silicon, RAM bao nhiêu?
-6. Claude viết toàn bộ code qua PR, chủ shop duyệt; theo dõi tiến độ ở `PROGRESS.md` (đã xác nhận).
+6. Claude viết toàn bộ code, commit thẳng lên `main`; theo dõi tiến độ ở `PROGRESS.md` (đã xác nhận).
 
 ## 8.4 Việc cần xác minh kỹ thuật (GĐ0)
 

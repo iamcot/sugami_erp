@@ -2,7 +2,9 @@
 
 Theo dõi tiến độ triển khai. Chi tiết từng task (phụ thuộc, tiêu chí hoàn thành) ở [docs/09-ke-hoach-trien-khai.md](docs/09-ke-hoach-trien-khai.md).
 
-**Trạng thái:** ⬜ chưa làm · 🟡 đang làm · 🔵 chờ review/merge · ✅ xong · ⛔ bị chặn · 👤 cần chủ shop
+**Trạng thái:** ⬜ chưa làm · 🟡 đang làm · ✅ xong · ⛔ bị chặn · 👤 cần chủ shop
+
+Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ `[P1-04] ...`.
 
 ## Tổng quan
 
@@ -32,17 +34,17 @@ Theo dõi tiến độ triển khai. Chi tiết từng task (phụ thuộc, tiê
 - 2026-11-22: Chạy trên KiotViet trước, dài hạn thay KiotViet; Sugami tự giữ sổ kho từ đầu.
 - 2026-11-22: Server là iMac của shop, Docker Compose, MySQL 8.4, MinIO, Cloudflare Tunnel (shop đã có tên miền).
 - 2026-11-22: Đơn vị trung gian không có API, chỉ có file Excel → import Excel (P2-07).
-- 2026-11-22: Claude viết toàn bộ code qua PR; mỗi PR cập nhật file này.
+- 2026-11-22: Claude viết toàn bộ code, commit thẳng lên `main` (không PR); mỗi task cập nhật file này trong commit cuối.
 
 ## Nhật ký
 
-| Ngày | Việc | PR/commit |
+| Ngày | Việc | Commit |
 |------|------|-----------|
 | 2026-11-22 | Hoàn thành bộ tài liệu kế hoạch (docs/01–09), PROGRESS.md, CLAUDE.md | main |
 
 ## P0 — Chuẩn bị & xác minh
 
-| ID | Task | Trạng thái | PR | Ghi chú |
+| ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
 | P0-01 | Khởi tạo monorepo | ⬜ | | |
 | P0-02 | Docker Compose dev | ⬜ | | |
@@ -60,7 +62,7 @@ Theo dõi tiến độ triển khai. Chi tiết từng task (phụ thuộc, tiê
 
 ## P1 — Nền tảng + catalog + kết nối KiotViet
 
-| ID | Task | Trạng thái | PR | Ghi chú |
+| ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
 | P1-01 | Auth | ⬜ | | |
 | P1-02 | RBAC | ⬜ | | |
@@ -87,7 +89,7 @@ Theo dõi tiến độ triển khai. Chi tiết từng task (phụ thuộc, tiê
 
 ## P2 — Nguồn hàng Taobao/1688 + kho
 
-| ID | Task | Trạng thái | PR | Ghi chú |
+| ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
 | P2-01 | Schema sourcing | ⬜ | | |
 | P2-02 | NCC | ⬜ | | |
@@ -109,7 +111,7 @@ Theo dõi tiến độ triển khai. Chi tiết từng task (phụ thuộc, tiê
 
 ## P3 — Media & content
 
-| ID | Task | Trạng thái | PR | Ghi chú |
+| ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
 | P3-01 | Schema media + MinIO client, upload trực tiếp (presigned URL) | ⬜ | | |
 | P3-02 | Thư viện media | ⬜ | | |
@@ -122,7 +124,7 @@ Theo dõi tiến độ triển khai. Chi tiết từng task (phụ thuộc, tiê
 
 ## P4 — Kết nối sàn trực tiếp
 
-| ID | Task | Trạng thái | PR | Ghi chú |
+| ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
 | P4-01 | Interface `ChannelAdapter` + chuẩn hóa ExternalProduct/ExternalOrder | ⬜ | | |
 | P4-02 | TikTok Shop: OAuth, lưu/làm mới token, ký request | ⬜ | | |
@@ -139,7 +141,7 @@ Theo dõi tiến độ triển khai. Chi tiết từng task (phụ thuộc, tiê
 
 ## P5 — Thay KiotViet
 
-| ID | Task | Trạng thái | PR | Ghi chú |
+| ID | Task | Trạng thái | Commit | Ghi chú |
 |----|------|-----------|----|---------|
 | P5-01 | Xử lý đơn trong Sugami | ⬜ | | |
 | P5-02 | Đổi trả: nhận hoàn, kiểm tra, nhập lại kho / ghi hỏng | ⬜ | | |

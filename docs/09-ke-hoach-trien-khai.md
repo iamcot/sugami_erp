@@ -1,12 +1,12 @@
 # 9. Kế hoạch triển khai chi tiết
 
-Tài liệu này chia lộ trình ở [07](07-lo-trinh.md) thành các task nhỏ. Mỗi task nên làm xong trong **một PR**. Trạng thái từng task được theo dõi ở [`PROGRESS.md`](../PROGRESS.md).
+Tài liệu này chia lộ trình ở [07](07-lo-trinh.md) thành các task nhỏ. Mỗi task là một đơn vị công việc, commit thẳng lên `main` với tiền tố ID. Trạng thái từng task được theo dõi ở [`PROGRESS.md`](../PROGRESS.md).
 
 Quy ước:
 
-- **ID** dạng `P<giai đoạn>-<số>`, ví dụ `P1-04`. Dùng ID này trong tên nhánh, tiêu đề PR và commit.
+- **ID** dạng `P<giai đoạn>-<số>`, ví dụ `P1-04`. Dùng ID này làm tiền tố commit.
 - **Phụ thuộc** ghi các task cần xong trước.
-- **Hoàn thành khi** là tiêu chí nghiệm thu. Task chỉ được đánh ✅ khi đạt hết tiêu chí và PR đã merge.
+- **Hoàn thành khi** là tiêu chí nghiệm thu. Task chỉ được đánh ✅ khi đạt hết tiêu chí và đã lên `main`.
 - Task có ký hiệu 👤 cần chủ shop làm hoặc cung cấp thông tin.
 
 ---
@@ -17,7 +17,7 @@ Quy ước:
 |----|------|-----------|----------------|
 | P0-01 | Khởi tạo monorepo: pnpm workspaces, Turborepo, TypeScript strict, ESLint, Prettier, `apps/web`, `apps/api`, `apps/worker`, `packages/db`, `packages/shared`, `packages/ui`, `packages/channels/*` | – | `pnpm i && pnpm build && pnpm lint` chạy sạch |
 | P0-02 | Docker Compose dev: MySQL 8.4, Redis 7, MinIO; file `.env.example`; script `pnpm dev` chạy cả web/api/worker | P0-01 | Một lệnh dựng được môi trường dev từ máy trống |
-| P0-03 | CI GitHub Actions: lint, typecheck, test, build trên mỗi PR | P0-01 | PR mẫu có check xanh |
+| P0-03 | CI GitHub Actions: lint, typecheck, test, build trên mỗi push lên `main` | P0-01 | Commit mẫu trên `main` có check xanh |
 | P0-04 | Prisma schema khung (user, role, audit_log) + migration đầu + seed | P0-02 | `pnpm db:migrate && pnpm db:seed` chạy được |
 | P0-05 | 👤 Cung cấp client_id/client_secret/tên gian hàng KiotViet (lưu vào `.env` trên iMac, **không commit**) | – | Có thông tin kết nối |
 | P0-06 | Script `scripts/kiotviet-probe.ts`: lấy token, gọi `/branches`, `/categories`, `/products?includeInventory=true`, `/orders`, `/invoices`, `/purchaseorders`, `/suppliers`, `/webhooks`; lưu payload đã ẩn thông tin khách vào `docs/kiotviet-samples/` | P0-01, P0-05 | Có file mẫu cho từng tài nguyên |

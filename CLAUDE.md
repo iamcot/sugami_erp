@@ -2,7 +2,7 @@
 
 Hệ thống quản lý shop đồ chơi (vài trăm SKU, < 10 đơn/ngày): kho & xuất nhập tồn, nguồn hàng Taobao/1688 qua đơn vị trung gian, media & content, đơn hàng đa kênh. Giai đoạn đầu kết nối Shopee/TikTok thông qua KiotViet Public API; dài hạn kết nối sàn trực tiếp và **thay KiotViet**.
 
-Claude viết toàn bộ code. Chủ shop (iamcot) duyệt PR.
+Claude viết toàn bộ code và **commit thẳng lên `main`** (không mở PR, theo yêu cầu chủ shop). Chủ shop (iamcot) xem lại qua lịch sử commit và PROGRESS.
 
 ## Đọc trước khi làm
 
@@ -13,11 +13,11 @@ Claude viết toàn bộ code. Chủ shop (iamcot) duyệt PR.
 ## Quy trình mỗi task
 
 1. Chọn task ⬜ tiếp theo có đủ phụ thuộc ✅ (hoặc task chủ shop chỉ định). Không làm task 👤 thay chủ shop; chỉ chuẩn bị hướng dẫn.
-2. Tạo nhánh `feat/P1-04-ten-ngan` (hoặc nhánh do môi trường chỉ định).
-3. Làm task, viết test, chạy `pnpm lint && pnpm typecheck && pnpm test`.
-4. **Trong cùng PR**: cập nhật `PROGRESS.md` (trạng thái 🔵, link PR, dòng Nhật ký, bảng Tổng quan) và sửa tài liệu trong `docs/` nếu thiết kế thay đổi.
-5. Tiêu đề PR: `[P1-04] Mô tả ngắn`. Mô tả PR ghi tiêu chí hoàn thành và cách kiểm tra.
-6. Sau khi merge: đánh ✅ ở lần cập nhật kế tiếp.
+2. Làm trên `main`: `git pull` trước, đánh 🟡 trong PROGRESS khi bắt đầu nếu task kéo dài nhiều phiên.
+3. Làm task, viết test, chạy `pnpm lint && pnpm typecheck && pnpm test`. Chỉ push khi tất cả xanh; `main` phải luôn chạy được.
+4. **Trong cùng commit cuối của task**: cập nhật `PROGRESS.md` (trạng thái ✅, hash commit ở cột PR/commit, dòng Nhật ký, bảng Tổng quan) và sửa tài liệu trong `docs/` nếu thiết kế thay đổi.
+5. Commit message: `[P1-04] Short description` (tiếng Anh); thân commit ghi tiêu chí hoàn thành đã đạt và cách kiểm tra.
+6. Task lớn có thể chia nhiều commit, cùng tiền tố ID; chỉ đánh ✅ ở commit cuối khi đạt đủ tiêu chí.
 7. Quyết định mới hoặc thông tin chủ shop cung cấp → ghi vào mục "Quyết định đã chốt" của `PROGRESS.md` và `docs/08-quyet-dinh-va-cau-hoi.md`.
 
 ## Tech stack
