@@ -173,8 +173,9 @@ export function feeDetailOf(o: Order): Record<string, number> | undefined {
 export function marketplaceCodeOf(o: Order): string | undefined {
   const sn = o.invoice_info_list?.find((i) => i.order_sn)?.order_sn?.trim();
   if (sn) return sn;
-  if (!o.marketplace_id || o.display_id === null || o.display_id === undefined) return undefined;
-  const id = String(o.display_id).trim();
+  if (!o.marketplace_id) return undefined;
+  // The Pancake code is PC + (display_id ?? id): for marketplace orders that is the marketplace number.
+  const id = String(o.display_id ?? o.id).trim();
   return /\D/.test(id) || id.length >= 12 ? id : undefined;
 }
 
