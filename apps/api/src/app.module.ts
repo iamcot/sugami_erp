@@ -7,6 +7,7 @@ import { ListingsModule } from './listings/listings.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { PosModule } from './pos/pos.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
+import { ContentModule } from './content/content.module.js';
 import { InventoryModule } from './inventory/inventory.module.js';
 import { StockDocumentsModule } from './stock-documents/stock-documents.module.js';
 import { PushModule } from './push/push.module.js';
@@ -32,6 +33,7 @@ import { UsersController } from './users/users.controller.js';
     ListingsModule,
     InventoryModule,
     DashboardModule,
+    ContentModule,
     WebhooksModule,
     PancakeModule,
     PushModule,

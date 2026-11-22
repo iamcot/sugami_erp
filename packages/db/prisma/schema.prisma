@@ -153,6 +153,7 @@ model Product {
   options     ProductOption[]
   variants    Variant[]
   media       ProductMedia[]
+  contents    ProductContent[]
 
   @@index([searchKey])
   @@index([categoryId])
@@ -814,4 +815,18 @@ model ReceiptTemplate {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@map("receipt_templates")
+}
+
+/// Title and description written once per product: channel "base" is the master text, "shopee"/"tiktok" override it for that marketplace.
+model ProductContent {
+  id          String   @id @default(uuid(7)) @db.Char(36)
+  productId   String   @map("product_id") @db.Char(36)
+  channel     String   @db.VarChar(32)
+  title       String?  @db.VarChar(255)
+  description String?  @db.Text
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, channel])
+  @@map("product_contents")
 }

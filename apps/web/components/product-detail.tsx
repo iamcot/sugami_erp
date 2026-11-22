@@ -5,6 +5,7 @@ import { formatVnd } from '@sugami/shared';
 import { CloudUpload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
+import { ProductContent } from '@/components/product-content';
 import { PancakePush } from '@/components/pancake-push';
 import { useDetail } from '@/components/detail-drawer';
 import { api } from '@/lib/api';
@@ -323,11 +324,7 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
         </Card>
       )}
 
-      {product.description && (
-        <Card className="mb-4 whitespace-pre-line p-4 text-sm text-slate-700 dark:text-slate-300">
-          {product.description}
-        </Card>
-      )}
+      <ProductContent code={product.code} fallbackDescription={product.description} />
 
       <Card className="overflow-hidden">
         <div className="border-b border-slate-200 px-4 py-2.5 text-sm font-medium dark:border-slate-800">
