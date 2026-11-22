@@ -26,7 +26,7 @@ Quy ước:
 | P0-09 | Rà soát SKU: so khớp mã hàng KiotViet với SKU Shopee/TikTok (từ dữ liệu KiotViet + file xuất từ sàn), đề xuất quy tắc đặt mã | P0-06 | File báo cáo SKU trùng/thiếu/lệch + quy tắc đặt mã đã thống nhất |
 | P0-10 | Prototype UI 5 màn hình (Tổng quan, Danh sách SP, Chi tiết SP, Nhận hàng mobile, Media) bằng Next.js + dữ liệu mẫu, deploy bản xem trước | P0-01 | 👤 Chủ shop duyệt |
 | P0-11 | 👤 Chuẩn bị iMac: cài Docker (Docker Desktop hoặc Colima), tắt ngủ, tự khởi động sau mất điện, tự đăng nhập | – | `docker run hello-world` chạy trên iMac |
-| P0-12 | Cloudflare Tunnel: tạo tunnel, gắn `erp.<tên miền>` và `hooks.<tên miền>`; hướng dẫn trong `docs/ops/imac-server.md` | P0-11 | Truy cập được trang thử từ 4G |
+| P0-12 | Cloudflare Tunnel: tạo tunnel, gắn `erp.sugami.vn` và `hooks.sugami.vn` (chuyển DNS của sugami.vn sang Cloudflare nếu chưa); hướng dẫn trong `docs/ops/imac-server.md` | P0-11 | Truy cập được trang thử từ 4G |
 | P0-13 | Compose production + script sao lưu đêm (`mysqldump` + thư mục file → R2/Google Drive bằng rclone) + script khôi phục | P0-02, P0-11 | Khôi phục thử thành công trên máy khác |
 
 ## P1 — Nền tảng + catalog + kết nối KiotViet

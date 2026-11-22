@@ -135,7 +135,7 @@ Chủ shop có một iMac bật cả ngày, dùng luôn làm server.
 
 **Truy cập từ ngoài & webhook:**
 
-- KiotViet, Shopee, TikTok cần gọi webhook vào một địa chỉ **HTTPS công khai**. Dùng **Cloudflare Tunnel** (miễn phí): không cần mở cổng modem, không cần IP tĩnh, tự có HTTPS. Cần một tên miền (khoảng 250–300 nghìn ₫/năm), ví dụ `erp.sugami.vn` cho giao diện và `hooks.sugami.vn` cho webhook.
+- KiotViet, Shopee, TikTok cần gọi webhook vào một địa chỉ **HTTPS công khai**. Dùng **Cloudflare Tunnel** (miễn phí): không cần mở cổng modem, không cần IP tĩnh, tự có HTTPS. Cần một tên miền (khoảng 250–300 nghìn ₫/năm), tên miền của shop là **sugami.vn**: giao diện ở `erp.sugami.vn`, webhook ở `hooks.sugami.vn` (cả hai qua Cloudflare Tunnel).
 - Chặn truy cập giao diện bằng đăng nhập của Sugami; có thể thêm Cloudflare Access để chỉ email của shop vào được.
 
 **Rủi ro & cách giảm:**

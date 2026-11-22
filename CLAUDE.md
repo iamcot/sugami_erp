@@ -15,7 +15,7 @@ Claude viết toàn bộ code và **commit thẳng lên `main`** (không mở PR
 1. Chọn task ⬜ tiếp theo có đủ phụ thuộc ✅ (hoặc task chủ shop chỉ định). Không làm task 👤 thay chủ shop; chỉ chuẩn bị hướng dẫn.
 2. Làm trên `main`: `git pull` trước, đánh 🟡 trong PROGRESS khi bắt đầu nếu task kéo dài nhiều phiên.
 3. Làm task, viết test, chạy `pnpm lint && pnpm typecheck && pnpm test`. Chỉ push khi tất cả xanh; `main` phải luôn chạy được.
-4. **Trong cùng commit cuối của task**: cập nhật `PROGRESS.md` (trạng thái ✅, hash commit ở cột PR/commit, dòng Nhật ký, bảng Tổng quan) và sửa tài liệu trong `docs/` nếu thiết kế thay đổi.
+4. **Trong commit cuối của task** (hoặc commit `[progress]` ngay sau, vì commit không tự biết hash của mình): cập nhật `PROGRESS.md` (trạng thái ✅, hash commit ở cột Commit, dòng Nhật ký, bảng Tổng quan) và sửa tài liệu trong `docs/` nếu thiết kế thay đổi.
 5. Commit message: `[P1-04] Short description` (tiếng Anh); thân commit ghi tiêu chí hoàn thành đã đạt và cách kiểm tra.
 6. Task lớn có thể chia nhiều commit, cùng tiền tố ID; chỉ đánh ✅ ở commit cuối khi đạt đủ tiêu chí.
 7. Quyết định mới hoặc thông tin chủ shop cung cấp → ghi vào mục "Quyết định đã chốt" của `PROGRESS.md` và `docs/08-quyet-dinh-va-cau-hoi.md`.
@@ -26,7 +26,7 @@ Claude viết toàn bộ code và **commit thẳng lên `main`** (không mở PR
 - `apps/web`: Next.js (App Router), Tailwind, shadcn/ui, TanStack Table/Query, React Hook Form + Zod.
 - `apps/api`: NestJS (modular monolith). `apps/worker`: BullMQ.
 - `packages/db`: Prisma + **MySQL 8.4** (`utf8mb4_0900_ai_ci`). `packages/shared`: Zod schema, kiểu, tiện ích. `packages/ui`. `packages/channels/{core,kiotviet,tiktok,shopee}`.
-- MySQL 8.4 chạy **native** trên iMac (không trong Docker). Redis 7 trong Docker. File (ảnh/video) lưu ổ đĩa qua lớp `storage` (driver `local`, có driver `s3` cho R2 sau này). App chạy bằng Docker Compose trên iMac, ra internet qua Cloudflare Tunnel.
+- MySQL 8.4 chạy **native** trên iMac (không trong Docker). Redis 7 trong Docker. File (ảnh/video) lưu ổ đĩa qua lớp `storage` (driver `local`, có driver `s3` cho R2 sau này). App chạy bằng Docker Compose trên iMac, ra internet qua Cloudflare Tunnel: `erp.sugami.vn` (giao diện), `hooks.sugami.vn` (webhook).
 
 ## Quy ước
 
