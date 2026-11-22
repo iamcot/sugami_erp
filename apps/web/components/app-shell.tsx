@@ -27,7 +27,7 @@ const nav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/inventory/receive', label: 'Kho', icon: Boxes },
-  { href: '#orders', label: 'Đơn hàng', icon: ShoppingBag },
+  { href: '/orders', label: 'Đơn hàng', icon: ShoppingBag },
   { href: '#sourcing', label: 'Nguồn hàng', icon: Truck },
   { href: '/media', label: 'Media', icon: Images },
   { href: '#content', label: 'Content', icon: PenLine },
@@ -37,7 +37,7 @@ const nav = [
 
 const mobileNav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
-  { href: '#orders', label: 'Đơn', icon: ClipboardList },
+  { href: '/orders', label: 'Đơn', icon: ClipboardList },
   { href: '/inventory/receive', label: 'Quét', icon: ScanLine },
   { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/media', label: 'Media', icon: Images },

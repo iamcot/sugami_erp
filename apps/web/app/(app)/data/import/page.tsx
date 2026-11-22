@@ -55,7 +55,11 @@ const KINDS: Record<Kind, { label: string; hint: string; file: string }> = {
     file: 'DanhSachChiTietHoaDon_KV….xlsx',
   },
 };
-const CHANNEL_LABEL: Record<string, string> = { shopee: 'Shopee', tiktok: 'TikTok Shop', store: 'Bán trực tiếp' };
+const CHANNEL_LABEL: Record<string, string> = {
+  shopee: 'Shopee',
+  tiktok: 'TikTok Shop',
+  store: 'Bán trực tiếp',
+};
 
 async function send(kind: Kind, file: File, dryRun: boolean): Promise<Summary> {
   const form = new FormData();
@@ -66,7 +70,10 @@ async function send(kind: Kind, file: File, dryRun: boolean): Promise<Summary> {
     credentials: 'same-origin',
   });
   const body = (await res.json().catch(() => ({}))) as Summary & { message?: string; issues?: Issue[] };
-  if (!res.ok) throw Object.assign(new ApiError(body.message ?? `Lỗi ${res.status}`, res.status), { issues: body.issues });
+  if (!res.ok)
+    throw Object.assign(new ApiError(body.message ?? `Lỗi ${res.status}`, res.status), {
+      issues: body.issues,
+    });
   return { ...body, kind } as Summary;
 }
 
@@ -160,9 +167,13 @@ export default function ImportPage() {
         }}
       >
         <FileSpreadsheet className="size-8 text-brand-600" />
-        <div className="font-medium">{file ? file.name : `Kéo thả hoặc bấm để chọn file ${KINDS[kind].file}`}</div>
+        <div className="font-medium">
+          {file ? file.name : `Kéo thả hoặc bấm để chọn file ${KINDS[kind].file}`}
+        </div>
         <div className="text-sm text-slate-500">{KINDS[kind].hint}</div>
-        <div className="text-xs text-slate-400">Sugami đọc thử và cho xem trước, chưa ghi gì cho tới khi bạn bấm Nhập.</div>
+        <div className="text-xs text-slate-400">
+          Sugami đọc thử và cho xem trước, chưa ghi gì cho tới khi bạn bấm Nhập.
+        </div>
         <input
           ref={input}
           type="file"
@@ -264,13 +275,17 @@ function ProductStats({ s }: { s: ProductSummary }) {
           value={`${fmt(s.variants.created)} mới`}
           hint={`${fmt(s.variants.updated)} cập nhật · ${fmt(s.variants.unchanged)} giữ nguyên`}
         />
-        <Stat label="Tồn đầu kỳ" value={`${fmt(s.openingStock.units)} cái`} hint={`${fmt(s.openingStock.skus)} mã`} />
+        <Stat
+          label="Tồn đầu kỳ"
+          value={`${fmt(s.openingStock.units)} cái`}
+          hint={`${fmt(s.openingStock.skus)} mã`}
+        />
         <Stat label="Nhóm hàng mới" value={fmt(s.categories.created)} />
       </div>
       {s.stockDiffs.length > 0 && (
         <div className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-          {fmt(s.stockDiffs.length)} mã có tồn Sugami khác KiotViet. Sugami giữ nguyên số của mình (đối chiếu chênh
-          lệch sẽ có ở màn hình riêng).
+          {fmt(s.stockDiffs.length)} mã có tồn Sugami khác KiotViet. Sugami giữ nguyên số của mình (đối chiếu
+          chênh lệch sẽ có ở màn hình riêng).
         </div>
       )}
     </>
@@ -292,7 +307,11 @@ function InvoiceStats({ s }: { s: InvoiceSummary }) {
           value={`${fmt(s.stock.applied)} dòng`}
           hint={`${fmt(s.stock.beforeSnapshot)} dòng trước lần nhập tồn, không trừ lại${s.stock.reversed ? ` · ${fmt(s.stock.reversed)} hoàn do hủy` : ''}`}
         />
-        <Stat label="Mã hàng chưa có" value={fmt(s.unknownSkus.length)} hint={s.unknownSkus.length ? 'Không trừ tồn' : undefined} />
+        <Stat
+          label="Mã hàng chưa có"
+          value={fmt(s.unknownSkus.length)}
+          hint={s.unknownSkus.length ? 'Không trừ tồn' : undefined}
+        />
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-sm">
         {Object.entries(s.byChannel).map(([ch, v]) => (

@@ -1,105 +1,206 @@
+'use client';
+
 import { formatVnd } from '@sugami/shared';
-import { Download, Plus, SlidersHorizontal } from 'lucide-react';
+import { Search } from 'lucide-react';
 import Link from 'next/link';
-import { Badge, Button, Card, PageHeader, SyncDot } from '@/components/ui';
-import { products } from '@/lib/mock';
+import { Suspense, useEffect, useState } from 'react';
+import { type Column, DataTable } from '@/components/data-table';
+import { Badge, Button, PageHeader } from '@/components/ui';
+import { api } from '@/lib/api';
+import { useQueryState } from '@/lib/use-query-state';
 
-const tabs = ['Tất cả', 'Đang bán', 'Sắp hết', 'Nháp', 'Lỗi đồng bộ'];
+interface ProductRow {
+  id: string;
+  code: string;
+  name: string;
+  status: 'active' | 'draft' | 'archived';
+  category: string | null;
+  variantCount: number;
+  priceMin: number;
+  priceMax: number;
+  onHand: number;
+  negativeSkus: number;
+  lowSkus: number;
+}
+interface ListResponse {
+  data: ProductRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<string, number>;
+}
 
-export default function ProductsPage() {
+const VIEWS = [
+  ['all', 'Tất cả'],
+  ['active', 'Đang bán'],
+  ['out', 'Hết hàng'],
+  ['negative', 'Tồn âm'],
+  ['low', 'Sắp hết'],
+  ['archived', 'Lưu trữ'],
+] as const;
+
+const STATUS: Record<ProductRow['status'], { label: string; tone: 'success' | 'neutral' | 'warn' }> = {
+  active: { label: 'Đang bán', tone: 'success' },
+  draft: { label: 'Nháp', tone: 'neutral' },
+  archived: { label: 'Lưu trữ', tone: 'warn' },
+};
+
+const columns: Column<ProductRow>[] = [
+  {
+    key: 'name',
+    header: 'Sản phẩm',
+    sortKey: 'name',
+    className: 'min-w-48',
+    render: (p) => (
+      <div className="min-w-0">
+        <p className="line-clamp-1 font-medium">{p.name}</p>
+        <p className="font-mono text-xs text-slate-500">
+          {p.code}
+          {p.variantCount > 1 && ` · ${p.variantCount} phân loại`}
+        </p>
+      </div>
+    ),
+  },
+  {
+    key: 'category',
+    header: 'Nhóm',
+    className: 'hidden whitespace-nowrap text-slate-600 md:table-cell dark:text-slate-400',
+    render: (p) => p.category ?? '–',
+  },
+  {
+    key: 'price',
+    header: 'Giá bán',
+    sortKey: 'price',
+    align: 'right',
+    className: 'whitespace-nowrap tabular-nums',
+    render: (p) =>
+      p.priceMin === p.priceMax
+        ? formatVnd(p.priceMin)
+        : `${formatVnd(p.priceMin)} – ${formatVnd(p.priceMax)}`,
+  },
+  {
+    key: 'stock',
+    header: 'Tồn',
+    sortKey: 'stock',
+    align: 'right',
+    className: 'tabular-nums',
+    render: (p) => (
+      <span
+        className={
+          p.onHand < 0 || p.negativeSkus > 0
+            ? 'font-medium text-rose-600'
+            : p.onHand === 0
+              ? 'text-slate-400'
+              : ''
+        }
+      >
+        {p.onHand.toLocaleString('vi-VN')}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    header: 'Trạng thái',
+    className: 'hidden sm:table-cell',
+    render: (p) => <Badge tone={STATUS[p.status].tone}>{STATUS[p.status].label}</Badge>,
+  },
+];
+
+function ProductsList() {
+  const [qs, setQs] = useQueryState({ q: '', view: 'all', sort: 'updated', dir: 'desc', page: '1' });
+  const [search, setSearch] = useState(qs.q);
+  const [res, setRes] = useState<ListResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Debounce typing into the URL.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (search !== qs.q) setQs({ q: search, page: '1' });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search, qs.q, setQs]);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setLoading(true);
+    const params = new URLSearchParams({ ...qs, pageSize: '50' });
+    api<ListResponse>(`/products?${params}`, { signal: ctrl.signal })
+      .then((r) => {
+        setRes(r);
+        setError(null);
+      })
+      .catch((e: Error) => {
+        if (e.name !== 'AbortError') setError(e.message);
+      })
+      .finally(() => setLoading(false));
+    return () => ctrl.abort();
+  }, [qs.q, qs.view, qs.sort, qs.dir, qs.page]);
+
+  const counts = res?.counts ?? {};
   return (
     <>
       <PageHeader
         title="Sản phẩm"
-        description={`${products.length} sản phẩm · ${products.reduce((n, p) => n + p.variants.length, 0)} SKU`}
+        description={counts.all !== undefined ? `${counts.all.toLocaleString('vi-VN')} sản phẩm` : undefined}
         actions={
-          <>
-            <Button variant="secondary">
-              <Download className="size-4" /> Import Excel
-            </Button>
-            <Button>
-              <Plus className="size-4" /> Thêm sản phẩm
-            </Button>
-          </>
+          <Link href="/data/import">
+            <Button variant="secondary">Nhập từ KiotViet</Button>
+          </Link>
         }
       />
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center">
         <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-          {tabs.map((t, i) => (
+          {VIEWS.map(([v, label]) => (
             <button
-              key={t}
-              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${i === 0 ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
+              key={v}
+              onClick={() => setQs({ view: v, page: '1' })}
+              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.view === v ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
             >
-              {t}
+              {label}
+              {counts[v] !== undefined && (
+                <span className="ml-1.5 text-xs text-slate-400">{counts[v].toLocaleString('vi-VN')}</span>
+              )}
             </button>
           ))}
         </div>
-        <Button variant="secondary" className="ml-auto">
-          <SlidersHorizontal className="size-4" /> Lọc
-        </Button>
+        <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm md:ml-auto md:max-w-xs dark:border-slate-800 dark:bg-slate-900">
+          <Search className="size-4 shrink-0 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tên (gõ không dấu cũng được), mã, mã vạch"
+            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
+          />
+        </label>
       </div>
-
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900">
-              <tr>
-                <th className="px-4 py-2.5 font-medium">Sản phẩm</th>
-                <th className="px-4 py-2.5 font-medium">Nhóm</th>
-                <th className="px-4 py-2.5 text-right font-medium">Giá bán</th>
-                <th className="px-4 py-2.5 text-right font-medium">Tồn</th>
-                <th className="px-4 py-2.5 font-medium">Kênh</th>
-                <th className="px-4 py-2.5 font-medium">Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {products.map((p) => {
-                const stock = p.variants.reduce((n, v) => n + v.stock, 0);
-                const low = p.variants.some((v) => v.stock < v.minStock);
-                const prices = [...new Set(p.variants.map((v) => v.price))];
-                return (
-                  <tr key={p.code} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="px-4 py-3">
-                      <Link href={`/products/${p.code}`} className="flex items-center gap-3">
-                        <img src={p.image} alt="" className="size-10 rounded-lg" />
-                        <div className="min-w-0">
-                          <p className="line-clamp-1 font-medium hover:text-brand-600">{p.name}</p>
-                          <p className="font-mono text-xs text-slate-500">
-                            {p.code} · {p.variants.length} SKU
-                          </p>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-slate-400">
-                      {p.category}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">
-                      {prices.map(formatVnd).join(' – ')}
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-right tabular-nums ${low ? 'font-medium text-amber-600' : ''}`}
-                    >
-                      {stock}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
-                        {p.channels.shopee && <SyncDot state={p.channels.shopee} label="Shopee" />}
-                        {p.channels.tiktok && <SyncDot state={p.channels.tiktok} label="TikTok" />}
-                        {!p.channels.shopee && !p.channels.tiktok && (
-                          <span className="text-xs text-slate-400">Chưa đăng</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {p.status === 'active' ? <Badge tone="success">Đang bán</Badge> : <Badge>Nháp</Badge>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
+      <DataTable
+        columns={columns}
+        rows={res?.data ?? []}
+        rowKey={(p) => p.id}
+        rowHref={(p) => `/products/${encodeURIComponent(p.code)}`}
+        sort={{ sort: qs.sort, dir: qs.dir as 'asc' | 'desc' }}
+        onSort={(s) => setQs({ ...s, page: '1' })}
+        page={Number(qs.page)}
+        pageSize={50}
+        total={res?.total}
+        onPage={(p) => setQs({ page: String(p) })}
+        loading={loading}
+        empty={
+          qs.q
+            ? `Không tìm thấy "${qs.q}"`
+            : 'Chưa có sản phẩm. Nhập danh sách hàng hóa từ KiotViet để bắt đầu.'
+        }
+      />
     </>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense>
+      <ProductsList />
+    </Suspense>
   );
 }
