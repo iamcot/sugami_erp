@@ -42,7 +42,17 @@ export const OrderItem = z.looseObject({
   is_discount_percent: z.boolean().nullish(),
   is_bonus_product: z.boolean().nullish(),
   variation_info: z
-    .looseObject({ name: str, display_id: str, custom_id: str, barcode: str, retail_price: int })
+    .looseObject({
+      name: str,
+      display_id: str,
+      custom_id: str,
+      barcode: str,
+      retail_price: int,
+      /** Option values of the variation, e.g. [{ name: "MÀU", value: "Xanh đậm" }]. */
+      fields: z
+        .array(z.looseObject({ name: str, value: z.union([z.string(), z.number()]).nullish() }))
+        .nullish(),
+    })
     .nullish(),
 });
 

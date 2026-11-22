@@ -437,6 +437,19 @@ export async function syncPancakeOrders(
       if (buyerId && !opts.dryRun)
         await db.order.update({ where: { id: prev.id }, data: { customerId: buyerId } });
     }
+    // Line names can improve (the variant option is now read): refresh them without touching stock.
+    let renamed = false;
+    if (!fromKiotViet) {
+      const sorted = [...prev.lines].sort((x, y) => x.sort - y.sort);
+      for (const [i, pl] of sorted.entries()) {
+        const incoming = o.lines[i];
+        if (!incoming || incoming.sku.slice(0, 64) !== pl.sku || !incoming.name) continue;
+        const name = incoming.name.slice(0, 255);
+        if (name === pl.name) continue;
+        renamed = true;
+        if (!opts.dryRun) await db.orderLine.update({ where: { id: pl.id }, data: { name } });
+      }
+    }
     // An order Pancake owns can have its products replaced there (e.g. an unlinked line swapped for a
     // product with our SKU): then the lines and their stock effect are redone.
     const relines =
@@ -445,6 +458,7 @@ export async function syncPancakeOrders(
         lineSig(o.lines.map((l) => ({ sku: l.sku.slice(0, 64), qty: l.quantity })));
     const changed =
       relines ||
+      renamed ||
       prev.status !== fields.status ||
       prev.total !== fields.total ||
       prev.shippingFee !== fields.shippingFee ||

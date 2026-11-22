@@ -112,3 +112,7 @@ pnpm pancake:probe
 
 Dòng đơn Pancake chưa nối sản phẩm chỉ có tên bắt đầu bằng mã sàn. Mục "Dòng hàng chưa liên kết" ở trang Dữ liệu Pancake gom theo mã sàn; chọn một mã hàng Sugami có sẵn thì lưu `external_refs` (provider `pancake_sku`), gán SKU cho mọi dòng đang chưa link và trừ tồn theo quy tắc thường (đơn đang hoạt động và sau mốc tồn đầu của mã hàng). Các lần đồng bộ sau tự áp mã đã ghép. Không phụ thuộc việc link trên Pancake; chỉ ghép vào sản phẩm đã có, không tạo sản phẩm mới.
 API: `GET /pancake/unlinked-lines`, `GET /pancake/variant-search?q=`, `POST /pancake/link-line {key, variantId}`.
+
+## Tên biến thể trên dòng đơn
+
+Dòng đơn chưa liên kết ("Thêm nhanh") chỉ có tiêu đề sàn trong `variation_info.name`, còn tùy chọn (ví dụ "Xanh đen đậm") Pancake để riêng. `lineName()` (`packages/channels/pancake/src/mapping.ts`) đọc `variation_info.fields[].value` và nối vào cuối tên (`… - Xanh đen đậm`) nếu tên chưa có. Lần đồng bộ/quét lại sau đó cập nhật tên các dòng đã lưu (không đụng tồn). Cấu trúc `fields` dựa trên định dạng tùy chọn của Pancake, chưa kiểm với dữ liệu thật: chạy `pnpm pancake:probe` xem `items[].variation_info` nếu tên biến thể vẫn chưa hiện.

@@ -385,3 +385,22 @@ describe('marketplace listing images', () => {
     expect(map.has('SP3')).toBe(false);
   });
 });
+
+describe('lineName', () => {
+  it('appends the option text that Pancake keeps apart from the title', async () => {
+    const { lineName } = await import('./mapping.js');
+    expect(
+      lineName({
+        variation_info: { name: '176 - Bình nước Eco Bottle', fields: [{ value: 'Xanh đen đậm' }] },
+      }),
+    ).toBe('176 - Bình nước Eco Bottle - Xanh đen đậm');
+  });
+  it('leaves the name alone when it already has the option or there is none', async () => {
+    const { lineName } = await import('./mapping.js');
+    expect(lineName({ variation_info: { name: 'Bình - Xanh', fields: [{ value: 'xanh' }] } })).toBe(
+      'Bình - Xanh',
+    );
+    expect(lineName({ variation_info: { name: 'Bình' } })).toBe('Bình');
+    expect(lineName({})).toBe('');
+  });
+});

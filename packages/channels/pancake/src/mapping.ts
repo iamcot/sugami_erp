@@ -170,6 +170,22 @@ export function feeDetailOf(o: Order): Record<string, number> | undefined {
  * Pancake display id is the marketplace number itself ("2611220ND1CP8V"), while orders made in Pancake
  * have small numeric ids, so a marketplace order falls back to the display id when it looks like one.
  */
+/**
+ * Name of an order line. A product Pancake did not link ("Thêm nhanh") has only the marketplace title, with
+ * the option shown apart ("Xanh đen đậm"); that option text is appended so the variant is not lost.
+ */
+export function lineName(i: {
+  variation_info?: { name?: string | null; fields?: { value?: string | number | null }[] | null } | null;
+}): string {
+  const base = (i.variation_info?.name ?? '').trim();
+  const option = (i.variation_info?.fields ?? [])
+    .map((f) => String(f.value ?? '').trim())
+    .filter(Boolean)
+    .join(' / ');
+  if (!option || base.toLowerCase().includes(option.toLowerCase())) return base;
+  return `${base.slice(0, 200)} - ${option}`;
+}
+
 export function marketplaceCodeOf(o: Order): string | undefined {
   const sn = o.invoice_info_list?.find((i) => i.order_sn)?.order_sn?.trim();
   if (sn) return sn;
@@ -211,7 +227,7 @@ export function toExternalOrder(o: Order): ExternalOrder {
         barcode: i.variation_info?.barcode,
         id: i.variation_id ?? undefined,
       }),
-      name: i.variation_info?.name ?? '',
+      name: lineName(i),
       quantity: i.quantity,
       unitPrice: i.is_bonus_product ? 0 : unitPrice(i),
     })),
