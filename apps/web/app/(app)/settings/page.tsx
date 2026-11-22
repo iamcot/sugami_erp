@@ -2,6 +2,7 @@
 
 import { Receipt } from 'lucide-react';
 import Link from 'next/link';
+import { StockPushCard } from '@/components/stock-push-card';
 import { Card, PageHeader } from '@/components/ui';
 
 export default function SettingsPage() {
@@ -20,6 +21,7 @@ export default function SettingsPage() {
           </Card>
         </Link>
       </div>
+      <StockPushCard />
     </>
   );
 }

@@ -124,3 +124,10 @@ Mọi thứ nằm ở trang Sản phẩm (không còn trang Tin đăng sàn riê
 - Shopee/TikTok: số biến thể được Pancake liên kết (`linked_variation_custom_id`) với tin đăng sàn. Sugami không tự nối (không đoán theo SKU/mã vạch/đơn) và không có nối tay; muốn nối thì làm trong Pancake rồi bấm lại "Đồng bộ từ Pancake".
 - Nút "Đồng bộ từ Pancake" kéo cả sản phẩm Pancake lẫn tin đăng sàn; nút "Tin đăng sàn" mở drawer xem tin đăng, lọc theo nền tảng và trạng thái nối.
 Pancake chỉ đẩy tồn lên tin đăng đã được liên kết trong chính Pancake (API công khai không có lệnh tạo liên kết).
+
+## Tự đẩy tồn lên Pancake (P4-P3)
+
+- Cài đặt → "Đẩy tồn lên Pancake": nút Bật/Tạm tắt (mặc định tắt). Bật = worker mỗi 2 phút đẩy các mã có tồn bán được đổi so với lần đẩy trước. Tạm tắt không mất gì: bật lại thì đẩy phần đã đổi trong lúc tắt.
+- Tồn bán được = tồn kho Sugami (kho `PANCAKE_SYNC_WAREHOUSE`) trừ hàng đang giữ cho đơn giao ở trang Bán hàng, không âm. Số đã đẩy lần cuối lưu ở `external_refs.hash` của biến thể Pancake.
+- Chỉ đẩy khi con trỏ đơn Pancake (`pancake:orders`) mới hơn 20 phút, để không ghi đè tồn Pancake bằng số chưa trừ các đơn Pancake đã nhận.
+- Lần đầu: "Xem chênh lệch" rồi "Đặt tồn Pancake theo Sugami" (đồng bộ cả cửa hàng và ghi nhớ số đã đẩy), sau đó mới bật tự động. Chỉ một nơi đẩy tồn lên sàn: tắt đồng bộ tồn bên KiotViet trước.

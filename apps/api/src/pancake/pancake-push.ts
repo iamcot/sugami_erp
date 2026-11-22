@@ -29,7 +29,7 @@ export interface PushPlan {
   body: ReturnType<typeof buildCreateProductBody>;
 }
 
-async function resolveWarehouse(client: PancakeClient, hint: string | undefined) {
+export async function resolveWarehouse(client: PancakeClient, hint: string | undefined) {
   const warehouses = await listWarehouses(client);
   const wanted = hint ?? process.env.PANCAKE_WAREHOUSE_ID;
   const warehouse = wanted
@@ -49,7 +49,7 @@ async function resolveWarehouse(client: PancakeClient, hint: string | undefined)
   return { warehouse, warehouses };
 }
 
-const stockOf = (
+export const stockOf = (
   v: { variations_warehouses?: { warehouse_id: string; actual_remain_quantity?: number | null }[] | null },
   wh: string,
 ) => v.variations_warehouses?.find((w) => w.warehouse_id === wh)?.actual_remain_quantity ?? null;

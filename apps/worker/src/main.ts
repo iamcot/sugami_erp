@@ -3,6 +3,7 @@ import { Redis } from 'ioredis';
 import { createPrismaClient } from '@sugami/db';
 import { QUEUES, redisConnectionFromUrl } from './config.js';
 import { pancakeOrderPass, pancakeOrderSyncEnabled } from './pancake-orders.js';
+import { pancakeStockPass } from './pancake-stock.js';
 
 const redisOptions = redisConnectionFromUrl(process.env.REDIS_URL);
 // BullMQ in native ESM needs a constructed client; workers require maxRetriesPerRequest: null.
@@ -27,11 +28,17 @@ let pancakeWorker: Worker | undefined;
 const db = createPrismaClient();
 if (pancakeOrderSyncEnabled()) {
   await pancakeQueue.upsertJobScheduler('orders', { every: 5 * 60_000 }, { name: 'orders' });
+  // Stock push: checks every 2 minutes; does nothing until switched on in settings.
+  await pancakeQueue.upsertJobScheduler('stock', { every: 2 * 60_000 }, { name: 'stock' });
   await pancakeQueue.add('orders', {}, { jobId: `orders-startup-${Date.now()}`, removeOnComplete: true });
   pancakeWorker = new Worker(
     QUEUES.pancake,
     async (job) => {
       if (job.name === 'orders') return pancakeOrderPass(db);
+      if (job.name === 'stock') {
+        await pancakeStockPass(db);
+        return;
+      }
       throw new Error(`Unknown job: ${job.name}`);
     },
     { connection, concurrency: 1 },
@@ -42,6 +49,7 @@ if (pancakeOrderSyncEnabled()) {
   console.log('[worker] Pancake order sync on (every 5 minutes)');
 } else {
   await pancakeQueue.removeJobScheduler('orders');
+  await pancakeQueue.removeJobScheduler('stock');
   console.log('[worker] Pancake order sync off (set PANCAKE_API_KEY and PANCAKE_SHOP_ID)');
 }
 

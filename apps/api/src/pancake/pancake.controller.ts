@@ -20,6 +20,7 @@ import {
   PancakeAdapter,
   PancakeClient,
   PancakeError,
+  setStock,
   pullListings,
   type PushProductInput,
 } from '@sugami/channels-pancake';
@@ -28,7 +29,11 @@ import {
   linkUnlinkedLines,
   type PancakeVariantInput,
   listUnlinkedLines,
+  reconcileWithPancake,
   runPancakeOrderSync,
+  runStockPush,
+  setStockPushOn,
+  stockPushStatus,
   syncChannelListings,
   syncListingImages,
   syncPancakeVariantRefs,
@@ -38,7 +43,14 @@ import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { PancakePushError, planProductPush, pushProduct, syncProductStock } from './pancake-push.js';
+import {
+  PancakePushError,
+  planProductPush,
+  pushProduct,
+  resolveWarehouse,
+  stockOf,
+  syncProductStock,
+} from './pancake-push.js';
 
 const Body_ = z.object({
   /** Preview only (default). Nothing is written to Pancake unless this is false. */
@@ -48,6 +60,9 @@ const Body_ = z.object({
 
 /** Shop-name endings of other countries ("SuGaMi - PH"); the Vietnam shop has no suffix. */
 const OTHER_SHOP_SUFFIXES = [' - PH', ' - MY', ' - SG', ' - TH', ' - ID'];
+
+const StockToggleBody = z.object({ on: z.boolean() });
+const StockCompareBody = z.object({ apply: z.boolean().default(false) });
 
 const ImagesBody = z.object({
   dryRun: z.boolean().default(true),
@@ -366,6 +381,82 @@ export class PancakeController {
         skippedOtherCountry: listings.length - vn.length,
         removedOtherCountry: stale,
       };
+    });
+  }
+
+  /** Sugami warehouse whose stock is pushed, and the Pancake warehouse that receives it. */
+  private async stockContext() {
+    const code = process.env.PANCAKE_SYNC_WAREHOUSE || 'KHO-CHINH';
+    const sugami = await this.prisma.client.warehouse.findUnique({ where: { code }, select: { id: true } });
+    if (!sugami) throw new UnprocessableEntityException(`Không thấy kho ${code} trong Sugami`);
+    const client = this.client();
+    const { warehouse } = await resolveWarehouse(client, undefined);
+    return {
+      client,
+      sugamiWarehouseId: sugami.id,
+      pancakeWarehouseId: warehouse.id,
+      io: {
+        setStock: (variationId: string, qty: number) => setStock(client, variationId, warehouse.id, qty),
+      },
+    };
+  }
+
+  /** State of the automatic stock push: on/off, last pass, how many variants wait for a push. */
+  @Get('stock-push/status')
+  @RequirePermissions('catalog.read')
+  stockStatus() {
+    return this.guard(async () => {
+      const code = process.env.PANCAKE_SYNC_WAREHOUSE || 'KHO-CHINH';
+      const wh = await this.prisma.client.warehouse.findUnique({ where: { code }, select: { id: true } });
+      if (!wh) throw new UnprocessableEntityException(`Không thấy kho ${code} trong Sugami`);
+      return stockPushStatus(this.prisma.client, wh.id);
+    });
+  }
+
+  /** Turn the automatic push on or pause it. */
+  @Post('stock-push/toggle')
+  @HttpCode(200)
+  @RequirePermissions('catalog.write')
+  async stockToggle(@Body() raw: unknown) {
+    const { on } = parseInput(StockToggleBody, raw);
+    await setStockPushOn(this.prisma.client, on);
+    return { on };
+  }
+
+  /** Push stock that changed since the last push now (preview by default). */
+  @Post('stock-push/run')
+  @HttpCode(200)
+  @RequirePermissions('catalog.write')
+  stockRun(@Body() raw: unknown) {
+    const { dryRun } = parseInput(Body_, raw ?? {});
+    return this.guard(async () => {
+      const ctx = await this.stockContext();
+      return runStockPush(this.prisma.client, ctx.io, {
+        warehouseId: ctx.sugamiWarehouseId,
+        dryRun,
+        auto: false,
+        limit: 1000,
+      });
+    });
+  }
+
+  /** Compare Sugami's stock with Pancake's real stock for every variant; with apply, set Pancake to Sugami's. */
+  @Post('stock-push/compare')
+  @HttpCode(200)
+  @RequirePermissions('catalog.write')
+  stockCompare(@Body() raw: unknown) {
+    const { apply } = parseInput(StockCompareBody, raw ?? {});
+    return this.guard(async () => {
+      const ctx = await this.stockContext();
+      const pancake = new Map<string, number | null>();
+      for await (const rawVar of ctx.client.paginate<unknown>('/products/variations')) {
+        const v = Variation.parse(rawVar);
+        if (!v.is_removed) pancake.set(v.id, stockOf(v, ctx.pancakeWarehouseId));
+      }
+      return reconcileWithPancake(this.prisma.client, ctx.io, pancake, {
+        warehouseId: ctx.sugamiWarehouseId,
+        apply,
+      });
     });
   }
 
