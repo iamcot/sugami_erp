@@ -216,6 +216,7 @@ model Variant {
   prices          PriceListItem[]
   stockLevels     StockLevel[]
   media           ProductMedia[]
+  orderLines      OrderLine[]
   movements       StockMovement[]
   documentLines   StockDocumentLine[]
 
@@ -312,6 +313,7 @@ model Warehouse {
   stockLevels       StockLevel[]
   movements         StockMovement[]
   documents         StockDocument[] @relation("DocumentWarehouse")
+  orders            Order[]
   incomingTransfers StockDocument[] @relation("DocumentToWarehouse")
 
   @@map("warehouses")
@@ -517,4 +519,135 @@ model ProductMedia {
   @@index([productId, sort])
   @@index([assetId])
   @@map("product_media")
+}
+
+// ---------------------------------------------------------------------------
+// Sales channels & orders
+// ---------------------------------------------------------------------------
+
+enum ChannelType {
+  shopee
+  tiktok
+  lazada
+  facebook
+  zalo
+  website
+  store
+}
+
+model Channel {
+  id             String      @id @default(uuid(7)) @db.Char(36)
+  /// Stable code used in code and imports: "shopee", "tiktok", "store".
+  code           String      @unique @db.VarChar(32)
+  type           ChannelType
+  name           String      @db.VarChar(191)
+  /// Shop id on the marketplace, once connected.
+  shopExternalId String?     @map("shop_external_id") @db.VarChar(64)
+  isActive       Boolean     @default(true) @map("is_active")
+  settings       Json?
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  orders         Order[]
+
+  @@map("channels")
+}
+
+/// Customer. Imports only store the KiotViet customer code: names, phones and addresses
+/// in KiotViet exports are masked and are not copied.
+model Customer {
+  id           String   @id @default(uuid(7)) @db.Char(36)
+  kiotvietCode String?  @unique @map("kiotviet_code") @db.VarChar(64)
+  name         String?  @db.VarChar(191)
+  phone        String?  @db.VarChar(32)
+  email        String?  @db.VarChar(191)
+  address      Json?
+  tags         Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  orders       Order[]
+
+  @@map("customers")
+}
+
+enum OrderStatus {
+  new
+  confirmed
+  packing
+  shipped
+  delivered
+  completed
+  cancelled
+  returned
+}
+
+model Order {
+  id                  String      @id @default(uuid(7)) @db.Char(36)
+  /// Sugami order code; for KiotViet imports, the invoice code (HDSPE_..., HD000123).
+  code                String      @unique @db.VarChar(64)
+  channelId           String      @map("channel_id") @db.Char(36)
+  /// Order number on the marketplace (Shopee order sn).
+  externalCode        String?     @map("external_code") @db.VarChar(64)
+  kiotvietInvoiceCode String?     @unique @map("kiotviet_invoice_code") @db.VarChar(64)
+  kiotvietOrderCode   String?     @map("kiotviet_order_code") @db.VarChar(64)
+  customerId          String?     @map("customer_id") @db.Char(36)
+  warehouseId         String      @map("warehouse_id") @db.Char(36)
+  status              OrderStatus @default(new)
+  /// Raw delivery status text from the source (e.g. "Giao thành công").
+  shippingStatus      String?     @map("shipping_status") @db.VarChar(64)
+  carrier             String?     @db.VarChar(64)
+  trackingNo          String?     @map("tracking_no") @db.VarChar(64)
+  /// All amounts in VND.
+  subtotal            BigInt      @default(0)
+  discount            BigInt      @default(0)
+  otherIncome         BigInt      @default(0) @map("other_income")
+  total               BigInt      @default(0)
+  paidAmount          BigInt      @default(0) @map("paid_amount")
+  codAmount           BigInt      @default(0) @map("cod_amount")
+  /// Fee paid to the carrier ("Phí trả ĐTGH").
+  shippingFee         BigInt      @default(0) @map("shipping_fee")
+  orderedAt           DateTime    @map("ordered_at")
+  completedAt         DateTime?   @map("completed_at")
+  /// kiotviet_excel, shopee_api, manual...
+  source              String      @db.VarChar(32)
+  /// Set when sale_out movements were written for this order (null = no stock effect).
+  stockAppliedAt      DateTime?   @map("stock_applied_at")
+  internalNote        String?     @map("internal_note") @db.VarChar(1000)
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+  channel             Channel     @relation(fields: [channelId], references: [id], onDelete: Restrict)
+  customer            Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  warehouse           Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  lines               OrderLine[]
+
+  @@index([channelId, orderedAt])
+  @@index([orderedAt])
+  @@index([status])
+  @@index([externalCode])
+  @@map("orders")
+}
+
+model OrderLine {
+  id           String   @id @default(uuid(7)) @db.Char(36)
+  orderId      String   @map("order_id") @db.Char(36)
+  /// Null when the SKU is unknown in Sugami.
+  variantId    String?  @map("variant_id") @db.Char(36)
+  sku          String   @db.VarChar(64)
+  name         String   @db.VarChar(255)
+  qty          Decimal  @db.Decimal(14, 3)
+  /// List price per unit before line discount, VND.
+  unitPrice    BigInt   @map("unit_price")
+  /// Discount per unit, VND.
+  discount     BigInt   @default(0)
+  /// Selling price per unit after discount, VND.
+  price        BigInt
+  lineTotal    BigInt   @map("line_total")
+  /// Variant average cost when the line was recorded, VND (for margin).
+  costSnapshot BigInt?  @map("cost_snapshot")
+  sort         Int      @default(0)
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant      Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([variantId])
+  @@map("order_lines")
 }

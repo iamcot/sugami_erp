@@ -10,5 +10,5 @@ coverage
 .DS_Store
 packages/db/src/generated
 next-env.d.ts
-data
+/data/
 kiotviet-probe-report.json

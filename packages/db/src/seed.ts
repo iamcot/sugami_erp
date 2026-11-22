@@ -25,6 +25,14 @@ async function main(): Promise<void> {
     });
     console.log('Seeded default warehouse KHO-CHINH');
 
+    const channels = [
+      { code: 'shopee', type: 'shopee', name: 'Shopee' },
+      { code: 'tiktok', type: 'tiktok', name: 'TikTok Shop' },
+      { code: 'store', type: 'store', name: 'Bán trực tiếp' },
+    ] as const;
+    for (const c of channels) await prisma.channel.upsert({ where: { code: c.code }, create: c, update: {} });
+    console.log(`Seeded ${channels.length} sales channels`);
+
     const email = process.env.SEED_OWNER_EMAIL?.trim().toLowerCase();
     const password = process.env.SEED_OWNER_PASSWORD;
     if (!email || !password) {

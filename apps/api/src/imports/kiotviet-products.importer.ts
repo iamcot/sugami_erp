@@ -12,6 +12,8 @@ export interface ImportOptions {
   /** Compute the summary only; write nothing. */
   dryRun: boolean;
   userId?: string;
+  /** When KiotViet exported the file (from its name); opening stock is dated at this time. */
+  snapshotAt?: Date;
 }
 
 export interface StockDiff {
@@ -226,6 +228,7 @@ export async function importKiotVietProducts(
             unitCost: v.onHand > 0 ? v.cost : undefined,
             refType: 'kiotviet_products',
             note: 'Tồn đầu kỳ từ file KiotViet',
+            occurredAt: opts.snapshotAt,
             createdBy: opts.userId,
           });
         }

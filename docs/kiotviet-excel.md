@@ -66,6 +66,17 @@ Bản **chi tiết**: một dòng cho mỗi dòng hàng, thông tin hóa đơn l
 | `Mã khách hàng` | `customer.external_code` | `KHSPE…` |
 | Tên/SĐT/địa chỉ khách và người nhận, `Ghi chú` | **Không lưu** | Đã bị che hoặc chứa username Shopee |
 
+### Cách Sugami import (P1-12)
+
+Màn hình **Nhập KiotViet → Hóa đơn** hoặc `POST /api/imports/kiotviet/invoices?dryRun=…` (quyền `orders.write` + `inventory.write`). File tổng quan bị từ chối (cần bản chi tiết).
+
+- Mỗi hóa đơn thành một `order` (mã = mã hóa đơn, khớp lại theo `kiotviet_invoice_code`, chạy lại an toàn). Kênh: `HDSPE_` → Shopee (mã đơn Shopee vào `external_code`), `HDTTS_`/`HDTTK_` hoặc đối tác giao TikTok → TikTok (giả định, chưa thấy trong mẫu), còn lại → Bán trực tiếp.
+- Trạng thái: `Đã hủy` → cancelled; `Hoàn thành` → completed; `Đang xử lý` + giao `Giao thành công` → delivered, `Đang giao hàng` → shipped, khác → confirmed.
+- Khách: chỉ lưu `Mã khách hàng` (`customers.kiotviet_code`). Tên, SĐT, địa chỉ, `Ghi chú` không lưu.
+- **Trừ tồn**: dòng hàng chỉ trừ tồn (`sale_out`) nếu hóa đơn **sau** lần nhập tồn đầu kỳ của mã đó (thời điểm xuất file danh sách hàng hóa, lấy từ tên file `_KVddMMyyyy-HHmmss`). Hóa đơn trước đó đã nằm trong số tồn KiotViet nên không trừ lại. Hóa đơn hủy không trừ; hóa đơn đã trừ mà sau đó bị hủy thì hoàn tồn (`return_in`).
+- Mã hàng chưa có trong Sugami: vẫn tạo dòng đơn, không trừ tồn, báo cảnh báo.
+- Đã thử với file thật (38 hóa đơn, 47 dòng): doanh thu 6.859.255 đ khớp file tổng quan; Shopee 34 đơn, bán trực tiếp 4 đơn.
+
 ## 3. Phiếu nhập hàng — `DanhSachChiTietNhapHang_KV*.xlsx`
 
 Bản chi tiết, một dòng mỗi mặt hàng: `Mã nhập hàng` (`PN000792`), `Thời gian`, `Mã nhà cung cấp`, `Tên nhà cung cấp`, `Mã hàng`, `Số lượng`, `Đơn giá`, `Giảm giá`, `Giá nhập`, `Thành tiền`, `Trạng thái` (`Đã nhập hàng`). Dùng để đối chiếu giá vốn, không cần import thường xuyên.
