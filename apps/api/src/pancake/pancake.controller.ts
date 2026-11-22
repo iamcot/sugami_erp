@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import {
   imagesBySku,
+  isOtherCountryShop,
   type Listing,
   PancakeAdapter,
   PancakeClient,
@@ -30,6 +31,9 @@ const Body_ = z.object({
   dryRun: z.boolean().default(true),
   warehouseId: z.string().trim().min(1).max(64).optional(),
 });
+
+/** Shop-name endings of other countries ("SuGaMi - PH"); the Vietnam shop has no suffix. */
+const OTHER_SHOP_SUFFIXES = [' - PH', ' - MY', ' - SG', ' - TH', ' - ID'];
 
 const ImagesBody = z.object({
   dryRun: z.boolean().default(true),
@@ -161,9 +165,17 @@ export class PancakeController {
     return this.guard(async () => {
       const listings: Listing[] = [];
       for await (const l of pullListings(this.client())) listings.push(l);
-      return syncChannelListings(
+      // Only the Vietnam shop: PH/MY shops share the marketplace id but are other countries.
+      const vn = listings.filter((l) => !isOtherCountryShop(l.marketplace_shop_name));
+      const otherShops = OTHER_SHOP_SUFFIXES.map((x) => ({ shopKey: { endsWith: x } }));
+      const stale = await this.prisma.client.channelListing.count({
+        where: { source: 'pancake', OR: otherShops },
+      });
+      if (!dryRun && stale)
+        await this.prisma.client.channelListing.deleteMany({ where: { source: 'pancake', OR: otherShops } });
+      const summary = await syncChannelListings(
         this.prisma.client,
-        listings.map((l) => ({
+        vn.map((l) => ({
           source: 'pancake',
           externalId: l.id,
           shopName: l.marketplace_shop_name,
@@ -183,6 +195,7 @@ export class PancakeController {
         })),
         { dryRun },
       );
+      return { ...summary, skippedOtherCountry: listings.length - vn.length, removedOtherCountry: stale };
     });
   }
 
@@ -194,7 +207,8 @@ export class PancakeController {
     const { dryRun, replace } = parseInput(ImagesBody, raw ?? {});
     return this.guard(async () => {
       const listings: Listing[] = [];
-      for await (const l of pullListings(this.client())) listings.push(l);
+      for await (const l of pullListings(this.client()))
+        if (!isOtherCountryShop(l.marketplace_shop_name)) listings.push(l);
       return {
         listings: listings.length,
         ...(await syncListingImages(

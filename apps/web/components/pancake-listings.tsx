@@ -13,6 +13,8 @@ interface Result {
   matched: { link: number; sku: number; barcode: number; orders: number };
   unmatched: number;
   unmatchedSkus: string[];
+  skippedOtherCountry: number;
+  removedOtherCountry: number;
 }
 
 const fmt = (n: number) => n.toLocaleString('vi-VN');
@@ -64,10 +66,13 @@ export function PancakeListings() {
       {res && (
         <p className="mt-3 text-sm">
           {res.dryRun ? 'Xem trước: ' : 'Đã chạy: '}
-          {fmt(res.listings)} tin ({fmt(res.created)} mới, {fmt(res.updated)} đã có), {fmt(res.variations)}{' '}
-          biến thể. Nối được {fmt(matched)} (link {fmt(res.matched.link)}, mã hàng {fmt(res.matched.sku)}, mã
-          vạch {fmt(res.matched.barcode)}, học từ đơn {fmt(res.matched.orders)}), chưa nối{' '}
-          {fmt(res.unmatched)}.
+          {fmt(res.listings)} tin Việt Nam ({fmt(res.skippedOtherCountry)} tin PH/MY bỏ qua
+          {res.removedOtherCountry > 0
+            ? `, ${fmt(res.removedOtherCountry)} tin PH/MY đã lưu trước đó ${res.dryRun ? 'sẽ bị xóa' : 'đã xóa'}`
+            : ''}
+          ): ({fmt(res.created)} mới, {fmt(res.updated)} đã có), {fmt(res.variations)} biến thể. Nối được{' '}
+          {fmt(matched)} (link {fmt(res.matched.link)}, mã hàng {fmt(res.matched.sku)}, mã vạch{' '}
+          {fmt(res.matched.barcode)}, học từ đơn {fmt(res.matched.orders)}), chưa nối {fmt(res.unmatched)}.
           {res.unmatchedSkus.length > 0 && (
             <span className="block text-xs text-slate-500">
               SKU sàn chưa nối (mẫu): {res.unmatchedSkus.slice(0, 8).join(', ')}
