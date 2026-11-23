@@ -92,7 +92,7 @@ function ChatImage({ att }: { att: Attachment }) {
       </a>
     );
   return (
-    <a href={att.url} target="_blank" rel="noopener noreferrer" className="mt-1 block">
+    <a href={att.url} target="_blank" rel="noopener noreferrer" className="mt-1 block max-w-full">
       <img
         src={att.url}
         alt="Ảnh trong chat"
@@ -101,7 +101,7 @@ function ChatImage({ att }: { att: Attachment }) {
         width={att.width}
         height={att.height}
         onError={() => setFailed(true)}
-        className="max-h-72 max-w-full rounded-lg object-contain"
+        className="block h-auto max-h-72 w-auto max-w-[min(100%,18rem)] rounded-lg object-contain"
       />
     </a>
   );
@@ -289,7 +289,7 @@ function Thread({
             <div key={m.id} className={cn('flex', m.fromShop ? 'justify-end' : 'justify-start')}>
               <div
                 className={cn(
-                  'max-w-[80%] rounded-xl px-3 py-2 text-sm',
+                  'min-w-0 max-w-[80%] rounded-xl px-3 py-2 text-sm',
                   m.fromShop
                     ? 'bg-brand-500/15 text-slate-800 dark:text-slate-100'
                     : 'border border-slate-200/80 bg-white/70 dark:border-slate-700 dark:bg-white/5',
@@ -550,7 +550,7 @@ function ChatList() {
         </div>
       </div>
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
-      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className={cn('flex min-h-0 flex-col', selected && 'hidden lg:flex')}>
           <Card className="min-h-0 flex-1 divide-y divide-slate-200/70 overflow-y-auto dark:divide-slate-700/60">
             {loading && !res && <p className="p-4 text-sm text-slate-500">Đang tải…</p>}
@@ -646,7 +646,7 @@ function ChatList() {
             </div>
           )}
         </div>
-        <div className={cn('min-h-0', !selected && 'hidden lg:block')}>
+        <div className={cn('min-h-0 min-w-0', !selected && 'hidden lg:block')}>
           {selected ? (
             <Thread
               conv={selected}
