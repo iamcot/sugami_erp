@@ -40,6 +40,7 @@ export function DataTable<T>({
   empty = 'Không có dữ liệu',
   rowEmphasis,
   bare,
+  selection,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -61,6 +62,8 @@ export function DataTable<T>({
   rowEmphasis?: (row: T) => boolean;
   /** Drawn inside another panel: no glass frame of its own. */
   bare?: boolean;
+  /** Checkboxes at the start of each row and a select-all in the header (current page). */
+  selection?: { selected: Set<string>; onChange: (next: Set<string>) => void };
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const drag = useRef({ down: false, moved: false, x: 0, left: 0 });
@@ -120,6 +123,23 @@ export function DataTable<T>({
         <table className={cn('w-full text-sm', loading && 'opacity-60')}>
           <thead className="hud-label border-b border-slate-300/60 bg-white/40 text-slate-500 dark:border-white/10 dark:bg-black/20 dark:text-slate-400">
             <tr>
+              {selection && (
+                <th className="w-10 pl-4 pr-0">
+                  <Checkbox
+                    checked={rows.length > 0 && rows.every((r) => selection.selected.has(rowKey(r)))}
+                    indeterminate={rows.some((r) => selection.selected.has(rowKey(r)))}
+                    onChange={(on) => {
+                      const next = new Set(selection.selected);
+                      for (const r of rows) {
+                        if (on) next.add(rowKey(r));
+                        else next.delete(rowKey(r));
+                      }
+                      selection.onChange(next);
+                    }}
+                    label="Chọn tất cả dòng trang này"
+                  />
+                </th>
+              )}
               {columns.map((c) => {
                 const active = sort && c.sortKey === sort.sort;
                 return (
@@ -169,7 +189,10 @@ export function DataTable<T>({
           <tbody className="divide-y divide-slate-200/70 dark:divide-white/[0.06]">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center text-slate-500">
+                <td
+                  colSpan={columns.length + (selection ? 1 : 0)}
+                  className="px-4 py-10 text-center text-slate-500"
+                >
                   {loading ? 'Đang tải…' : empty}
                 </td>
               </tr>
@@ -184,13 +207,27 @@ export function DataTable<T>({
                     'transition-shadow',
                     rowEmphasis?.(r) &&
                       'font-semibold [&>td:first-child]:shadow-[inset_3px_0_0_var(--accent-600)]',
-                    isSelected?.(r)
+                    isSelected?.(r) || selection?.selected.has(rowKey(r))
                       ? 'bg-gradient-to-r from-brand-500/20 to-brand-500/5'
                       : 'even:bg-slate-500/[0.06] hover:relative hover:z-[1] hover:bg-white/90 dark:even:bg-white/[0.03] hover:shadow-[0_0_0_1px_rgb(var(--accent-rgb)/0.35),0_6px_18px_rgba(60,80,140,0.16)] dark:hover:bg-white/[0.07]',
                     onRowClick && 'cursor-pointer',
                   )}
                   onClick={onRowClick ? () => onRowClick(r) : undefined}
                 >
+                  {selection && (
+                    <td className="w-10 pl-4 pr-0" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selection.selected.has(rowKey(r))}
+                        onChange={(on) => {
+                          const next = new Set(selection.selected);
+                          if (on) next.add(rowKey(r));
+                          else next.delete(rowKey(r));
+                          selection.onChange(next);
+                        }}
+                        label="Chọn dòng"
+                      />
+                    </td>
+                  )}
                   {columns.map((c, i) => (
                     <td
                       key={c.key}
@@ -254,5 +291,30 @@ export function DataTable<T>({
         </div>
       )}
     </div>
+  );
+}
+
+function Checkbox({
+  checked,
+  indeterminate,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: (on: boolean) => void;
+  label: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      aria-label={label}
+      checked={checked}
+      ref={(el) => {
+        if (el) el.indeterminate = !checked && !!indeterminate;
+      }}
+      onChange={(e) => onChange(e.target.checked)}
+      className="size-4 cursor-pointer align-middle accent-brand-600"
+    />
   );
 }

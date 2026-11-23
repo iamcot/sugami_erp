@@ -15,6 +15,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { completeOrders } from './order-bulk.js';
 import { handleReturn, ReturnError, writeOffReturn } from './order-returns.js';
 
 const STATUSES = [
@@ -56,6 +57,7 @@ const groupWhere = (group: string): Prisma.OrderWhereInput =>
     : { status: { in: GROUPS[group] } };
 
 const ReturnBody = z.object({ restock: z.boolean() });
+const BulkBody = z.object({ codes: z.array(z.string().trim().min(1).max(64)).min(1).max(200) });
 
 @Controller('orders')
 export class OrdersController {
@@ -170,6 +172,15 @@ export class OrdersController {
       waitingByChannel[k] = (waitingByChannel[k] ?? 0) + c._count;
     }
     return { waiting: waitingCount, shipping, returnPending, waitingByChannel };
+  }
+
+  /** Force selected orders to completed (already delivered but never moved along). */
+  @Post('bulk/complete')
+  @HttpCode(200)
+  @RequirePermissions('orders.write', 'inventory.write')
+  async bulkComplete(@Body() raw: unknown, @CurrentUser() user: AuthUser) {
+    const b = parseInput(BulkBody, raw);
+    return completeOrders(this.prisma.client, b.codes, user.id);
   }
 
   /** Close a returned parcel: put the goods back in stock, or write them off. */

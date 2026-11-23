@@ -2,13 +2,13 @@
 
 import { formatVnd } from '@sugami/shared';
 import { cn } from '@sugami/ui';
-import { ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
+import { CheckCheck, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
 import { FilterMenu } from '@/components/filter-menu';
 import { PlatformDiamond } from '@/components/platform-icons';
-import { Badge, PageHeader } from '@/components/ui';
+import { Badge, Button, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
 import { useQueryState } from '@/lib/use-query-state';
@@ -16,6 +16,7 @@ import { useQueryState } from '@/lib/use-query-state';
 interface OrderRow {
   id: string;
   code: string;
+  source: string;
   externalCode: string | null;
   channel: { code: string; name: string };
   customer: {
@@ -316,6 +317,44 @@ function OrdersList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  // rows ticked for a bulk action; cleared whenever the list reloads
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setPicked(new Set()), [res]);
+
+  const completePicked = async () => {
+    const codes = (res?.data ?? []).filter((o) => picked.has(o.id)).map((o) => o.code);
+    if (!codes.length) return;
+    if (
+      !window.confirm(
+        `Chuyển ${codes.length} đơn sang Hoàn tất? Đơn bán tại quầy chưa trừ tồn sẽ trừ tồn bây giờ và tính là đã thu đủ tiền. Đơn sàn sẽ được bỏ qua.`,
+      )
+    )
+      return;
+    setBusy(true);
+    setBulkMsg(null);
+    try {
+      const r = await api<{ done: string[]; skipped: { code: string; reason: string }[] }>(
+        '/orders/bulk/complete',
+        { method: 'POST', json: { codes } },
+      );
+      setBulkMsg(
+        `Đã hoàn tất ${r.done.length} đơn.` +
+          (r.skipped.length
+            ? ` Bỏ qua ${r.skipped.length}: ${r.skipped
+                .slice(0, 5)
+                .map((x) => `${x.code} (${x.reason})`)
+                .join(', ')}${r.skipped.length > 5 ? '…' : ''}`
+            : ''),
+      );
+      setReload((n) => n + 1);
+    } catch (e) {
+      setBulkMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
@@ -369,7 +408,20 @@ function OrdersList() {
           >
             <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
           </button>
-          {res && (
+          {picked.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-brand-700 dark:text-brand-500">
+                Đã chọn {picked.size}
+              </span>
+              <Button className="h-8 py-0" disabled={busy} onClick={() => void completePicked()}>
+                <CheckCheck className="size-4" /> Hoàn tất đơn
+              </Button>
+              <Button variant="ghost" className="h-8 py-0" onClick={() => setPicked(new Set())}>
+                Bỏ chọn
+              </Button>
+            </div>
+          )}
+          {res && picked.size === 0 && (
             <span className="text-sm text-slate-600 dark:text-slate-400">
               <b className="font-mono font-semibold text-slate-900 dark:text-white">
                 {res.revenueOrders.toLocaleString('vi-VN')}
@@ -487,6 +539,11 @@ function OrdersList() {
           ))}
         </div>
         {error && <p className="px-4 py-2 text-sm text-rose-600">{error}</p>}
+        {bulkMsg && (
+          <p className="border-b border-slate-300/50 bg-brand-50/60 px-4 py-2 text-sm dark:border-white/10 dark:bg-brand-500/10">
+            {bulkMsg}
+          </p>
+        )}
         <DataTable
           bare
           columns={columns}
@@ -495,6 +552,7 @@ function OrdersList() {
           onRowClick={(o) => open('order', o.code)}
           isSelected={(o) => selected.order === o.code}
           rowEmphasis={needsAction}
+          selection={{ selected: picked, onChange: setPicked }}
           page={Number(qs.page)}
           pageSize={50}
           total={res?.total}
