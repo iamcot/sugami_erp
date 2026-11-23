@@ -31,6 +31,7 @@ interface Order {
   shippingStatus: string | null;
   carrier: string | null;
   trackingNo: string | null;
+  trackingUrl: string | null;
   shipByAt: string | null;
   shipAddress: string | null;
   shipPhone: string | null;
@@ -100,6 +101,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+interface AhamoveQuote {
+  serviceId: string;
+  name: string;
+  fee: number;
+  distanceKm: number | null;
+  error?: string;
+}
+
 interface PosAction {
   key: string;
   label: string;
@@ -115,6 +124,17 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
   // handing a parcel to the carrier asks who carries it and the tracking number
   const [ship, setShip] = useState<{ action: PosAction; carrier: string; trackingNo: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Ahamove: price list for this order, shown inside the hand-over dialog
+  const [ahamoveOn, setAhamoveOn] = useState(false);
+  const [quotes, setQuotes] = useState<AhamoveQuote[] | null>(null);
+  const [quoting, setQuoting] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<{ configured: boolean }>('/pos/shipping/ahamove')
+      .then((r) => setAhamoveOn(r.configured))
+      .catch(() => setAhamoveOn(false));
+  }, []);
 
   useEffect(() => {
     api<{ order: Order }>(`/orders/${encodeURIComponent(decodeURIComponent(code))}`)
@@ -128,6 +148,61 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
       .then((r) => setActions(r.actions))
       .catch(() => setActions([]));
   }, [order?.code, order?.source, order?.status]);
+
+  const loadQuotes = async () => {
+    if (!order) return;
+    setQuoting(true);
+    setQuoteError(null);
+    try {
+      const r = await api<{ data: AhamoveQuote[] }>(`/pos/orders/${encodeURIComponent(order.code)}/ahamove/quote`, {
+        method: 'POST',
+        json: {},
+      });
+      setQuotes(r.data);
+    } catch (e) {
+      setQuoteError((e as Error).message);
+    } finally {
+      setQuoting(false);
+    }
+  };
+
+  /** Book the chosen Ahamove service; the server also hands the parcel over (stock leaves). */
+  const bookAhamove = async (q: AhamoveQuote) => {
+    if (!order) return;
+    if (!window.confirm(`Gọi Ahamove "${q.name}" giá ${formatVnd(q.fee)}? Tồn kho sẽ được trừ.`)) return;
+    setActing(true);
+    setQuoteError(null);
+    try {
+      await api(`/pos/orders/${encodeURIComponent(order.code)}/ahamove/book`, {
+        method: 'POST',
+        json: { serviceId: q.serviceId },
+      });
+      setShip(null);
+      setQuotes(null);
+      const r = await api<{ order: Order }>(`/orders/${encodeURIComponent(order.code)}`);
+      setOrder(r.order);
+    } catch (e) {
+      setQuoteError((e as Error).message);
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const ahamoveCall = async (what: 'refresh' | 'cancel') => {
+    if (!order) return;
+    if (what === 'cancel' && !window.confirm('Hủy chuyến Ahamove này?')) return;
+    setActing(true);
+    setError(null);
+    try {
+      await api(`/pos/orders/${encodeURIComponent(order.code)}/ahamove/${what}`, { method: 'POST', json: {} });
+      const r = await api<{ order: Order }>(`/orders/${encodeURIComponent(order.code)}`);
+      setOrder(r.order);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setActing(false);
+    }
+  };
 
   const act = async (a: PosAction, extra?: { carrier: string; trackingNo: string }) => {
     if (!order) return;
@@ -303,6 +378,39 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
           >
             <h2 className="text-lg font-semibold">Giao cho đơn vị vận chuyển</h2>
             <p className="mt-1 text-sm text-slate-500">Tồn kho sẽ được trừ khi xác nhận.</p>
+            {ahamoveOn && (
+              <div className="mt-4 border border-slate-200 p-3 dark:border-slate-700">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">Gọi tài xế Ahamove</span>
+                  <Button variant="secondary" disabled={quoting || acting} onClick={() => void loadQuotes()}>
+                    {quoting ? 'Đang báo giá…' : quotes ? 'Báo giá lại' : 'Xem giá'}
+                  </Button>
+                </div>
+                {quoteError && <p className="mt-2 text-sm text-red-600">{quoteError}</p>}
+                {quotes && (
+                  <ul className="mt-2 max-h-56 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+                    {quotes.map((q) => (
+                      <li key={q.serviceId} className="flex items-center justify-between gap-3 py-2 text-sm">
+                        <span>
+                          {q.name}
+                          {q.distanceKm ? (
+                            <span className="ml-1 text-xs text-slate-400">{q.distanceKm.toFixed(1)} km</span>
+                          ) : null}
+                        </span>
+                        {q.error ? (
+                          <span className="text-xs text-slate-400">{q.error}</span>
+                        ) : (
+                          <Button disabled={acting} onClick={() => void bookAhamove(q)}>
+                            {formatVnd(q.fee)} · Gọi
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-2 text-xs text-slate-400">Hoặc điền tay đối tác và mã vận đơn bên dưới.</p>
+              </div>
+            )}
             <label className="mt-4 block text-xs text-slate-500">
               Đối tác giao hàng
               <input
@@ -481,6 +589,30 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
               value={<span className="font-mono text-xs">{order.trackingNo ?? '–'}</span>}
             />
             <Row label="Trạng thái giao" value={order.shippingStatus ?? '–'} />
+            {order.carrier === 'Ahamove' && order.trackingNo && (
+              <div className="flex flex-wrap items-center gap-2 py-1">
+                {order.trackingUrl && (
+                  <a
+                    className="text-sm text-brand-600 underline"
+                    href={order.trackingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Xem tài xế trên bản đồ
+                  </a>
+                )}
+                {order.status === 'shipped' && (
+                  <>
+                    <Button variant="secondary" disabled={acting} onClick={() => void ahamoveCall('refresh')}>
+                      Cập nhật trạng thái
+                    </Button>
+                    <Button variant="secondary" disabled={acting} onClick={() => void ahamoveCall('cancel')}>
+                      Hủy chuyến
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
             <Row label="Hạn bàn giao" value={dt(order.shipByAt)} />
             <Row label="SĐT nhận" value={order.shipPhone ?? '–'} />
             <div className="mt-1 text-sm">

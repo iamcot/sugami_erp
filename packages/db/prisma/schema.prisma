@@ -671,6 +671,8 @@ model Order {
   shippingStatus      String?     @map("shipping_status") @db.VarChar(255)
   carrier             String?     @db.VarChar(255)
   trackingNo          String?     @map("tracking_no") @db.VarChar(255)
+  /// Public tracking page of the carrier (Ahamove's shared link), when the carrier gives one.
+  trackingUrl         String?     @map("tracking_url") @db.VarChar(500)
   /// Handover deadline set by the marketplace.
   shipByAt            DateTime?   @map("ship_by_at")
   shipAddress         String?     @map("ship_address") @db.VarChar(500)

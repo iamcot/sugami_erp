@@ -22,6 +22,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { fulfillmentOf, posActions } from './pos-flow.js';
 import { availability, createPosOrder, PosError, runPosAction } from './pos-orders.js';
 import { DraftBody, PosPayload } from './pos-schema.js';
+import { ahamoveConfigured, bookOrder, cancelTrip, quoteOrder, refreshOrder } from './ahamove.js';
 
 const CheckoutBody = z.object({
   mode: z.enum(['retail', 'delivery']),
@@ -240,5 +241,45 @@ export class PosController {
       raw ?? {},
     );
     return this.wrap(() => runPosAction(this.prisma.client, code, key, user.id, extra));
+  }
+
+  /** Whether Ahamove is set up (keys and pickup address), so the screen knows to offer it. */
+  @Get('shipping/ahamove')
+  @RequirePermissions('orders.read')
+  ahamove() {
+    return { configured: ahamoveConfigured() };
+  }
+
+  /** Price of each Ahamove service for this order's trip. */
+  @Post('orders/:code/ahamove/quote')
+  @HttpCode(200)
+  @RequirePermissions('orders.write')
+  async ahamoveQuote(@Param('code') code: string) {
+    return { data: await this.wrap(() => quoteOrder(this.prisma.client, code)) };
+  }
+
+  /** Book a driver with the chosen service and hand the parcel over to the carrier in one go. */
+  @Post('orders/:code/ahamove/book')
+  @HttpCode(200)
+  @RequirePermissions('orders.write')
+  async ahamoveBook(@Param('code') code: string, @Body() raw: unknown, @CurrentUser() user: AuthUser) {
+    const { serviceId } = parseInput(z.object({ serviceId: z.string().trim().min(1).max(64) }), raw);
+    return this.wrap(() => bookOrder(this.prisma.client, code, serviceId, user.id));
+  }
+
+  /** Pull the latest state of the Ahamove trip (the webhook does this by itself when set up). */
+  @Post('orders/:code/ahamove/refresh')
+  @HttpCode(200)
+  @RequirePermissions('orders.write')
+  async ahamoveRefresh(@Param('code') code: string) {
+    return this.wrap(() => refreshOrder(this.prisma.client, code));
+  }
+
+  @Post('orders/:code/ahamove/cancel')
+  @HttpCode(200)
+  @RequirePermissions('orders.write')
+  async ahamoveCancel(@Param('code') code: string, @Body() raw: unknown) {
+    const { reason } = parseInput(z.object({ reason: z.string().trim().max(200).default('') }), raw ?? {});
+    return this.wrap(() => cancelTrip(this.prisma.client, code, reason));
   }
 }
