@@ -2,7 +2,7 @@
 
 import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { AppSettings } from './app-settings';
 
@@ -14,6 +14,22 @@ export function UserMenu() {
   const router = useRouter();
   const [me, setMe] = useState<Me['user'] | null>(null);
   const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+
+  // Close on a click anywhere outside (which includes opening the bell, so the two pop-ups never stack) or Escape.
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
 
   useEffect(() => {
     api<Me>('/auth/me')
@@ -38,7 +54,7 @@ export function UserMenu() {
     .toUpperCase();
 
   return (
-    <div className="relative">
+    <div ref={box} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-full py-0.5 pl-0.5 pr-2 text-slate-700 hover:bg-white/70 dark:text-slate-200 dark:hover:bg-white/10"
