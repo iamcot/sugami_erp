@@ -10,7 +10,6 @@ import {
   type LucideIcon,
   Package,
   PackagePlus,
-  Plus,
   Receipt,
   RefreshCw,
   Search,
@@ -218,14 +217,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="btn-accent grid size-8 place-items-center text-sm font-bold">S</span>
           <span className="text-[15px] font-bold uppercase tracking-[0.18em]">Sugami</span>
         </Link>
-        <div className="px-3 pb-2">
-          <Link
-            href="/pos"
-            className="btn-accent flex h-9 items-center justify-center gap-2 text-sm font-semibold"
-          >
-            <Plus className="size-4" /> Tạo đơn
-          </Link>
-        </div>
         <Suspense>
           <SideNav />
         </Suspense>
