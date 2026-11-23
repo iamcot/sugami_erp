@@ -46,13 +46,23 @@ export interface ChatConversation {
   createdAt: Date;
 }
 
+export interface ChatAttachment {
+  /** image (photo, sticker), video, file, or note (a label or system line, shown as text). */
+  kind: 'image' | 'video' | 'file' | 'note';
+  /** https URL of the media; only https is ever passed on. */
+  url?: string;
+  /** File name, or the text of a note. */
+  text?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface ChatMessage {
   id: string;
   at: Date;
   fromShop: boolean;
   text: string;
-  /** Attachment kinds, e.g. image, shopee_faq_messages. */
-  attachments: string[];
+  attachments: ChatAttachment[];
 }
 
 export interface PancakeChatClientOptions {
@@ -122,15 +132,44 @@ export function plainText(html: string): string {
     .trim();
 }
 
+const httpsUrl = (v: unknown): string | undefined =>
+  typeof v === 'string' && /^https:\/\//i.test(v) && v.length <= 2000 ? v : undefined;
+
+/** Facebook payment lines end with an app link ("Xem chi tiết(fb-pma://...)") that means nothing here. */
+const cleanSystemText = (t: string) => t.replace(/\s*Xem chi tiết\(fb-pma:[^)]*\)/g, '').trim();
+
+export function toAttachment(raw: Raw): ChatAttachment | null {
+  const type = str(raw.type).toLowerCase();
+  const url = httpsUrl(raw.url) ?? httpsUrl(raw.preview_url) ?? httpsUrl(raw.link);
+  const data = (raw.image_data ?? {}) as Raw;
+  const size = {
+    ...(Number(data.width) > 0 ? { width: Number(data.width) } : {}),
+    ...(Number(data.height) > 0 ? { height: Number(data.height) } : {}),
+  };
+  if (type === 'photo' || type === 'image' || type === 'sticker') return url ? { kind: 'image', url, ...size } : null;
+  if (type === 'video' || type === 'video_inline') return { kind: 'video', ...(url ? { url } : {}) };
+  if (type === 'file' || type === 'document' || type === 'audio')
+    return { kind: 'file', ...(url ? { url } : {}), text: str(raw.name) || str(raw.description) || type };
+  if (type === 'shopee_faq_messages') return { kind: 'note', text: 'Tin tự động của Shopee' };
+  if (type === 'system_message') {
+    const text = cleanSystemText(str(raw.message));
+    return text ? { kind: 'note', text } : null;
+  }
+  // Facebook cards (orders, expired messages): a name and/or description is all there is to show.
+  const text = [str(raw.name), str(raw.description)].filter(Boolean).join(' · ');
+  if (url && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url)) return { kind: 'image', url, ...size };
+  return text ? { kind: 'note', text } : null;
+}
+
 export function toMessage(raw: Raw, pageId: string): ChatMessage {
   const from = (raw.from ?? {}) as Raw;
-  const attachments = Array.isArray(raw.attachments) ? raw.attachments : [];
+  const attachments = Array.isArray(raw.attachments) ? (raw.attachments as Raw[]) : [];
   return {
     id: str(raw.id),
     at: parseChatTime(raw.inserted_at),
     fromShop: str(from.id) === pageId,
     text: plainText(str(raw.original_message ?? raw.message)),
-    attachments: attachments.map((a) => str((a as Raw)?.type)).filter(Boolean),
+    attachments: attachments.map((a) => toAttachment(a ?? {})).filter((a): a is ChatAttachment => a !== null),
   };
 }
 

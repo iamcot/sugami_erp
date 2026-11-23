@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { chatChannelOf, PancakeChatClient, parseChatTime, plainText, toConversation, toMessage } from './chat.js';
+import {
+  chatChannelOf,
+  PancakeChatClient,
+  parseChatTime,
+  plainText,
+  toAttachment,
+  toConversation,
+  toMessage,
+} from './chat.js';
 import { PancakeError } from './client.js';
 
 const json = (body: unknown, status = 200) =>
@@ -70,7 +78,33 @@ describe('chat mapping', () => {
       { id: 'm1', inserted_at: '2026-11-22T03:47:00.000000', from: { id: 'spo_1' }, original_message: 'Dạ ạ', attachments: [{ type: 'image' }] },
       'spo_1',
     );
-    expect(m).toMatchObject({ fromShop: true, text: 'Dạ ạ', attachments: ['image'] });
+    expect(m).toMatchObject({ fromShop: true, text: 'Dạ ạ' });
+    expect(m.attachments).toEqual([]); // an image with no URL has nothing to show
+  });
+});
+
+describe('toAttachment', () => {
+  it('keeps photos with their size and only https links', () => {
+    expect(toAttachment({ type: 'photo', url: 'https://content.example.vn/a.jpg', image_data: { width: 640, height: 480 } })).toEqual({
+      kind: 'image',
+      url: 'https://content.example.vn/a.jpg',
+      width: 640,
+      height: 480,
+    });
+    expect(toAttachment({ type: 'photo', url: 'http://insecure.example/a.jpg' })).toBeNull();
+    expect(toAttachment({ type: 'photo', url: 'javascript:alert(1)' })).toBeNull();
+    expect(toAttachment({ type: 'sticker', url: 'https://cdn.example/s.png' })).toMatchObject({ kind: 'image' });
+  });
+  it('turns system lines and cards into notes', () => {
+    expect(toAttachment({ type: 'shopee_faq_messages' })).toEqual({ kind: 'note', text: 'Tin tự động của Shopee' });
+    expect(
+      toAttachment({ type: 'system_message', message: 'Bạn đã yêu cầu thanh toán 159.000 ₫. Xem chi tiết(fb-pma://payments/x?id=1)' }),
+    ).toEqual({ kind: 'note', text: 'Bạn đã yêu cầu thanh toán 159.000 ₫.' });
+    expect(toAttachment({ type: 'attachment', name: 'abc', description: '159.000 ₫ Marked as shipped' })).toEqual({
+      kind: 'note',
+      text: 'abc · 159.000 ₫ Marked as shipped',
+    });
+    expect(toAttachment({ type: 'attachment' })).toBeNull();
   });
 });
 

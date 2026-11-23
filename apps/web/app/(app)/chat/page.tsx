@@ -37,17 +37,24 @@ interface ListResponse {
   total: number;
   data: Conversation[];
 }
+interface Attachment {
+  kind: 'image' | 'video' | 'file' | 'note';
+  url?: string;
+  text?: string;
+  width?: number;
+  height?: number;
+}
 interface Message {
   id: string;
   at: string;
   fromShop: boolean;
   text: string;
-  attachments: string[];
+  attachments: Attachment[];
 }
 
 const PAGE_SIZE = 30;
 /** The list reloads itself this often (seconds) while the tab is open. */
-const AUTO_RELOAD_SECONDS = 60;
+const AUTO_RELOAD_SECONDS = 15;
 
 const CHANNEL_LABEL: Record<string, string> = {
   shopee: 'Shopee',
@@ -65,15 +72,63 @@ const RANGES = [
   ['30', '30 ngày qua'],
 ] as const;
 
-const ATTACHMENT_LABEL: Record<string, string> = {
-  image: '[Ảnh]',
-  photo: '[Ảnh]',
-  video: '[Video]',
-  sticker: '[Nhãn dán]',
-  shopee_faq_messages: '[Tin tự động của Shopee]',
-  order: '[Đơn hàng]',
-  product: '[Sản phẩm]',
-};
+/** Buyer photos and stickers: click opens the full size; a dead link falls back to text. */
+function ChatImage({ att }: { att: Attachment }) {
+  const [failed, setFailed] = useState(false);
+  if (failed)
+    return (
+      <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-700 underline">
+        Không hiện được ảnh, mở liên kết
+      </a>
+    );
+  return (
+    <a href={att.url} target="_blank" rel="noopener noreferrer" className="mt-1 block">
+      <img
+        src={att.url}
+        alt="Ảnh trong chat"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        width={att.width}
+        height={att.height}
+        onError={() => setFailed(true)}
+        className="max-h-72 max-w-full rounded-lg object-contain"
+      />
+    </a>
+  );
+}
+
+function AttachmentView({ att }: { att: Attachment }) {
+  if (att.kind === 'image' && att.url) return <ChatImage att={att} />;
+  if (att.kind === 'video' || att.kind === 'file')
+    return att.url ? (
+      <a href={att.url} target="_blank" rel="noopener noreferrer" className="block text-sm text-brand-700 underline">
+        {att.kind === 'video' ? 'Mở video' : `Tệp: ${att.text ?? 'tải về'}`}
+      </a>
+    ) : (
+      <p className="text-xs italic text-slate-500">{att.kind === 'video' ? '[Video]' : `[Tệp: ${att.text ?? ''}]`}</p>
+    );
+  return <p className="mt-1 whitespace-pre-wrap break-words text-xs italic text-slate-500">{att.text}</p>;
+}
+
+/** A readable count: bold on a pill, filled when it is something to act on. */
+function CountPill({ n, urgent, active }: { n: number; urgent?: boolean; active?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'min-w-5 rounded-full px-1.5 text-center font-mono text-xs font-bold tabular-nums leading-5',
+        n === 0
+          ? 'bg-slate-200/70 text-slate-500 dark:bg-white/10 dark:text-slate-400'
+          : urgent
+            ? 'bg-amber-500 text-white'
+            : active
+              ? 'bg-brand-600 text-white'
+              : 'bg-slate-300/80 text-slate-800 dark:bg-white/20 dark:text-slate-100',
+      )}
+    >
+      {n}
+    </span>
+  );
+}
 
 function Thread({
   conv,
@@ -192,9 +247,7 @@ function Thread({
             >
               {m.text && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
               {m.attachments.map((a, i) => (
-                <p key={`${a}-${i}`} className="text-xs italic text-slate-500">
-                  {ATTACHMENT_LABEL[a] ?? `[${a}]`}
-                </p>
+                <AttachmentView key={`${a.kind}-${i}`} att={a} />
               ))}
               <p className="mt-1 text-right text-[10px] text-slate-500">{formatRelativeDateTime(m.at)}</p>
             </div>
@@ -330,7 +383,7 @@ function ChatList() {
   const s = res?.summary;
   const pages = res ? Math.max(1, Math.ceil(res.total / PAGE_SIZE)) : 1;
 
-  const chip = (label: string, active: boolean, onClick: () => void, count?: number) => (
+  const chip = (label: string, active: boolean, onClick: () => void, count?: number, urgent?: boolean) => (
     <button
       key={label}
       type="button"
@@ -343,7 +396,7 @@ function ChatList() {
       )}
     >
       {label}
-      {count !== undefined && <span className="font-mono text-[11px] opacity-70">{count}</span>}
+      {count !== undefined && <CountPill n={count} urgent={urgent} active={active} />}
     </button>
   );
 
@@ -384,7 +437,7 @@ function ChatList() {
             >
               <PlatformDiamond platform={ch.channel} className="size-5" />
               {CHANNEL_LABEL[ch.channel] ?? ch.channel}
-              <span className="font-mono text-[11px] opacity-70">{ch.count}</span>
+              <CountPill n={ch.count} active={qs.channel === ch.channel} />
             </button>
           ))}
         </div>
@@ -405,6 +458,7 @@ function ChatList() {
           qs.filter === 'waiting',
           () => setQs({ kind: '', filter: 'waiting', ...reset }),
           s?.waiting,
+          true,
         )}
         <select value={qs.days} onChange={(e) => setQs({ days: e.target.value, ...reset })} className={cn(select, 'ml-auto')}>
           {RANGES.map(([k, label]) => (

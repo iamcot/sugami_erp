@@ -46,7 +46,7 @@ const ReviewBody = z.object({
 });
 
 /** Pancake is read at most this often per time range; the filters work on the cached list. */
-const CACHE_MS = 20_000;
+const CACHE_MS = 10_000;
 
 /**
  * Shop chat (Shopee) through Pancake's Pages API. Nothing is stored in Sugami; the only write is a reply the
