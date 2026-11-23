@@ -12,7 +12,6 @@ import {
   PackagePlus,
   Receipt,
   RefreshCw,
-  Search,
   Settings,
   ShoppingBag,
   PackageMinus,
@@ -26,6 +25,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { DetailProvider } from './detail-drawer';
+import { GlobalSearch } from './global-search';
 import { PlatformDiamond } from './platform-icons';
 import { PwaBootstrap } from './app-settings';
 import { UserMenu } from './user-menu';
@@ -239,18 +239,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </span>
         {/* pages can put their own toolbar here (the sales page does); others get the site search */}
         <div id="app-header-slot" className="flex min-w-0 flex-1 items-center">
-          {!pathname.startsWith('/pos') && (
-            <label className="flex h-9 min-w-0 flex-1 items-center gap-2 border border-slate-300/80 bg-white/75 px-3 text-sm text-slate-500 shadow-[inset_0_1px_3px_rgba(40,60,110,0.08)] md:max-w-lg dark:border-slate-700 dark:bg-slate-950/50">
-              <Search className="size-4 shrink-0" />
-              <input
-                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
-                placeholder="Tìm SKU, sản phẩm, đơn, kiện hàng..."
-              />
-              <kbd className="hidden border border-slate-300 px-1.5 font-mono text-[10px] sm:block dark:border-slate-700">
-                ⌘K
-              </kbd>
-            </label>
-          )}
+          {!pathname.startsWith('/pos') && <GlobalSearch />}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <span className="hidden items-center gap-1.5 px-2 py-1 font-mono text-[11px] text-slate-500 sm:flex">
