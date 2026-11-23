@@ -49,3 +49,5 @@
 
 - KiotViet: tên sự kiện webhook Retail, header chữ ký, cách băm body; đơn sàn là order hay invoice, có mã đơn sàn/phí không; tạo phiếu nhập qua API có tự đẩy tồn lên sàn không.
 - Shopee Open Platform và TikTok Shop Partner: loại app cho hệ thống nội bộ người bán, điều kiện, thời gian duyệt, giới hạn API.
+
+- 2026-11-23: Giao hàng trong Bán hàng kết nối **thẳng API đơn vị vận chuyển**, không qua Pancake (API mở của Pancake không báo giá/không tạo vận đơn theo đối tác). Làm **Ahamove trước** (API công khai); SPX làm sau khi SPX cấp tài liệu; Grab Express cần đăng ký đối tác; Xanh SM, beDelivery không có API công khai.

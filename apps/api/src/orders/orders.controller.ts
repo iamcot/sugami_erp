@@ -129,6 +129,7 @@ export class OrdersController {
         shippingStatus: o.shippingStatus,
         carrier: o.carrier,
         trackingNo: o.trackingNo,
+        trackingUrl: o.trackingUrl,
         shipByAt: o.shipByAt?.toISOString() ?? null,
         shipAddress: o.shipAddress,
         shipPhone: o.shipPhone,

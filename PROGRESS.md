@@ -49,6 +49,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - Hỏi Allingo: phí dùng, phí COD, chu kỳ trả COD; xin duyệt app chạy thật.
 
 **Việc khác:**
+- Ahamove: xin API key ở https://business.ahamove.com/integration-request, điền nhóm `AHAMOVE_*` trong `.env` (địa chỉ lấy hàng), thử với `AHAMOVE_ENV=stg` rồi chuyển `prod`. SPX: xin SPX App ID/App Secret và tài liệu API (CSKH/kinh doanh SPX).
 - P1-13: thử import vào KiotViet các file từ trang KiotViet → Xuất sang KiotViet và trang Phiếu kho; báo KiotViet có nhận không.
 - P1-23: tạo khóa thông báo (`pnpm vapid:generate`), cài app lên điện thoại, thử thông báo (docs/ops/pwa.md). Nên đăng ký UptimeRobot/Healthchecks.io theo dõi `https://erp.sugami.vn/health`.
 - P0-08: **nộp hồ sơ** app Shopee Open Platform và TikTok Shop Partner Center (docs/ops/dang-ky-app-san.md); vẫn nên làm để sau này nối thẳng, không phụ thuộc Pancake.
@@ -91,6 +92,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 | Ngày | Việc | Commit |
 |------|------|-----------|
+| 2026-11-23 | Giao hàng Ahamove trong Bán hàng: báo giá, gọi tài xế, webhook/cập nhật trạng thái, hủy chuyến (`packages/channels/ahamove`) | (xem git log) |
 | 2026-11-22 | Hoàn thành bộ tài liệu kế hoạch (docs/01–09), PROGRESS.md, CLAUDE.md | main |
 | 2026-11-22 | P0-01 monorepo: web/api/worker + shared/ui/channels-core/db | 1fea4d9 |
 | 2026-11-22 | P0-02 Docker Compose (Redis; MySQL native), bỏ MinIO, docs/ops/dev-setup.md | 726704e |

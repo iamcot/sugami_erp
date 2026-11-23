@@ -38,3 +38,16 @@ Header của cả site nền xanh (thương hiệu). Trang Bán hàng đưa than
 ## Giữ chỗ (đặt trước)
 
 Đơn giao hàng chưa giao cho ĐVVC (Mới, Đã xác nhận, Đang đóng gói) **giữ chỗ** hàng nhưng chưa trừ tồn. *Còn bán* = tồn kho − hàng đang giữ; số giữ được tính trực tiếp từ các đơn đó (`availability()` trong `pos-orders.ts`), không lưu bộ đếm riêng nên không lệch. Tìm hàng và dòng đơn hiện *Còn bán*, kèm tồn/giữ khi có giữ. Lúc XÁC NHẬN, nếu số lượng vượt *Còn bán* thì máy chủ trả lỗi 409 "Không đủ tồn: …" và ngăn xác nhận hiện nút **Vẫn bán (tồn sẽ âm)**. Hủy đơn hoặc giao cho ĐVVC thì hết giữ (giao thì chuyển thành trừ tồn). Giữ chỗ chỉ áp dụng cho đơn bán tại quầy, chưa tính đơn sàn đang chờ.
+
+## Giao hàng Ahamove
+
+Trong ngăn **Giao cho ĐVVC** của đơn giao hàng (bước Đang đóng gói), nếu đã cấu hình Ahamove sẽ có khối **Gọi tài xế Ahamove**:
+
+1. **Xem giá**: Sugami gửi điểm lấy (shop) và điểm giao (địa chỉ đơn) cho `POST /v3/orders/estimates`, hiện giá từng dịch vụ của thành phố (rẻ nhất lên đầu; dịch vụ Ahamove từ chối, ví dụ ngoài vùng, hiện lý do).
+2. **Gọi**: chọn một dịch vụ → `POST /v3/orders` (COD = tiền còn phải thu của đơn). Thành công thì đơn tự **Giao cho ĐVVC** (trừ tồn như thường), lưu đối tác `Ahamove`, mã vận đơn = mã chuyến Ahamove, link theo dõi tài xế và phí ship thật. Nếu bước giao cho ĐVVC lỗi sau khi đã gọi, Sugami hủy chuyến vừa đặt. Lệnh tạo chuyến không bao giờ tự thử lại (tránh gọi hai tài xế).
+3. **Trạng thái**: webhook `POST /webhooks/ahamove` (header `apikey` = `AHAMOVE_WEBHOOK_SECRET`) hoặc nút **Cập nhật trạng thái** ở chi tiết đơn cập nhật dòng "Trạng thái giao". Ahamove báo giao xong (`COMPLETED`) thì đơn tự sang **Đã giao**; Ahamove hủy (không có tài xế...) thì chỉ ghi chú ở trạng thái giao để chủ shop gọi lại hoặc đổi cách giao, không tự đổi đơn.
+4. **Hủy chuyến**: nút ở chi tiết đơn (`DELETE /v3/orders/{id}`), chỉ hủy được trước khi tài xế lấy hàng.
+
+Cấu hình ở `.env` (xem `.env.example`, nhóm `AHAMOVE_*`): API key xin ở https://business.ahamove.com/integration-request, số điện thoại tài khoản Ahamove của shop, địa chỉ lấy hàng. Chạy thử trước với `AHAMOVE_ENV=stg` (môi trường test `partner-apistg.ahamove.com`). Chưa cấu hình thì khối này ẩn, vẫn nhập tay đối tác/mã vận đơn như cũ. Code: `packages/channels/ahamove` (client, token tự làm mới khi hết hạn) và `apps/api/src/pos/ahamove.ts`.
+
+Chưa làm: tự chọn dịch vụ rẻ nhất, gọi Ahamove ngay lúc tạo đơn (hiện gọi ở bước giao cho ĐVVC), SPX (chờ SPX cấp tài liệu API).
