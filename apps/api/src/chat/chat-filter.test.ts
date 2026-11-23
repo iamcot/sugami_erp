@@ -47,6 +47,6 @@ describe('filterConversations', () => {
     expect(filterConversations(rows, { ...base, q: 'mimi' }).map((r) => r.id)).toEqual(['r']);
   });
   it('summarises the whole range', () => {
-    expect(chatSummary(rows)).toEqual({ total: 4, inbox: 3, rating: 1, unread: 2, waiting: 1 });
+    expect(chatSummary(rows)).toEqual({ total: 4, inbox: 3, rating: 1, comment: 0, unread: 2, waiting: 1 });
   });
 });

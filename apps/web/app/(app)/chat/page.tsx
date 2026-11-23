@@ -26,6 +26,7 @@ interface Summary {
   total: number;
   inbox: number;
   rating: number;
+  comment: number;
   unread: number;
   waiting: number;
 }
@@ -162,6 +163,7 @@ function Thread({
           <p className="font-mono text-[11px] text-slate-500">{conv.id}</p>
         </div>
         {conv.kind === 'RATING' && <Badge tone="warn">Đánh giá</Badge>}
+        {conv.kind === 'COMMENT' && <Badge>Bình luận</Badge>}
         {conv.needsAttention && (
           <Button variant="secondary" className="ml-auto" onClick={() => onReview(conv)}>
             <CheckCheck className="size-4" /> Đã kiểm tra
@@ -236,7 +238,7 @@ function Thread({
         </div>
       ) : (
         <p className="border-t border-slate-200/70 px-4 py-2 text-xs text-slate-500 dark:border-slate-700/60">
-          Đánh giá chỉ xem, trả lời đánh giá làm trên sàn.
+          Đánh giá và bình luận chỉ xem, trả lời làm trên sàn hoặc Facebook.
         </p>
       )}
     </Card>
@@ -396,6 +398,7 @@ function ChatList() {
         {chip('Tất cả', !qs.kind && !qs.filter, () => setQs({ kind: '', filter: '', ...reset }), s?.total)}
         {chip('Chat', qs.kind === 'INBOX', () => setQs({ kind: 'INBOX', filter: '', ...reset }), s?.inbox)}
         {chip('Đánh giá', qs.kind === 'RATING', () => setQs({ kind: 'RATING', filter: '', ...reset }), s?.rating)}
+        {s && s.comment > 0 && chip('Bình luận', qs.kind === 'COMMENT', () => setQs({ kind: 'COMMENT', filter: '', ...reset }), s.comment)}
         {chip('Chưa đọc', qs.filter === 'unread', () => setQs({ kind: '', filter: 'unread', ...reset }), s?.unread)}
         {chip(
           'Cần xem',

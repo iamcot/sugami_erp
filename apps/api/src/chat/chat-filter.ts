@@ -46,6 +46,7 @@ export function chatSummary(rows: ChatItem[]) {
     total: rows.length,
     inbox: rows.filter((c) => c.kind === 'INBOX').length,
     rating: rows.filter((c) => c.kind === 'RATING').length,
+    comment: rows.filter((c) => c.kind === 'COMMENT').length,
     unread: rows.filter((c) => !c.seen).length,
     waiting: rows.filter((c) => c.needsAttention).length,
   };

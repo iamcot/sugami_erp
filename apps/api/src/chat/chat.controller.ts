@@ -236,6 +236,12 @@ export class ChatController {
     if (id.includes('_rating_') || id.includes('_comment_'))
       throw new UnprocessableEntityException('Chỉ trả lời được chat, không trả lời được đánh giá ở đây');
     const { text } = parseInput(SendBody, raw ?? {});
+    // Facebook comment threads are conversations too; a chat reply must not go to one of them.
+    for (const { rows } of this.cache.values()) {
+      const known = rows.find((c) => c.id === id);
+      if (known && known.kind !== 'INBOX')
+        throw new UnprocessableEntityException('Chỉ trả lời được chat, không trả lời được bình luận/đánh giá ở đây');
+    }
     return this.guard(async () => {
       const sent = await this.clientFor(this.pageFor(id)).sendMessage(id, text);
       this.cache.clear();
