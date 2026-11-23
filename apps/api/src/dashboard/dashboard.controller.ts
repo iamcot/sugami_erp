@@ -50,10 +50,9 @@ export class DashboardController {
         FROM (SELECT v.price, p.status, COALESCE(SUM(sl.on_hand), 0) AS on_hand
               FROM variants v JOIN products p ON p.id = v.product_id AND p.status <> 'archived'
               LEFT JOIN stock_levels sl ON sl.variant_id = v.id GROUP BY v.id) t`,
-      db.order.findFirst({
+      db.order.aggregate({
         where: { source: 'kiotviet_excel' },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true, orderedAt: true },
+        _max: { createdAt: true, orderedAt: true },
       }),
       this.healthCounts(d30),
     ]);
@@ -90,12 +89,13 @@ export class DashboardController {
       series,
       todo: { negativeSkus: n(t?.negative), outOfStockActive: n(t?.out_active), zeroPrice: n(t?.zero_price) },
       health,
-      lastInvoiceImport: lastImport
-        ? {
-            importedAt: lastImport.createdAt.toISOString(),
-            latestOrderAt: lastImport.orderedAt.toISOString(),
-          }
-        : null,
+      lastInvoiceImport:
+        lastImport._max.createdAt && lastImport._max.orderedAt
+          ? {
+              importedAt: lastImport._max.createdAt.toISOString(),
+              latestOrderAt: lastImport._max.orderedAt.toISOString(),
+            }
+          : null,
     };
   }
 
