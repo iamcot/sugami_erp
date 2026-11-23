@@ -167,6 +167,11 @@ export class AllingoClient {
     }
   }
 
+  /** Raw JSON of any call, unmapped: for the probe script only. */
+  debugCall(method: string, path: string, body?: unknown): Promise<unknown> {
+    return this.call(method, path, body);
+  }
+
   /** Fee quotes of every carrier service that can take this parcel. */
   quote(req: InquiryRequest): Promise<InquiryResponse> {
     return this.call('POST', '/inquiries', req);
