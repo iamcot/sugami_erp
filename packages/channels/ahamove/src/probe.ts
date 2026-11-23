@@ -26,6 +26,32 @@ const city = process.env.AHAMOVE_CITY_ID || 'SGN';
 const dropoff = process.env.AHAMOVE_PROBE_DROPOFF || '1 Nguyễn Huệ, Bến Nghé, Quận 1, Hồ Chí Minh, Việt Nam';
 console.log(`Env: ${process.env.AHAMOVE_ENV === 'stg' ? 'STAGING (test)' : 'PRODUCTION'}, city ${city}`);
 
+if (process.env.AHAMOVE_PROBE_RAW) {
+  // everything Ahamove sends back, unfiltered: to see which fields (description, duration, surge...) exist
+  try {
+    const raw = await client.debugCall(
+      'GET',
+      `/services?city_id=${encodeURIComponent(city)}&delivery_type=INSTANT`,
+    );
+    console.log('RAW services:', JSON.stringify(raw, null, 1));
+    const list = (raw as { _id: string }[]).map((x) => x._id);
+    const est = await client.debugCall('POST', '/orders/estimates', {
+      order_time: 0,
+      path: [
+        { name, mobile, address, ...(lat && lng ? { lat, lng } : {}) },
+        { name: 'Khách thử', mobile: '0900000001', address: dropoff },
+      ],
+      services: list.map((_id) => ({ _id, requests: [] })),
+      payment_method: 'CASH',
+    });
+    console.log('RAW estimates:', JSON.stringify(est, null, 1));
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
 try {
   const services = await client.services(city);
   console.log(

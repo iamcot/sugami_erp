@@ -33,7 +33,9 @@ export function ahamoveStatusText(status: string | undefined | null, subStatus?:
     case 'delivering':
       return 'Ahamove: đang giao hàng';
     case 'delivered':
-      return sub === 'IN_RETURN' || sub === 'RETURNED' ? 'Ahamove: đang hoàn hàng' : 'Ahamove: giao thành công';
+      return sub === 'IN_RETURN' || sub === 'RETURNED'
+        ? 'Ahamove: đang hoàn hàng'
+        : 'Ahamove: giao thành công';
     case 'cancelled':
       return 'Ahamove: đã hủy';
     default:

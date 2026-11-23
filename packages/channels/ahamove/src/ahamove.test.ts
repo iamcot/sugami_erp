@@ -25,7 +25,14 @@ const clock = () => {
   return () => (t += 1000);
 };
 const mk = (f: typeof fetch) =>
-  new AhamoveClient({ apiKey: 'KEY', mobile: '0900', env: 'stg', fetch: f, sleep: async () => {}, now: clock() });
+  new AhamoveClient({
+    apiKey: 'KEY',
+    mobile: '0900',
+    env: 'stg',
+    fetch: f,
+    sleep: async () => {},
+    now: clock(),
+  });
 const stop = { address: 'a', name: 'n', mobile: '1' };
 
 describe('AhamoveClient', () => {
@@ -51,9 +58,21 @@ describe('AhamoveClient', () => {
       { json: { token: 'OLD' } },
       { status: 401, json: { code: 'NOT_AUTHORIZED' } },
       { json: { token: 'NEW' } },
-      { json: { order_id: 'AB12', status: 'ASSIGNING', shared_link: 'https://x', order: { total_price: 15000 } } },
+      {
+        json: {
+          order_id: 'AB12',
+          status: 'ASSIGNING',
+          shared_link: 'https://x',
+          order: { total_price: 15000 },
+        },
+      },
     ]);
-    const r = await mk(f).createOrder({ serviceId: 'SGN-BIKE', pickup: stop, dropoff: stop, payment: 'CASH' });
+    const r = await mk(f).createOrder({
+      serviceId: 'SGN-BIKE',
+      pickup: stop,
+      dropoff: stop,
+      payment: 'CASH',
+    });
     expect(r).toEqual({ orderId: 'AB12', status: 'ASSIGNING', sharedLink: 'https://x', fee: 15000 });
     expect(calls.at(-1)!.auth).toBe('Bearer NEW');
   });
@@ -74,7 +93,10 @@ describe('AhamoveClient', () => {
   });
 
   it('does not retry a failed create (could book two drivers) and hides the key', async () => {
-    const { f, calls } = fakeFetch([{ json: { token: 'T' } }, { status: 500, json: { description: 'boom' } }]);
+    const { f, calls } = fakeFetch([
+      { json: { token: 'T' } },
+      { status: 500, json: { description: 'boom' } },
+    ]);
     const err = await mk(f)
       .createOrder({ serviceId: 'X', pickup: stop, dropoff: stop, payment: 'CASH' })
       .catch((e: unknown) => e);

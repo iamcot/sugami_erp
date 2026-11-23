@@ -121,7 +121,11 @@ export class AhamoveClient {
         continue;
       }
       // Only reads are retried on 5xx: a repeated POST could book two drivers.
-      if ((res.status === 429 || res.status >= 500) && method === 'GET' && attempt < this.retryDelaysMs.length) {
+      if (
+        (res.status === 429 || res.status >= 500) &&
+        method === 'GET' &&
+        attempt < this.retryDelaysMs.length
+      ) {
         await this.sleep(this.retryDelaysMs[attempt]!);
         continue;
       }
@@ -137,7 +141,12 @@ export class AhamoveClient {
   }
 
   private async authenticate(): Promise<string> {
-    const r = await this.raw('POST', '/accounts/token', { mobile: this.opts.mobile, api_key: this.opts.apiKey }, null);
+    const r = await this.raw(
+      'POST',
+      '/accounts/token',
+      { mobile: this.opts.mobile, api_key: this.opts.apiKey },
+      null,
+    );
     const token = (r.json as { token?: string }).token;
     if (!r.ok || !token) throw this.fail(r);
     this.token = token;
@@ -162,6 +171,11 @@ export class AhamoveClient {
     return r.json as T;
   }
 
+  /** Unparsed answer of any call, for the probe to show what Ahamove really returns (never used by the app). */
+  async debugCall(method: string, path: string, body?: unknown): Promise<unknown> {
+    return this.call<unknown>(method, path, body);
+  }
+
   /** Services available in a city (id like `SGN-BIKE`) with their Vietnamese names. */
   async services(cityId: string): Promise<AhamoveService[]> {
     const list = await this.call<{ _id: string; name?: string; name_vi_vn?: string }[]>(
@@ -174,7 +188,11 @@ export class AhamoveClient {
   /** Price of each service for one pickup and one drop-off. Services Ahamove refuses come back with `error`. */
   async quote(pickup: AhamoveStop, dropoff: AhamoveStop, serviceIds: string[]): Promise<AhamoveQuote[]> {
     const res = await this.call<
-      { service_id: string; data?: { total_price?: number; total_fee?: number; distance?: number }; error?: unknown }[]
+      {
+        service_id: string;
+        data?: { total_price?: number; total_fee?: number; distance?: number };
+        error?: unknown;
+      }[]
     >('POST', '/orders/estimates', {
       order_time: 0,
       path: [pickup, dropoff],
@@ -202,18 +220,19 @@ export class AhamoveClient {
     /** Unix seconds for a booking made for later; omitted = find a driver now. */
     orderTime?: number;
   }): Promise<{ orderId: string; status: string; sharedLink: string | null; fee: number }> {
-    const res = await this.call<{ order_id: string; status?: string; shared_link?: string; order?: AhamoveOrder }>(
-      'POST',
-      '/orders',
-      {
-        order_time: input.orderTime ?? 0,
-        path: [input.pickup, input.dropoff],
-        service_id: input.serviceId,
-        requests: [],
-        payment_method: input.payment,
-        ...(input.note ? { remarks: input.note } : {}),
-      },
-    );
+    const res = await this.call<{
+      order_id: string;
+      status?: string;
+      shared_link?: string;
+      order?: AhamoveOrder;
+    }>('POST', '/orders', {
+      order_time: input.orderTime ?? 0,
+      path: [input.pickup, input.dropoff],
+      service_id: input.serviceId,
+      requests: [],
+      payment_method: input.payment,
+      ...(input.note ? { remarks: input.note } : {}),
+    });
     return {
       orderId: res.order_id,
       status: res.status ?? res.order?.status ?? 'ASSIGNING',
