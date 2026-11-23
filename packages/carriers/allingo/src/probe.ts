@@ -37,6 +37,22 @@ if (process.env.ALLINGO_PROBE_RAW) {
   };
   try {
     console.log('RAW /partners:', JSON.stringify(await client.debugCall('GET', '/partners'), null, 1));
+    // service lists and add-ons: limits, COD/insurance support, add-on keys
+    console.log('RAW /addons:', JSON.stringify(await client.debugCall('GET', '/addons'), null, 1));
+    const partners = (await client.partners()).map((p) => p.id);
+    for (const id of partners)
+      try {
+        console.log(
+          `RAW /partners/${id}/services:`,
+          JSON.stringify(
+            await client.debugCall('GET', `/partners/${encodeURIComponent(id)}/services`),
+            null,
+            1,
+          ),
+        );
+      } catch (err) {
+        console.log(`RAW /partners/${id}/services failed:`, String(err));
+      }
     for (const type of [undefined, 'standard', 'on_demand'])
       console.log(
         `RAW /inquiries type=${type ?? '(none)'}:`,
