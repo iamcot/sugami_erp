@@ -20,6 +20,7 @@ interface Settings {
   preferredStandard: string;
 }
 interface Status {
+  ahamove: boolean;
   configured: boolean;
   mode: 'test' | 'live' | null;
   webhookConfigured: boolean;
@@ -90,6 +91,9 @@ export default function ShippingSettingsPage() {
         )}
         <Badge tone={st?.webhookConfigured ? 'success' : 'neutral'}>
           {st?.webhookConfigured ? 'Webhook đã bật' : 'Webhook chưa bật (vẫn quét mỗi 15 phút)'}
+        </Badge>
+        <Badge tone={st?.ahamove ? 'success' : 'neutral'}>
+          {st?.ahamove ? 'AhaMove đã cấu hình' : 'AhaMove chưa cấu hình'}
         </Badge>
         <span className="text-slate-500">Khóa nằm trong .env trên máy chạy, xem docs/allingo.md.</span>
       </Card>

@@ -41,6 +41,8 @@ Header của cả site nền xanh (thương hiệu). Trang Bán hàng đưa than
 
 ## Giao hàng Ahamove
 
+Từ 23/11 báo giá và gọi AhaMove nằm trong nút **Tạo vận đơn** cùng bảng giá với Allingo (xem [allingo.md](allingo.md)); khối gọi riêng trong ngăn Giao cho ĐVVC đã bỏ. Phần dưới mô tả logic bên trong, vẫn đúng.
+
 Trong ngăn **Giao cho ĐVVC** của đơn giao hàng (bước Đang đóng gói), nếu đã cấu hình Ahamove sẽ có khối **Gọi tài xế Ahamove**:
 
 1. **Xem giá**: Sugami gửi điểm lấy (shop) và điểm giao (địa chỉ đơn) cho `POST /v3/orders/estimates`, hiện giá từng dịch vụ của thành phố (rẻ nhất lên đầu; dịch vụ Ahamove từ chối, ví dụ ngoài vùng, hiện lý do).

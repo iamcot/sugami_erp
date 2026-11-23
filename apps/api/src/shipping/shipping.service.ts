@@ -6,8 +6,16 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { AllingoClient, AllingoError, effectiveStatus, phaseOf } from '@sugami/carriers-allingo';
+import {
+  AllingoClient,
+  AllingoError,
+  effectiveStatus,
+  phaseOf,
+  type AllingoQuote,
+} from '@sugami/carriers-allingo';
 import type { Prisma } from '@sugami/db';
+import { ahamoveConfigured, bookOrder, quoteOrder } from '../pos/ahamove.js';
+import { PosError } from '../pos/pos-orders.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   buildInquiry,
@@ -22,6 +30,8 @@ import { loadShippingSettings, type ShippingSettings } from './shipping-settings
 
 const OPEN_ORDER = ['new', 'confirmed', 'packing'];
 const ACTIVE_PHASES = ['waiting', 'picked_up', 'returning', 'failed_attempt'];
+/** Quote rows of Ahamove carry this prefix in their service id; booking them goes to the Ahamove client. */
+const AHAMOVE_PREFIX = 'ahamove:';
 
 export interface ParcelOverride {
   boxKey?: string;
@@ -80,6 +90,7 @@ export class ShippingService {
   status() {
     const appId = process.env.ALLINGO_APP_ID ?? '';
     return {
+      ahamove: ahamoveConfigured(),
       configured: Boolean(appId && process.env.ALLINGO_APP_SECRET),
       mode: appId.startsWith('app_test_') ? 'test' : appId ? 'live' : null,
       webhookConfigured: Boolean(process.env.ALLINGO_WEBHOOK_SECRET),
@@ -88,6 +99,11 @@ export class ShippingService {
 
   /** Allingo failures as messages a seller can act on. */
   private fail(err: unknown): never {
+    if (err instanceof PosError) {
+      if (err.status === 404) throw new NotFoundException(err.message);
+      if (err.status === 409) throw new ConflictException(err.message);
+      throw new BadRequestException(err.message);
+    }
     if (err instanceof AllingoError) {
       const hint: Record<string, string> = {
         wallet_insufficient: 'Ví Allingo không đủ tiền, hãy nạp thêm',
@@ -166,30 +182,74 @@ export class ShippingService {
     };
   }
 
-  /** Fee quotes for an order; nothing is created. */
+  /**
+   * Fee quotes for an order from every carrier set up: Allingo (all its carriers) and Ahamove (direct).
+   * Nothing is created. A carrier that fails does not hide the others; its message comes back as a warning.
+   */
   async quotes(code: string, o: ParcelOverride) {
     const order = await this.loadOrder(code);
     this.checkShippable(order);
     const settings = await loadShippingSettings(this.prisma.client);
-    const problem = pickupProblem(settings.pickup);
-    if (problem) throw new BadRequestException(problem);
+    const allingoOn = this.status().configured;
+    const ahamoveOn = ahamoveConfigured();
+    if (!allingoOn && !ahamoveOn)
+      throw new ServiceUnavailableException(
+        'Chưa cấu hình hãng vận chuyển nào (Allingo hoặc Ahamove trong .env, xem docs/allingo.md)',
+      );
     const parcel = this.parcel(order, settings, o);
-    try {
+    const warnings: string[] = [];
+
+    const fromAllingo = async (): Promise<AllingoQuote[]> => {
+      const problem = pickupProblem(settings.pickup);
+      if (problem) throw new BadRequestException(problem);
       const res = await this.client().quote(buildInquiry(settings.pickup, this.receiver(order), parcel));
-      return {
-        data: toQuoteRows(res.quotes ?? []),
-        parcel: {
-          grams: parcel.grams,
-          boxKey: parcel.box.key,
-          boxLabel: parcel.box.label,
-          unknownWeights: parcel.unknownWeights,
-        },
-        preferredStandard: settings.preferredStandard,
-        codAmount: parcel.codAmount,
-      };
-    } catch (err) {
-      this.fail(err);
+      return res.quotes ?? [];
+    };
+    const fromAhamove = async (): Promise<AllingoQuote[]> =>
+      (await quoteOrder(this.prisma.client, code)).map((q) => ({
+        service_id: `${AHAMOVE_PREFIX}${q.serviceId}`,
+        service_name: q.name,
+        partner: { id: 'ahamove', name: 'AhaMove' },
+        price: q.fee,
+        available: !q.error,
+        error_code: q.error ?? null,
+      }));
+
+    const [a, h] = await Promise.allSettled([
+      allingoOn ? fromAllingo() : Promise.resolve<AllingoQuote[]>([]),
+      ahamoveOn ? fromAhamove() : Promise.resolve<AllingoQuote[]>([]),
+    ]);
+    const quotes: AllingoQuote[] = [];
+    for (const [name, r] of [
+      ['Allingo', a],
+      ['AhaMove', h],
+    ] as const) {
+      if (r.status === 'fulfilled') quotes.push(...r.value);
+      else warnings.push(`${name}: ${this.messageOf(r.reason)}`);
     }
+    if (quotes.length === 0 && warnings.length > 0) throw new BadGatewayException(warnings.join(' | '));
+    return {
+      data: toQuoteRows(quotes),
+      warnings,
+      parcel: {
+        grams: parcel.grams,
+        boxKey: parcel.box.key,
+        boxLabel: parcel.box.label,
+        unknownWeights: parcel.unknownWeights,
+      },
+      preferredStandard: settings.preferredStandard,
+      codAmount: parcel.codAmount,
+    };
+  }
+
+  /** The text of an error as the seller should read it. */
+  private messageOf(err: unknown): string {
+    try {
+      this.fail(err);
+    } catch (e) {
+      return e instanceof Error ? e.message : String(e);
+    }
+    return String(err);
   }
 
   /**
@@ -204,6 +264,15 @@ export class ShippingService {
     const db = this.prisma.client;
     const order = await this.loadOrder(code);
     this.checkShippable(order);
+    if (body.serviceId.startsWith(AHAMOVE_PREFIX)) {
+      // Ahamove is booked directly and hands the parcel over at once (stock leaves), see pos/ahamove.ts
+      try {
+        await bookOrder(db, code, body.serviceId.slice(AHAMOVE_PREFIX.length), userId);
+      } catch (err) {
+        this.fail(err);
+      }
+      return this.forOrder(order.code);
+    }
     const settings = await loadShippingSettings(db);
     const problem = pickupProblem(settings.pickup);
     if (problem) throw new BadRequestException(problem);

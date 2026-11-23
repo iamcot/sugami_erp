@@ -63,6 +63,19 @@ describe('quote rows', () => {
   });
 });
 
+describe('Ahamove rows next to Allingo rows', () => {
+  it('lands in the fast group and takes part in the cheapest mark', () => {
+    const rows = toQuoteRows([
+      q('lalamove', 30000, 60),
+      { ...q('ahamove', 20000, null), service_id: 'ahamove:SGN-BIKE' },
+    ]);
+    const aha = rows.find((r) => r.partnerId === 'ahamove')!;
+    expect(aha.group).toBe('fast');
+    expect(aha.cheapest).toBe(true);
+    expect(aha.serviceId).toBe('ahamove:SGN-BIKE');
+  });
+});
+
 describe('buildInquiry', () => {
   it('converts grams to kilograms and sets who pays and how', () => {
     const body = buildInquiry(

@@ -132,6 +132,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-23 | [UI] Trang Đơn hàng kiểu Gmail (thanh công cụ, nút lọc thả xuống, tab kênh, đơn cần xử lý in đậm), số đếm trên menu; đơn hoàn có bước "đã xử lý" (nhập lại kho / không nhập) | xem commit `[UI]` |
 | 2026-11-23 | Đơn hoàn từ sàn tự cộng lại tồn khi hàng về shop; nút Báo hàng lỗi/mất trong đơn; bỏ nút Tạo đơn ở menu | xem commit `[P4-P2]` |
 | 2026-11-23 | [P6-SHIP] Vận chuyển cho đơn tự giao qua Allingo, giai đoạn 1: client + chữ ký webhook + trạng thái, bảng shipments, API báo phí/tạo/hủy/in, webhook + worker quét bù, bảng giá và thẻ vận chuyển trong chi tiết đơn, Cài đặt → Vận chuyển, hướng dẫn docs/allingo.md | xem commit `[P6-SHIP]` |
+| 2026-11-23 | [P6-SHIP] AhaMove và Allingo chung một bảng giá trong Tạo vận đơn (tab Giao nhanh), thẻ vận chuyển hiện cả chuyến AhaMove; bỏ khối gọi AhaMove riêng ở ngăn Giao cho ĐVVC | xem commit `[P6-SHIP]` |
 
 ## P0 — Chuẩn bị & xác minh
 

@@ -48,6 +48,7 @@ interface Quote {
 }
 interface QuoteResult {
   data: Quote[];
+  warnings: string[];
   parcel: { grams: number; boxKey: string; boxLabel: string; unknownWeights: number };
   preferredStandard: string;
   codAmount: number;
@@ -79,7 +80,18 @@ export function ShippingPanel({
   order,
   onChanged,
 }: {
-  order: { code: string; source: string; fulfillment: string | null; status: string; codAmount: number };
+  order: {
+    code: string;
+    source: string;
+    fulfillment: string | null;
+    status: string;
+    codAmount: number;
+    carrier: string | null;
+    trackingNo: string | null;
+    trackingUrl: string | null;
+    shippingStatus: string | null;
+    shippingFee: number;
+  };
   onChanged: () => void;
 }) {
   const [list, setList] = useState<Shipment[] | null>(null);
@@ -97,7 +109,9 @@ export function ShippingPanel({
   const isDelivery = order.source === 'pos' && order.fulfillment === 'delivery';
   const active = list?.find((s) => ACTIVE.includes(s.phase) || s.phase === 'delivered');
   const canCreate = isDelivery && ['new', 'confirmed', 'packing'].includes(order.status) && !active;
-  if (!list || (!active && !canCreate && list.length === 0)) return null;
+  // an Ahamove trip is booked directly (not a Shipment row): it follows the order's own carrier fields
+  const ahamove = !active && order.carrier === 'Ahamove' && order.trackingNo ? order : null;
+  if (!list || (!active && !ahamove && !canCreate && list.length === 0)) return null;
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -126,7 +140,79 @@ export function ShippingPanel({
   return (
     <>
       {error && <p className="mb-2 text-sm text-rose-600">{error}</p>}
-      {active ? (
+      {ahamove ? (
+        <Card className="mb-4 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Truck className="size-4 text-slate-500" />
+            <span className="font-semibold">Ahamove</span>
+            <Badge tone={order.status === 'delivered' || order.status === 'completed' ? 'success' : 'warn'}>
+              {order.shippingStatus ?? 'Đang giao'}
+            </Badge>
+            <span className="flex-1" />
+            {order.status === 'shipped' && (
+              <>
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(
+                      async () =>
+                        void (await api(`/pos/orders/${encodeURIComponent(order.code)}/ahamove/refresh`, {
+                          method: 'POST',
+                          json: {},
+                        })),
+                    )
+                  }
+                >
+                  Cập nhật trạng thái
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="text-rose-600"
+                  disabled={busy}
+                  onClick={() => {
+                    if (!window.confirm('Hủy chuyến Ahamove này? Chỉ hủy được trước khi tài xế lấy hàng.'))
+                      return;
+                    void run(
+                      async () =>
+                        void (await api(`/pos/orders/${encodeURIComponent(order.code)}/ahamove/cancel`, {
+                          method: 'POST',
+                          json: {},
+                        })),
+                    );
+                  }}
+                >
+                  Hủy chuyến
+                </Button>
+              </>
+            )}
+          </div>
+          <div className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            <div>
+              <span className="text-slate-500">Mã chuyến: </span>
+              <span className="font-mono">{order.trackingNo}</span>
+            </div>
+            {order.shippingFee > 0 && (
+              <div>
+                <span className="text-slate-500">Phí giao hàng: </span>
+                <span className="font-mono">{formatVnd(order.shippingFee)}</span>
+              </div>
+            )}
+            {order.trackingUrl && (
+              <div>
+                <a
+                  className="inline-flex items-center gap-1 text-brand-600 hover:underline"
+                  href={order.trackingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Xem tài xế trên bản đồ <ExternalLink className="size-3.5" />
+                </a>
+              </div>
+            )}
+          </div>
+        </Card>
+      ) : active ? (
         <Card className="mb-4 p-4">
           <div className="flex flex-wrap items-center gap-2">
             <Truck className="size-4 text-slate-500" />
@@ -388,21 +474,31 @@ function CreateDialog({
               );
             })}
         </div>
-        <label className="mt-3 flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1"
-            checked={addFee}
-            onChange={(e) => setAddFee(e.target.checked)}
-          />
-          <span>
-            Cộng phí ship vào đơn
-            <span className="block text-xs text-slate-500">
-              Shop trả hãng, phí được cộng vào tổng đơn{order.codAmount > 0 ? ' và tiền thu hộ' : ''}. Bỏ chọn
-              thì khách trả phí cho hãng.
+        {res && res.warnings.length > 0 && (
+          <p className="mt-2 text-xs text-amber-600">{res.warnings.join(' · ')}</p>
+        )}
+        {chosen?.partnerId === 'ahamove' ? (
+          <p className="mt-3 text-xs text-slate-500">
+            AhaMove: tài xế được gọi ngay và đơn chuyển sang Đang giao (trừ tồn). Tiền ship theo cách thanh
+            toán đã cài cho AhaMove.
+          </p>
+        ) : (
+          <label className="mt-3 flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={addFee}
+              onChange={(e) => setAddFee(e.target.checked)}
+            />
+            <span>
+              Cộng phí ship vào đơn
+              <span className="block text-xs text-slate-500">
+                Shop trả hãng, phí được cộng vào tổng đơn{order.codAmount > 0 ? ' và tiền thu hộ' : ''}. Bỏ
+                chọn thì khách trả phí cho hãng.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+        )}
         {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
         <div className="mt-4 flex items-center justify-end gap-2">
           {chosen && (
