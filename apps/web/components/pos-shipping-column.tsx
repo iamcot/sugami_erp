@@ -304,7 +304,7 @@ export function PosShippingColumn({
   );
 
   const payerSection = (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 pt-2 text-sm">
+    <div className="flex flex-nowrap items-center gap-x-4 whitespace-nowrap pt-2 text-sm">
       <span className="text-xs text-slate-500">Ai trả phí ship</span>
       {(
         [

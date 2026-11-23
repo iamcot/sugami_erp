@@ -1110,7 +1110,7 @@ export default function PosPage() {
                         </label>
                       </div>
                     )}
-                    <label className="flex items-center justify-between gap-4 pt-2">
+                    <label className="flex items-center gap-2 pt-2">
                       <span>Thu hộ tiền (COD)</span>
                       <input
                         type="checkbox"
