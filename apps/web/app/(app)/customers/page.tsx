@@ -94,10 +94,10 @@ const columns: Column<CustomerRow>[] = [
     header: 'Khách hàng',
     render: (c) => (
       <div>
-        <p className="flex items-center gap-1 font-medium">
+        <div className="flex items-center gap-1 font-medium">
           {c.name ?? '(chưa có tên)'}
           {c.note && <NoteIcon note={c.note} />}
-        </p>
+        </div>
         <p className="font-mono text-xs text-slate-500">{c.code}</p>
       </div>
     ),
@@ -156,6 +156,8 @@ function CustomersList() {
   const [groups, setGroups] = useState<Groups['data']>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Bumped when the drawer saved a customer, so the list reloads. */
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -184,7 +186,7 @@ function CustomersList() {
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [qs.q, qs.group, qs.sort, qs.page]);
+  }, [qs.q, qs.group, qs.sort, qs.page, reload]);
 
   const select =
     'h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900';
@@ -233,7 +235,7 @@ function CustomersList() {
         columns={columns}
         rows={res?.data ?? []}
         rowKey={(c) => c.id}
-        onRowClick={(c) => open('customer', c.code ?? c.id)}
+        onRowClick={(c) => open('customer', c.code ?? c.id, { onSaved: () => setReload((n) => n + 1) })}
         isSelected={(c) => selected.customer === (c.code ?? c.id)}
         page={Number(qs.page)}
         pageSize={50}
