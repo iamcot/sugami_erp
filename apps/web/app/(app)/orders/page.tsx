@@ -4,6 +4,7 @@ import { formatVnd } from '@sugami/shared';
 import { cn } from '@sugami/ui';
 import { CheckCheck, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
+import { CarrierLogo, carrierIdFromName } from '@/components/carrier-logo';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
 import { FilterMenu } from '@/components/filter-menu';
@@ -239,11 +240,14 @@ const columns: Column<OrderRow>[] = [
     className: 'whitespace-nowrap',
     render: (o) =>
       o.carrier ? (
-        <div>
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
-            {o.carrier}
-          </span>
-          {o.trackingNo && <p className="mt-0.5 font-mono text-xs text-slate-500">{o.trackingNo}</p>}
+        <div className="flex items-center gap-2">
+          <CarrierLogo id={carrierIdFromName(o.carrier)} name={o.carrier} className="size-8" />
+          <div>
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
+              {o.carrier}
+            </span>
+            {o.trackingNo && <p className="mt-0.5 font-mono text-xs text-slate-500">{o.trackingNo}</p>}
+          </div>
         </div>
       ) : (
         dash

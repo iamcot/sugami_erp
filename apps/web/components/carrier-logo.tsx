@@ -45,6 +45,26 @@ const FILE: Record<string, string> = {
   be: 'be',
   grabexpress: 'grab',
 };
+/** Best-effort carrier id from a display name such as "SPX Express" or "J&T Express". */
+export function carrierIdFromName(name: string): string {
+  const n = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const rules: [RegExp, string][] = [
+    [/^spx|shopeeexpress/, 'spx'],
+    [/^ghn|giaohangnhanh/, 'ghn'],
+    [/^ghtk|giaohangtietkiem/, 'ghtk'],
+    [/^j(and)?t|jnt/, 'jt'],
+    [/^viettel/, 'viettelpost'],
+    [/^vnpost|vietnampost/, 'vnpost'],
+    [/^best/, 'bestexpress'],
+    [/^grab/, 'grab'],
+    [/^lalamove/, 'lalamove'],
+    [/^ahamove/, 'ahamove'],
+    [/^xanh|^gsm|greensm/, 'gsm'],
+    [/^ntl/, 'ntl'],
+    [/^be/, 'be'],
+  ];
+  return rules.find(([re]) => re.test(n))?.[1] ?? n;
+}
 const fileOf = (id: string) => FILE[id] ?? id;
 
 /**
