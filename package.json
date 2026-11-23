@@ -13,6 +13,7 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "env:check": "node scripts/check-env.mjs",
     "infra:up": "node scripts/compose.mjs up -d",
     "infra:down": "node scripts/compose.mjs down",
     "infra:mysql": "node scripts/compose.mjs --profile mysql up -d",
