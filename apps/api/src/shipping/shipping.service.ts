@@ -46,6 +46,10 @@ const AHAMOVE_PREFIX = 'ahamove:';
 export interface ParcelOverride {
   boxKey?: string;
   weightGrams?: number;
+  /** A parcel size typed by hand instead of one of the shop's boxes (all three together), in cm. */
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
   /** The shop pays the carrier and adds the fee to the order (the buyer pays it through COD). */
   addFeeToOrder?: boolean;
   /** Book for a later time (ISO); omitted = find a driver now. */
@@ -202,8 +206,17 @@ export class ShippingService {
     const w = orderWeight(input.lines, settings.defaultItemGrams);
     const grams = o.weightGrams ?? w.grams;
     const box =
-      (o.boxKey ? settings.boxes.find((b) => b.key === o.boxKey) : undefined) ??
-      pickBox(grams, settings.boxes);
+      o.lengthCm && o.widthCm && o.heightCm
+        ? {
+            key: 'custom',
+            label: 'Size khác',
+            maxGrams: null,
+            lengthCm: o.lengthCm,
+            widthCm: o.widthCm,
+            heightCm: o.heightCm,
+          }
+        : ((o.boxKey ? settings.boxes.find((b) => b.key === o.boxKey) : undefined) ??
+          pickBox(grams, settings.boxes));
     const payee = o.addFeeToOrder ? 'sender' : settings.defaultPayee;
     return {
       grams,

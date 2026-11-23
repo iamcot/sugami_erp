@@ -30,7 +30,7 @@ interface QuoteResult {
   preferredStandard: string;
 }
 interface Settings {
-  boxes: { key: string; label: string }[];
+  boxes: { key: string; label: string; lengthCm: number; widthCm: number; heightCm: number }[];
 }
 
 /** What the seller picked in the column; the page creates the order and the waybill from it. */
@@ -38,6 +38,11 @@ export interface ShipSelection {
   serviceId: string;
   quotedPrice: number;
   boxKey?: string;
+  /** Hand-typed size (box "Size khác"): grams and cm. */
+  weightGrams?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
   addFeeToOrder: boolean;
   scheduleAt?: string;
   partnerName: string;
@@ -96,6 +101,8 @@ export function PosShippingColumn({
   const [boxes, setBoxes] = useState<Settings['boxes']>([]);
   const [boxKey, setBoxKey] = useState<string | undefined>();
   const [addFee, setAddFee] = useState(false);
+  /** "Size khác": weight in grams and the three sides in cm, typed by the seller. */
+  const [custom, setCustom] = useState<{ g: number; l: number; w: number; h: number } | null>(null);
   const [res, setRes] = useState<QuoteResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +128,11 @@ export function PosShippingColumn({
   }, []);
 
   // the same sale is priced once; any change in what the carrier needs to know prices it again
-  const key = JSON.stringify([input, boxKey, tick]);
+  const customOk = custom && custom.g > 0 && custom.l > 0 && custom.w > 0 && custom.h > 0 ? custom : null;
+  const customBody = customOk
+    ? { weightGrams: customOk.g, lengthCm: customOk.l, widthCm: customOk.w, heightCm: customOk.h }
+    : {};
+  const key = JSON.stringify([input, boxKey, tick, customBody]);
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -134,6 +145,7 @@ export function PosShippingColumn({
           codAmount: input.codAmount,
           total: input.total,
           boxKey,
+          ...customBody,
           addFeeToOrder: false,
         },
       })
@@ -198,7 +210,7 @@ export function PosShippingColumn({
         setPicked(r.serviceId);
         setListOpen(false);
       }}
-      className="flex w-full items-center gap-3 border-b border-slate-100 px-1 py-2.5 text-left last:border-0 hover:bg-slate-50 disabled:opacity-45 dark:border-white/5 dark:hover:bg-white/5"
+      className="flex w-full items-center gap-3 border-b border-slate-100 px-1 py-3.5 text-left last:border-0 hover:bg-slate-50 disabled:opacity-45 dark:border-white/5 dark:hover:bg-white/5"
     >
       <CarrierLogo id={r.partnerId} name={r.partnerName} className="size-8" />
       <span className="min-w-0 flex-1">
@@ -211,7 +223,9 @@ export function PosShippingColumn({
           {r.available ? (eta(r) ? `Dự kiến ${eta(r)}` : ' ') : (r.unavailableReason ?? 'Không khả dụng')}
         </span>
       </span>
-      <span className="font-mono text-sm font-semibold tabular-nums">{formatVnd(r.price)}</span>
+      <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+        {formatVnd(r.price)}
+      </span>
     </button>
   );
 
@@ -241,7 +255,7 @@ export function PosShippingColumn({
 
         {chosen && (
           <div className="rounded-lg border border-brand-500/40">
-            <div className="flex items-center gap-3 border-b border-slate-100 px-3 py-2.5 dark:border-white/10">
+            <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-white/10">
               <CarrierLogo id={chosen.partnerId} name={chosen.partnerName} className="size-9" />
               <span className="min-w-0 flex-1">
                 <span className="block font-medium">
@@ -255,7 +269,9 @@ export function PosShippingColumn({
                       : 'Giao thường'}
                 </span>
               </span>
-              <span className="font-mono font-semibold tabular-nums">{formatVnd(chosen.price)}</span>
+              <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                {formatVnd(chosen.price)}
+              </span>
               <button
                 type="button"
                 aria-label="Đổi hãng vận chuyển"
@@ -271,65 +287,116 @@ export function PosShippingColumn({
               </button>
             </div>
 
-            <div className="space-y-3 p-3">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                <label>
-                  Hộp{' '}
-                  <select
-                    className="rounded border border-slate-300 bg-transparent px-1.5 py-0.5 dark:border-slate-700"
-                    value={boxKey ?? ''}
-                    onChange={(e) => setBoxKey(e.target.value)}
-                  >
-                    {boxes.map((b) => (
-                      <option key={b.key} value={b.key}>
-                        {b.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {res && (
-                  <span>
-                    {(res.parcel.grams / 1000).toLocaleString('vi-VN')} kg
-                    {res.parcel.unknownWeights > 0 &&
-                      ` (${res.parcel.unknownWeights} sản phẩm chưa có cân nặng, tạm tính theo mặc định)`}
-                  </span>
-                )}
-              </div>
-
-              <p className="flex items-center gap-2">
-                <Wallet className="size-4 text-slate-400" />
-                {input.codAmount > 0 ? (
-                  <span>
-                    Thu hộ COD: <b className="tabular-nums">{formatVnd(input.codAmount + addedFee)}</b>
-                  </span>
-                ) : (
-                  <span>Không thu hộ (khách đã trả đủ)</span>
-                )}
-              </p>
-
-              {!ahamove && (
-                <label className="flex items-start gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
-                    checked={addFee}
-                    onChange={(e) => setAddFee(e.target.checked)}
-                  />
-                  <span>
-                    Cộng phí ship vào đơn: shop trả hãng, khách trả lại qua tiền hàng
-                    <span className="block text-slate-500">
-                      {addFee ? 'Người trả phí: Shop' : 'Người trả phí: theo mặc định đã cài'}
+            <div className="divide-y divide-slate-100 dark:divide-white/10">
+              <section className="space-y-3 px-4 py-4">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Gói hàng</h3>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <label className="flex items-center gap-2">
+                    <span className="text-slate-500">Hộp</span>
+                    <select
+                      className="rounded border border-slate-300 bg-transparent px-2 py-1 dark:border-slate-700"
+                      value={custom ? 'custom' : (boxKey ?? '')}
+                      onChange={(e) => {
+                        if (e.target.value === 'custom') {
+                          const b = boxes.find((x) => x.key === boxKey);
+                          setCustom({
+                            g: res?.parcel.grams ?? 500,
+                            l: b?.lengthCm ?? 20,
+                            w: b?.widthCm ?? 15,
+                            h: b?.heightCm ?? 10,
+                          });
+                        } else {
+                          setCustom(null);
+                          setBoxKey(e.target.value);
+                        }
+                      }}
+                    >
+                      {boxes.map((b) => (
+                        <option key={b.key} value={b.key}>
+                          {b.label}
+                        </option>
+                      ))}
+                      <option value="custom">Size khác…</option>
+                    </select>
+                  </label>
+                  {res && !custom && (
+                    <span className="text-slate-600 dark:text-slate-300">
+                      {(res.parcel.grams / 1000).toLocaleString('vi-VN')} kg
                     </span>
-                  </span>
-                </label>
-              )}
+                  )}
+                </div>
+                {custom && (
+                  <div className="grid grid-cols-4 gap-3 text-xs text-slate-500">
+                    {(
+                      [
+                        ['g', 'Nặng (g)'],
+                        ['l', 'Dài (cm)'],
+                        ['w', 'Rộng (cm)'],
+                        ['h', 'Cao (cm)'],
+                      ] as const
+                    ).map(([k, label]) => (
+                      <label key={k} className="block">
+                        {label}
+                        <input
+                          inputMode="numeric"
+                          className="mt-1 w-full border-0 border-b border-slate-300 bg-transparent py-1 text-sm text-slate-900 outline-none focus:border-brand-600 dark:border-slate-700 dark:text-slate-100"
+                          value={custom[k] || ''}
+                          onChange={(e) =>
+                            setCustom({
+                              ...custom,
+                              [k]: Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0),
+                            })
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {!custom && res && res.parcel.unknownWeights > 0 && (
+                  <p className="text-xs text-amber-600">
+                    {res.parcel.unknownWeights} sản phẩm chưa có cân nặng, tạm tính theo mặc định.
+                  </p>
+                )}
+              </section>
+
+              <section className="space-y-3 px-4 py-4">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Thanh toán</h3>
+                <p className="flex items-center gap-2">
+                  <Wallet className="size-4 text-slate-400" />
+                  {input.codAmount > 0 ? (
+                    <span>
+                      Thu hộ COD: <b className="tabular-nums">{formatVnd(input.codAmount + addedFee)}</b>
+                    </span>
+                  ) : (
+                    <span>Không thu hộ (khách đã trả đủ)</span>
+                  )}
+                </p>
+                {!ahamove && (
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={addFee}
+                      onChange={(e) => setAddFee(e.target.checked)}
+                    />
+                    <span>
+                      Cộng phí ship vào đơn
+                      <span className="block text-xs text-slate-500">
+                        {addFee
+                          ? 'Shop trả hãng, khách trả lại qua tiền hàng'
+                          : 'Người trả phí theo mặc định đã cài'}
+                      </span>
+                    </span>
+                  </label>
+                )}
+              </section>
 
               {fastCard && (
-                <div className="space-y-2">
-                  <p className="flex items-center gap-2 text-xs text-slate-500">
+                <section className="space-y-3 px-4 py-4">
+                  <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                     <Clock className="size-4" /> Hẹn lấy hàng
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
                     {SCHEDULES.map(([id, label]) => (
                       <button
                         key={id}
@@ -339,7 +406,7 @@ export function PosShippingColumn({
                           if (id === 'custom' && !customAt)
                             setCustomAt(localInput(new Date(Date.now() + 2 * 3_600_000)));
                         }}
-                        className={`rounded-full border px-3 py-1 text-xs ${schedule === id ? 'border-brand-600 bg-brand-50 font-medium text-brand-700 dark:bg-brand-500/10' : 'border-slate-300 dark:border-slate-700'}`}
+                        className={`rounded-full border px-3 py-1.5 text-xs ${schedule === id ? 'border-brand-600 bg-brand-50 font-medium text-brand-700 dark:bg-brand-500/10' : 'border-slate-300 dark:border-slate-700'}`}
                       >
                         {label}
                       </button>
@@ -360,21 +427,25 @@ export function PosShippingColumn({
                       cần gọi sớm.
                     </p>
                   )}
-                </div>
+                </section>
               )}
 
-              <div className="space-y-1 border-t border-slate-100 pt-2 text-xs dark:border-white/10">
-                <div className="flex justify-between">
-                  <span>Phí giao hàng</span>
-                  <span className="tabular-nums">{formatVnd(fee)}</span>
+              <section className="space-y-2 px-4 py-4">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-slate-600 dark:text-slate-300">Phí giao hàng</span>
+                  <span className="text-base font-semibold tabular-nums">{formatVnd(fee)}</span>
                 </div>
                 {addedFee > 0 && (
-                  <div className="flex justify-between">
-                    <span>Khách cần trả (đã cộng phí ship)</span>
-                    <span className="tabular-nums">{formatVnd(input.total + addedFee)}</span>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-slate-600 dark:text-slate-300">
+                      Khách cần trả (đã cộng phí ship)
+                    </span>
+                    <span className="text-base font-semibold tabular-nums">
+                      {formatVnd(input.total + addedFee)}
+                    </span>
                   </div>
                 )}
-              </div>
+              </section>
             </div>
           </div>
         )}
@@ -395,7 +466,9 @@ export function PosShippingColumn({
                   className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === id ? 'border-brand-600 font-medium text-brand-700' : 'border-transparent text-slate-500'}`}
                 >
                   {label}{' '}
-                  <span className="text-xs text-slate-400">{all.filter((r) => r.group === id).length}</span>
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                    {all.filter((r) => r.group === id).length}
+                  </span>
                 </button>
               ))}
               <span className="flex-1" />
@@ -438,6 +511,7 @@ export function PosShippingColumn({
               serviceId: chosen.serviceId,
               quotedPrice: chosen.price,
               boxKey,
+              ...customBody,
               addFeeToOrder: addFee && !ahamove,
               scheduleAt,
               partnerName: chosen.partnerName,

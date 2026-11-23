@@ -10,6 +10,9 @@ import { loadShippingSettings, saveShippingSettings, ShippingSettings } from './
 const Parcel = z.object({
   boxKey: z.string().trim().max(20).optional(),
   weightGrams: z.number().int().min(1).max(100_000).optional(),
+  lengthCm: z.number().int().min(1).max(200).optional(),
+  widthCm: z.number().int().min(1).max(200).optional(),
+  heightCm: z.number().int().min(1).max(200).optional(),
   addFeeToOrder: z.boolean().default(false),
 });
 const CreateBody = Parcel.extend({
