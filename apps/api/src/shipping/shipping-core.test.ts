@@ -144,3 +144,28 @@ describe('quote groups', () => {
     );
   });
 });
+
+describe('pickup times', () => {
+  it('finds the next pickup in Vietnam time, rolling to tomorrow after the last one', async () => {
+    const { nextPickup } = await import('./shipping-core.js');
+    // 09:00 Vietnam = 02:00 UTC
+    expect(nextPickup(['10:00', '16:00'], new Date('2026-11-23T02:00:00Z'))?.toISOString()).toBe(
+      '2026-11-23T03:00:00.000Z',
+    );
+    expect(nextPickup(['10:00', '16:00'], new Date('2026-11-23T09:30:00Z'))?.toISOString()).toBe(
+      '2026-11-24T03:00:00.000Z',
+    );
+    expect(nextPickup([], new Date())).toBeNull();
+  });
+  it('shows only enabled normal carriers, never touching fast ones', async () => {
+    const { applyCarrierSettings, toQuoteRows } = await import('./shipping-core.js');
+    const rows = toQuoteRows([
+      { ...q('spx', 1, null), mode: 'standard' as const },
+      { ...q('ghn', 2, null), mode: 'standard' as const },
+      { ...q('ahamove', 3, null), mode: 'on_demand' as const },
+    ]);
+    const out = applyCarrierSettings(rows, { spx: { enabled: true, pickupTimes: ['10:00'] } });
+    expect(out.map((r) => r.partnerId).sort()).toEqual(['ahamove', 'spx']);
+    expect(applyCarrierSettings(rows, {}).length).toBe(3);
+  });
+});

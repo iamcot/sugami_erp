@@ -14,6 +14,16 @@ const Box = z.object({
   heightCm: z.number().int().min(1).max(200),
 });
 
+const Carrier = z.object({
+  /** Shown in the Giao thường tab. */
+  enabled: z.boolean().default(false),
+  /** Pickup times of the day agreed with the carrier, "HH:mm" (Vietnam time). */
+  pickupTimes: z
+    .array(z.string().regex(/^([01]?\d|2[0-3]):[0-5]\d$/))
+    .max(8)
+    .default([]),
+});
+
 export const ShippingSettings = z.object({
   pickup: z.object({
     name: z.string().trim().max(100).default(''),
@@ -31,6 +41,11 @@ export const ShippingSettings = z.object({
   preferredStandard: z.string().trim().max(32).default('spx'),
   /** Ahamove service ids offered in the price table; empty = all (or AHAMOVE_SERVICES from .env). */
   ahamoveServices: z.array(z.string().trim().max(40)).max(20).default([]),
+  /**
+   * Normal carriers the shop uses, by partner id. When at least one is enabled, the Giao thường tab shows
+   * only those; the pickup times give each parcel its packing deadline.
+   */
+  carriers: z.record(z.string().max(32), Carrier).default({}),
 });
 export type ShippingSettings = z.infer<typeof ShippingSettings>;
 
@@ -45,6 +60,7 @@ export const DEFAULT_SHIPPING: ShippingSettings = {
   defaultPayee: 'receiver',
   preferredStandard: 'spx',
   ahamoveServices: [],
+  carriers: {},
 };
 
 export async function loadShippingSettings(db: PrismaClient): Promise<ShippingSettings> {

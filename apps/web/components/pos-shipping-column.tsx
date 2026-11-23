@@ -22,6 +22,7 @@ interface Quote {
   unavailableReason: string | null;
   cheapest: boolean;
   fastest: boolean;
+  packDeadline: string | null;
 }
 interface QuoteResult {
   data: Quote[];
@@ -75,6 +76,17 @@ function eta(q: Quote): string | null {
   if (q.etaText) return q.etaText;
   if (q.etaMinutes == null) return null;
   return q.etaMinutes < 120 ? `${q.etaMinutes} phút` : `${Math.round(q.etaMinutes / 60)} giờ`;
+}
+
+/** "15:30 hôm nay", "10:00 ngày mai" or "10:00 25/11". */
+function whenText(iso: string): string {
+  const d = new Date(iso);
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(d) - day(new Date())) / 86_400_000);
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (diff === 0) return `${hm} hôm nay`;
+  if (diff === 1) return `${hm} ngày mai`;
+  return `${hm} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -221,6 +233,7 @@ export function PosShippingColumn({
         </span>
         <span className="block text-xs text-slate-500">
           {r.available ? (eta(r) ? `Dự kiến ${eta(r)}` : ' ') : (r.unavailableReason ?? 'Không khả dụng')}
+          {r.available && r.packDeadline ? ` · Đóng hàng trước ${whenText(r.packDeadline)}` : ''}
         </span>
       </span>
       <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
@@ -431,6 +444,18 @@ export function PosShippingColumn({
               )}
 
               <section className="space-y-2 px-4 py-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-slate-600 dark:text-slate-300">Hạn đóng hàng</span>
+                  <span className="text-right font-medium">
+                    {fastCard
+                      ? scheduleAt
+                        ? whenText(scheduleAt)
+                        : 'Ngay bây giờ'
+                      : chosen.packDeadline
+                        ? whenText(chosen.packDeadline)
+                        : 'Chưa đặt mốc lấy hàng'}
+                  </span>
+                </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-slate-600 dark:text-slate-300">Phí giao hàng</span>
                   <span className="text-base font-semibold tabular-nums">{formatVnd(fee)}</span>

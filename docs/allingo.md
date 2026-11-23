@@ -89,3 +89,4 @@ Chạy thử webhook không cần Allingo: `curl` tới `/api/webhooks/allingo` 
 - Hẹn giờ: Allingo dùng `fulfillment_type=scheduled` + `schedule_at`, AhaMove dùng `order_time`. Chưa kiểm với hãng thật, cần thử trên môi trường test.
 - Dịch vụ AhaMove hiện trong bảng giá chọn ở Cài đặt → Vận chuyển (không tick = hiện hết, hoặc theo `AHAMOVE_SERVICES`).
 - Logo hãng: đặt PNG vuông `apps/web/public/carriers/<mã hãng>.png`; thiếu thì hiện ô màu với chữ cái đầu.
+- **Hãng giao thường và hạn đóng hàng:** Allingo không trả giờ lấy hàng của hãng, nên cấu hình ở Cài đặt → Vận chuyển: tick các hãng quen (tab Giao thường chỉ hiện các hãng đó) và nhập mốc lấy hàng từng hãng (giờ Việt Nam, ví dụ SPX `10:00, 16:00`). Đặt hãng xong, *Hạn bàn giao* của đơn = mốc lấy sắp tới; hãng giao nhanh thì hạn là giờ hẹn (hoặc ngay lúc đặt).

@@ -95,6 +95,8 @@ export interface QuoteRow {
   unavailableReason: string | null;
   cheapest: boolean;
   fastest: boolean;
+  /** ISO time to have the parcel packed by: the carrier's next pickup, when the shop set pickup times. */
+  packDeadline: string | null;
 }
 
 /** Quotes as table rows: grouped, cheapest first, with "rẻ nhất" and "nhanh nhất" marked inside each group. */
@@ -114,6 +116,7 @@ export function toQuoteRows(quotes: AllingoQuote[]): QuoteRow[] {
     unavailableReason: q.available === false ? (q.error_code ?? 'Không khả dụng') : null,
     cheapest: false,
     fastest: false,
+    packDeadline: null,
   }));
   for (const r of rows) {
     r.sortMinutes = guessMinutes(r);
@@ -190,4 +193,41 @@ export function pickupProblem(p: ShippingSettings['pickup']): string | null {
   if (!p.name || !p.phone || !p.address || !p.province)
     return 'Chưa nhập điểm lấy hàng: vào Cài đặt → Vận chuyển điền tên, số điện thoại, địa chỉ và tỉnh/thành';
   return null;
+}
+
+const VN_OFFSET_MS = 7 * 3_600_000;
+
+/** The next pickup (UTC instant) among "HH:mm" times of the day in Vietnam time; null when none are set. */
+export function nextPickup(times: string[], now = new Date()): Date | null {
+  const slots = times
+    .map((t) => /^(\d{1,2}):(\d{2})$/.exec(t))
+    .filter((m): m is RegExpExecArray => !!m)
+    .map((m) => Number(m[1]) * 60 + Number(m[2]))
+    .sort((a, b) => a - b);
+  if (!slots.length) return null;
+  const local = new Date(now.getTime() + VN_OFFSET_MS);
+  const midnight = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - VN_OFFSET_MS;
+  for (const day of [0, 1]) {
+    for (const m of slots) {
+      const at = midnight + day * 86_400_000 + m * 60_000;
+      if (at > now.getTime()) return new Date(at);
+    }
+  }
+  return null;
+}
+
+/** Keep the carriers the shop enabled in the Giao thường tab (all of them when none is enabled yet). */
+export function applyCarrierSettings(
+  rows: QuoteRow[],
+  carriers: ShippingSettings['carriers'],
+  now = new Date(),
+): QuoteRow[] {
+  const enabled = Object.entries(carriers).filter(([, c]) => c.enabled);
+  const out = rows.filter(
+    (r) => r.group !== 'standard' || enabled.length === 0 || carriers[r.partnerId]?.enabled,
+  );
+  for (const r of out)
+    if (r.group === 'standard')
+      r.packDeadline = nextPickup(carriers[r.partnerId]?.pickupTimes ?? [], now)?.toISOString() ?? null;
+  return out;
 }

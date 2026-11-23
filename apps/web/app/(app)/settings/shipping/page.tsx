@@ -19,6 +19,11 @@ interface Settings {
   defaultPayee: 'receiver' | 'sender';
   preferredStandard: string;
   ahamoveServices: string[];
+  carriers: Record<string, { enabled: boolean; pickupTimes: string[] }>;
+}
+interface Partner {
+  id: string;
+  name: string;
 }
 interface AhaService {
   id: string;
@@ -48,13 +53,24 @@ export default function ShippingSettingsPage() {
   const [s, setS] = useState<Settings | null>(null);
   const [st, setSt] = useState<Status | null>(null);
   const [aha, setAha] = useState<AhaService[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  /** Pickup times as typed ("10:00, 16:00"), turned into the list on save. */
+  const [timesText, setTimesText] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     api<Settings>('/shipping/settings')
-      .then(setS)
+      .then((v) => {
+        setS(v);
+        setTimesText(
+          Object.fromEntries(Object.entries(v.carriers ?? {}).map(([k, c]) => [k, c.pickupTimes.join(', ')])),
+        );
+      })
       .catch((e: Error) => setMsg({ ok: false, text: e.message }));
+    api<{ data: Partner[] }>('/shipping/partners')
+      .then((r) => setPartners(r.data))
+      .catch(() => undefined);
     api<{ data: AhaService[] }>('/shipping/ahamove-services')
       .then((r) => setAha(r.data))
       .catch(() => undefined);
@@ -74,7 +90,19 @@ export default function ShippingSettingsPage() {
     setSaving(true);
     setMsg(null);
     try {
-      setS(await api<Settings>('/shipping/settings', { method: 'PUT', json: s }));
+      const carriers = Object.fromEntries(
+        Object.entries(s.carriers).map(([k, c]) => [
+          k,
+          {
+            enabled: c.enabled,
+            pickupTimes: (timesText[k] ?? '')
+              .split(/[,;\s]+/)
+              .map((t) => t.trim())
+              .filter(Boolean),
+          },
+        ]),
+      );
+      setS(await api<Settings>('/shipping/settings', { method: 'PUT', json: { ...s, carriers } }));
       setMsg({ ok: true, text: 'Đã lưu' });
     } catch (e) {
       setMsg({ ok: false, text: (e as Error).message });
@@ -234,6 +262,45 @@ export default function ShippingSettingsPage() {
           </Field>
         </div>
       </Card>
+
+      {partners.length > 0 && (
+        <Card className="mb-4 p-4">
+          <h2 className="mb-1 font-semibold">Hãng giao thường shop dùng</h2>
+          <p className="mb-3 text-xs text-slate-500">
+            Tick các hãng quen: bảng giá Giao thường chỉ hiện các hãng này (không tick hãng nào = hiện hết).
+            Mốc lấy hàng theo thỏa thuận với từng hãng (giờ Việt Nam, cách nhau dấu phẩy, ví dụ 10:00, 16:00):
+            đơn sẽ có hạn đóng hàng là mốc lấy sắp tới.
+          </p>
+          <div className="divide-y divide-slate-100 dark:divide-white/10">
+            {partners.map((p) => {
+              const c = s.carriers[p.id] ?? { enabled: false, pickupTimes: [] };
+              return (
+                <div key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5">
+                  <label className="flex w-48 items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={c.enabled}
+                      onChange={(e) =>
+                        setS({
+                          ...s,
+                          carriers: { ...s.carriers, [p.id]: { ...c, enabled: e.target.checked } },
+                        })
+                      }
+                    />
+                    {p.name}
+                  </label>
+                  <input
+                    className={`${input} max-w-xs`}
+                    placeholder="Mốc lấy hàng, ví dụ 10:00, 16:00"
+                    value={timesText[p.id] ?? ''}
+                    onChange={(e) => setTimesText({ ...timesText, [p.id]: e.target.value })}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {st?.ahamove && (
         <Card className="mb-4 p-4">

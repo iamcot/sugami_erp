@@ -28,7 +28,9 @@ import { runPosAction } from '../pos/pos-orders.js';
 import { PosError } from '../pos/pos-orders.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  applyCarrierSettings,
   buildInquiry,
+  nextPickup,
   orderWeight,
   pickBox,
   pickupProblem,
@@ -120,6 +122,18 @@ export class ShippingService {
     if (!ahamoveConfigured()) return [];
     try {
       return await allServices();
+    } catch (err) {
+      this.fail(err);
+    }
+  }
+
+  /** The normal carriers Allingo offers this shop, for the settings page. */
+  async partners() {
+    if (!this.status().configured) return [];
+    try {
+      const list = await this.client().partners();
+      const fast = new Set(['ahamove', 'lalamove', 'gsm', 'grabexpress', 'grab', 'simulator_on_demand']);
+      return list.filter((p) => !fast.has(p.id.toLowerCase())).map((p) => ({ id: p.id, name: p.name }));
     } catch (err) {
       this.fail(err);
     }
@@ -351,7 +365,7 @@ export class ShippingService {
     }
     if (quotes.length === 0 && warnings.length > 0) throw new BadGatewayException(warnings.join(' | '));
     return {
-      data: toQuoteRows(quotes),
+      data: applyCarrierSettings(toQuoteRows(quotes), settings.carriers),
       warnings,
       parcel: {
         grams: parcel.grams,
@@ -405,6 +419,8 @@ export class ShippingService {
       // Ahamove is booked directly; the order moves on when the driver has the parcel, see pos/ahamove.ts
       try {
         await bookOrder(db, code, body.serviceId.slice(AHAMOVE_PREFIX.length), userId, scheduleAt);
+        // a driver is looked for now, or at the booked time: that is the packing deadline
+        await db.order.update({ where: { code }, data: { shipByAt: scheduleAt ?? new Date() } });
       } catch (err) {
         this.fail(err);
       }
@@ -414,6 +430,7 @@ export class ShippingService {
     const problem = pickupProblem(settings.pickup);
     if (problem) throw new BadRequestException(problem);
     const client = this.client();
+    const pickupTimes = (code: string) => settings.carriers[code]?.pickupTimes ?? [];
     const addedFee = body.addFeeToOrder ? body.quotedPrice : 0;
     const parcel = this.parcel(order, settings, body, addedFee);
     const inquiry = buildInquiry(settings.pickup, this.receiver(order), parcel);
@@ -477,6 +494,8 @@ export class ShippingService {
       this.fail(err);
     }
 
+    const deadline =
+      scheduleAt ?? nextPickup(pickupTimes((created.delivery?.partner?.id ?? row.partnerCode).toLowerCase()));
     const status = effectiveStatus(created.status, created.delivery?.status);
     const fee = created.fee ?? {};
     const feeTotal = fee.total ?? body.quotedPrice;
@@ -508,6 +527,8 @@ export class ShippingService {
         },
       });
       const orderData: Prisma.OrderUpdateInput = {
+        // packing deadline: the time the seller booked for, else the carrier's next pickup (when pickup times are set)
+        ...(deadline ? { shipByAt: deadline } : {}),
         carrier: partnerName,
         trackingNo: created.delivery?.partner_order_id ?? created.track_id,
         shippingFee: parcel.payee === 'sender' ? BigInt(feeTotal) : 0n,
