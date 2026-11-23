@@ -48,6 +48,7 @@ interface Order {
   completedAt: string | null;
   stockAppliedAt: string | null;
   returnHandledAt: string | null;
+  returnDamaged: boolean;
   internalNote: string | null;
   channel: { code: string; name: string };
   customer: { id: string; kiotvietCode: string | null; name: string | null; phone: string | null } | null;
@@ -176,6 +177,21 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
       setActing(false);
     }
   };
+  const reportDamage = async () => {
+    if (!order) return;
+    if (!window.confirm(`Hàng hoàn đơn ${order.code} bị lỗi/mất? Tồn đã cộng lại sẽ bị trừ ra.`)) return;
+    setActing(true);
+    setError(null);
+    try {
+      await api(`/orders/${encodeURIComponent(order.code)}/return-damage`, { method: 'POST' });
+      const r = await api<{ order: Order }>(`/orders/${encodeURIComponent(order.code)}`);
+      setOrder(r.order);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setActing(false);
+    }
+  };
   const print = async () => {
     if (!order) return;
     const t = await api<{ data: ReceiptTemplate[] }>('/receipt-templates');
@@ -247,7 +263,20 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
           }`}
         >
           {order.returnHandledAt ? (
-            <span>Hàng hoàn đã xử lý lúc {dt(order.returnHandledAt)}.</span>
+            <>
+              <span className="flex-1">
+                {order.returnDamaged
+                  ? `Hàng hoàn về ${dt(order.returnHandledAt)}, đã báo lỗi/mất (đã trừ khỏi kho).`
+                  : order.stockAppliedAt
+                    ? `Hàng hoàn đã xử lý lúc ${dt(order.returnHandledAt)}, không nhập lại kho.`
+                    : `Hàng hoàn về shop ${dt(order.returnHandledAt)}, tồn đã tự cộng lại.`}
+              </span>
+              {!order.returnDamaged && !order.stockAppliedAt && (
+                <Button variant="secondary" disabled={acting} onClick={() => void reportDamage()}>
+                  Báo hàng lỗi/mất
+                </Button>
+              )}
+            </>
           ) : (
             <>
               <span className="flex-1">

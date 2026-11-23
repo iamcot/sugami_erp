@@ -67,3 +67,43 @@ export async function handleReturn(
   });
   return { restocked };
 }
+
+/**
+ * A returned parcel that came back damaged or incomplete: the goods put back in stock when it arrived
+ * leave again as damage. Once per order.
+ */
+export async function writeOffReturn(
+  db: PrismaClient,
+  code: string,
+  userId?: string,
+): Promise<{ lines: number }> {
+  const order = await db.order.findFirst({
+    where: { OR: [{ id: code }, { code }] },
+    include: { lines: { select: { variantId: true, qty: true } } },
+  });
+  if (!order) throw new ReturnError('Không tìm thấy đơn', 404);
+  if (order.status !== 'returned' || !order.returnHandledAt)
+    throw new ReturnError('Chỉ báo hàng lỗi cho đơn hoàn đã về kho', 409);
+  if (order.stockAppliedAt) throw new ReturnError('Hàng của đơn này chưa được cộng lại kho', 409);
+  const lines = order.lines.filter((l) => l.variantId);
+  await withLedgerTx(db, async (tx) => {
+    const done = await tx.stockMovement.count({
+      where: { refType: 'order', refId: order.id, type: 'damage' },
+    });
+    if (done) throw new ReturnError('Đơn này đã báo hàng lỗi rồi', 409);
+    await applyMovements(
+      tx,
+      lines.map((l) => ({
+        warehouseId: order.warehouseId,
+        variantId: l.variantId!,
+        qtyDelta: -Number(l.qty),
+        type: 'damage' as const,
+        refType: 'order',
+        refId: order.id,
+        note: `Hàng hoàn lỗi/mất đơn ${order.code}`,
+        createdBy: userId,
+      })),
+    );
+  });
+  return { lines: lines.length };
+}

@@ -297,6 +297,8 @@ export async function syncPancakeOrders(
             ...fields,
             subtotal: big(o.lines.reduce((a, l) => a + l.unitPrice * l.quantity, 0)),
             stockAppliedAt: toApply.length ? new Date() : null,
+            // first seen already back at the shop: no stock was taken, nothing to handle
+            returnHandledAt: o.status === 'returned' ? new Date() : null,
             lines: {
               create: o.lines.map((l, i) => {
                 const v = variantBySku.get(l.sku);
@@ -378,6 +380,8 @@ export async function syncPancakeOrders(
       summary.skuMap.conflicts += r.conflicts;
     }
     const cancelNow = o.status === 'cancelled' && prev.status !== 'cancelled';
+    // the carrier brought the parcel back to the shop: the goods are in stock again, as on the marketplace
+    const returnNow = o.status === 'returned' && prev.status !== 'returned';
     if (fromKiotViet) {
       // KiotViet's status and stock stay as they are; Pancake adds what KiotViet does not have.
       const patch: Prisma.OrderUncheckedUpdateInput = {};
@@ -429,7 +433,7 @@ export async function syncPancakeOrders(
       } else if (!cancelNow) {
         summary.keptFromKiotViet++;
       }
-      if (!cancelNow) return;
+      if (!cancelNow && !returnNow) return;
     }
     // A Pancake order without a customer yet gets its buyer.
     if (!fromKiotViet && prev.customerId === null && o.customer) {
@@ -475,7 +479,7 @@ export async function syncPancakeOrders(
       return;
     }
     summary.updated++;
-    const reverse = (o.status === 'cancelled' || relines) && prev.stockAppliedAt !== null;
+    const reverse = (o.status === 'cancelled' || returnNow || relines) && prev.stockAppliedAt !== null;
     if (reverse) summary.stock.reversed += prev.lines.filter((l) => l.variantId).length;
     const reApply = relines ? linesToApply(o) : [];
     if (relines) summary.stock.applied += reApply.length;
@@ -495,7 +499,11 @@ export async function syncPancakeOrders(
             type: 'return_in' as const,
             refType: 'order',
             refId: prev.id,
-            note: relines && o.status !== 'cancelled' ? `Đổi sản phẩm đơn ${o.code}` : `Hủy đơn ${o.code}`,
+            note: returnNow
+              ? `Hàng hoàn về shop đơn ${o.code}`
+              : relines && o.status !== 'cancelled'
+                ? `Đổi sản phẩm đơn ${o.code}`
+                : `Hủy đơn ${o.code}`,
           })),
         );
       }
@@ -536,9 +544,14 @@ export async function syncPancakeOrders(
       await tx.order.update({
         where: { id: prev.id },
         data: fromKiotViet
-          ? { status: fields.status, stockAppliedAt: reverse ? null : prev.stockAppliedAt }
+          ? {
+              status: fields.status,
+              stockAppliedAt: reverse ? null : prev.stockAppliedAt,
+              ...(returnNow ? { returnHandledAt: new Date() } : {}),
+            }
           : {
               ...fields,
+              ...(returnNow ? { returnHandledAt: new Date() } : {}),
               ...(relines
                 ? { stockAppliedAt: reApply.length ? new Date() : null }
                 : reverse

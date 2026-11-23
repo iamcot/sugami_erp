@@ -15,7 +15,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { handleReturn, ReturnError } from './order-returns.js';
+import { handleReturn, ReturnError, writeOffReturn } from './order-returns.js';
 
 const STATUSES = [
   'new',
@@ -186,6 +186,19 @@ export class OrdersController {
     }
   }
 
+  /** A returned parcel that came back damaged or lost: take its goods out of stock again. */
+  @Post(':code/return-damage')
+  @HttpCode(200)
+  @RequirePermissions('orders.write', 'inventory.write')
+  async returnDamage(@Param('code') code: string, @CurrentUser() user: AuthUser) {
+    try {
+      return await writeOffReturn(this.prisma.client, code, user.id);
+    } catch (err) {
+      if (err instanceof ReturnError) throw new HttpException({ message: err.message }, err.status);
+      throw err;
+    }
+  }
+
   @Get(':code')
   @RequirePermissions('orders.read')
   async get(@Param('code') code: string) {
@@ -198,9 +211,15 @@ export class OrdersController {
       },
     });
     if (!o) throw new NotFoundException('Không tìm thấy đơn');
+    const returnDamaged =
+      o.status === 'returned' &&
+      (await this.prisma.client.stockMovement.count({
+        where: { refType: 'order', refId: o.id, type: 'damage' },
+      })) > 0;
     return {
       order: {
         ...o,
+        returnDamaged,
         subtotal: Number(o.subtotal),
         discount: Number(o.discount),
         otherIncome: Number(o.otherIncome),

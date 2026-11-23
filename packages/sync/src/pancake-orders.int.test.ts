@@ -225,4 +225,19 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
     await db.order.deleteMany({ where: { code: `HDSPE_SN${run}7` } });
     await db.customer.deleteMany({ where: { id: kv.id } });
   });
+
+  it('puts the goods back when a parcel returns to the shop', async () => {
+    const before = await onHand();
+    await syncPancakeOrders(db, [mk(9, { status: 'shipped' })], opts());
+    expect(await onHand()).toBe(before - 2);
+    const back = await syncPancakeOrders(db, [mk(9, { status: 'returned' })], opts());
+    expect(back).toMatchObject({ updated: 1, stock: { reversed: 1 } });
+    expect(await onHand()).toBe(before);
+    const o = await db.order.findUniqueOrThrow({ where: { code: `PCT${run}9` } });
+    expect(o).toMatchObject({ status: 'returned', stockAppliedAt: null });
+    expect(o.returnHandledAt).not.toBeNull();
+    // seeing the same return again changes nothing
+    await syncPancakeOrders(db, [mk(9, { status: 'returned' })], opts());
+    expect(await onHand()).toBe(before);
+  });
 });
