@@ -57,6 +57,10 @@ export interface ShipInput {
   total: number;
 }
 
+/** Largest parcel the API takes: 100 kg and 200 cm a side. */
+const MAX_GRAMS = 100_000;
+const MAX_CM = 200;
+
 const SPEED_TITLE: Record<Quote['speed'], string> = {
   instant: 'Giao ngay',
   h4: 'Giao trong 4 giờ',
@@ -357,13 +361,21 @@ export function PosShippingColumn({
                           onChange={(e) =>
                             setCustom({
                               ...custom,
-                              [k]: Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0),
+                              [k]: Math.min(
+                                k === 'g' ? MAX_GRAMS : MAX_CM,
+                                Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0),
+                              ),
                             })
                           }
                         />
                       </label>
                     ))}
                   </div>
+                )}
+                {custom && (
+                  <p className="text-xs text-slate-500">
+                    Cân nặng tính bằng gram (1 kg = 1000 g), tối đa 100.000 g; mỗi cạnh tối đa 200 cm.
+                  </p>
                 )}
                 {!custom && res && res.parcel.unknownWeights > 0 && (
                   <p className="text-xs text-amber-600">
