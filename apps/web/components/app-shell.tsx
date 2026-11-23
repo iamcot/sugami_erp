@@ -212,9 +212,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh lg:pl-56">
       <PwaBootstrap />
-      <aside className="glass fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-y-0 border-l-0 pt-3 lg:flex">
-        <Link href="/" className="mb-2 flex justify-center px-4" aria-label="Sugami">
-          <img src="/icons/logo.png" alt="SuGaMi" className="h-20 w-auto drop-shadow-sm" />
+      <aside className="glass fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-y-0 border-l-0 lg:flex">
+        <Link href="/" className="mb-2 flex h-14 shrink-0 items-center gap-2 px-4" aria-label="Sugami ERP">
+          <img src="/icons/logo.png" alt="SuGaMi" className="h-11 w-auto" />
+          <span className="hud-label text-[11px] text-slate-500 dark:text-slate-400">ERP</span>
         </Link>
         <Suspense>
           <SideNav />
