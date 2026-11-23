@@ -56,9 +56,25 @@ export interface SendResult {
   sent: number;
   removed: number;
   failed: number;
+  /** One line per device: what the push service answered (for diagnosing). */
+  devices: { device: string; ok: boolean; status?: number; error?: string }[];
 }
 
 /** Push service answers that mean the subscription is gone for good. */
+function deviceName(ua: string | null): string {
+  if (!ua) return 'không rõ';
+  const os = /android/i.test(ua)
+    ? 'Android'
+    : /iphone|ipad/i.test(ua)
+      ? 'iOS'
+      : /mac/i.test(ua)
+        ? 'Mac'
+        : /windows/i.test(ua)
+          ? 'Windows'
+          : 'khác';
+  return `${os}${/Samsung/i.test(ua) ? ' (Samsung)' : ''}`;
+}
+
 const GONE = new Set([404, 410]);
 
 export class PushSender {
@@ -118,7 +134,7 @@ export class PushSender {
           };
     const subs = await this.db.pushSubscription.findMany({ where });
     const body = JSON.stringify(payload);
-    const result: SendResult = { sent: 0, removed: 0, failed: 0 };
+    const result: SendResult = { sent: 0, removed: 0, failed: 0, devices: [] };
     await Promise.all(
       subs.map(async (s) => {
         try {
@@ -129,12 +145,19 @@ export class PushSender {
             timeout: 10_000,
           });
           result.sent++;
+          result.devices.push({ device: deviceName(s.userAgent), ok: true });
           await this.db.pushSubscription.update({
             where: { id: s.id },
             data: { lastSuccessAt: new Date(), failCount: 0 },
           });
         } catch (err) {
           const status = (err as { statusCode?: number }).statusCode;
+          result.devices.push({
+            device: deviceName(s.userAgent),
+            ok: false,
+            status,
+            error: (err as Error).message?.slice(0, 120),
+          });
           if ((status && GONE.has(status)) || s.failCount >= 9) {
             result.removed++;
             await this.db.pushSubscription.delete({ where: { id: s.id } }).catch(() => undefined);

@@ -129,8 +129,16 @@ export function AppSettings() {
             disabled={busy}
             onClick={() =>
               run(async () => {
-                const r = await api<{ sent: number }>('/push/test', { method: 'POST' });
-                return r.sent ? 'Đã gửi, chờ vài giây.' : 'Không gửi được, thử tắt rồi bật lại.';
+                const r = await api<{
+                  sent: number;
+                  devices: { device: string; ok: boolean; status?: number }[];
+                }>('/push/test', { method: 'POST' });
+                const detail = r.devices
+                  .map((d) => `${d.device}: ${d.ok ? 'đã gửi' : `lỗi ${d.status ?? ''}`}`)
+                  .join('; ');
+                return r.sent
+                  ? `Đã gửi, chờ vài giây. (${detail})`
+                  : `Không gửi được, thử tắt rồi bật lại. (${detail || 'chưa có thiết bị nào đăng ký'})`;
               })
             }
           >
