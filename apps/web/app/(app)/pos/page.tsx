@@ -1118,6 +1118,7 @@ export default function PosPage() {
                         onChange={(e) => patch({ cod: e.target.checked })}
                       />
                     </label>
+                    {carriersOn && <div id="pos-payer-slot" />}
                     {carriersOn && (
                       <label className="flex items-center justify-between gap-4 text-xs text-slate-500">
                         Khách đã thanh toán trước

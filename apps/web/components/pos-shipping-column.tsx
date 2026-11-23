@@ -224,7 +224,11 @@ export function PosShippingColumn({
   const showList = !chosen;
   // the parcel (box / size) is edited in the left column, under the COD options
   const [slot, setSlot] = useState<HTMLElement | null>(null);
-  useEffect(() => setSlot(document.getElementById('pos-parcel-slot')), []);
+  const [payerSlot, setPayerSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setSlot(document.getElementById('pos-parcel-slot'));
+    setPayerSlot(document.getElementById('pos-payer-slot'));
+  }, []);
   useEffect(() => {
     // switching service drops the extras picked for the previous one
     const id = chosen?.serviceId ?? null;
@@ -297,6 +301,23 @@ export function PosShippingColumn({
         {formatVnd(r.price)}
       </span>
     </button>
+  );
+
+  const payerSection = (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 pt-2 text-sm">
+      <span className="text-xs text-slate-500">Ai trả phí ship</span>
+      {(
+        [
+          [false, 'Shop trả'],
+          [true, 'Khách trả (cộng vào đơn)'],
+        ] as const
+      ).map(([v, label]) => (
+        <label key={label} className="flex items-center gap-1.5">
+          <input type="radio" name="ship-payer" checked={addFee === v} onChange={() => setAddFee(v)} />
+          {label}
+        </label>
+      ))}
+    </div>
   );
 
   const parcelSection = (
@@ -383,6 +404,7 @@ export function PosShippingColumn({
   return (
     <>
       {slot && createPortal(parcelSection, slot)}
+      {payerSlot && chosen && createPortal(payerSection, payerSlot)}
       <div className="flex min-h-0 flex-col rounded-lg bg-white text-sm dark:bg-slate-900">
         <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
           <div className="flex items-center justify-between">
@@ -453,29 +475,6 @@ export function PosShippingColumn({
                       <span>Không thu hộ (khách đã trả đủ)</span>
                     )}
                   </p>
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-slate-500">Ai trả phí ship</p>
-                    {(
-                      [
-                        [false, 'Shop trả', 'Phí ship do shop chịu, tiền khách trả giữ nguyên'],
-                        [true, 'Khách trả', 'Cộng phí ship vào đơn, khách trả lại qua tiền hàng / COD'],
-                      ] as const
-                    ).map(([v, label, hint]) => (
-                      <label key={label} className="flex items-start gap-2">
-                        <input
-                          type="radio"
-                          name="ship-payer"
-                          className="mt-1"
-                          checked={addFee === v}
-                          onChange={() => setAddFee(v)}
-                        />
-                        <span>
-                          {label}
-                          <span className="block text-xs text-slate-500">{hint}</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
                 </section>
 
                 {fastCard && (
