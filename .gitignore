@@ -12,3 +12,9 @@ packages/db/src/generated
 next-env.d.ts
 /data/
 kiotviet-probe-report.json
+
+# Prisma CLI offers to install AI-agent skills next to the schema when `prisma generate` runs in a terminal
+packages/db/.agents/
+packages/db/.claude/
+packages/db/.windsurf/
+packages/db/skills-lock.json
