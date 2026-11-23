@@ -27,9 +27,9 @@ if (process.env.ALLINGO_PROBE_RAW) {
     dropoff: {
       contact_name: 'Khách thử',
       contact_phone: '0900000001',
-      address_line: '1 Nguyễn Huệ',
-      ward: 'Phường Sài Gòn',
-      province: 'Hồ Chí Minh',
+      address_line: process.env.ALLINGO_PROBE_DROPOFF_ADDRESS || '1 Nguyễn Huệ',
+      ward: process.env.ALLINGO_PROBE_DROPOFF_WARD || 'Phường Sài Gòn',
+      province: process.env.ALLINGO_PROBE_DROPOFF_PROVINCE || 'Hồ Chí Minh',
     },
     package: { weight: 0.5, length: 20, width: 15, height: 10, declared_value: 200000 },
     cod_amount: 0,
