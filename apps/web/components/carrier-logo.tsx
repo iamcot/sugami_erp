@@ -46,10 +46,11 @@ const FILE: Record<string, string> = {
   grabexpress: 'grab',
 };
 /** Best-effort carrier id from a display name such as "SPX Express" or "J&T Express". */
-export function carrierIdFromName(name: string): string {
+export function carrierIdFromName(name: string, trackingNo?: string | null): string {
+  if (trackingNo && /^SPXVN/i.test(trackingNo)) return 'spx';
   const n = name.toLowerCase().replace(/[^a-z0-9]/g, '');
   const rules: [RegExp, string][] = [
-    [/^spx|shopeeexpress/, 'spx'],
+    [/^spx|shopeex?press|shopeexpress/, 'spx'],
     [/^ghn|giaohangnhanh/, 'ghn'],
     [/^ghtk|giaohangtietkiem/, 'ghtk'],
     [/^j(and)?t|jnt/, 'jt'],

@@ -241,7 +241,7 @@ const columns: Column<OrderRow>[] = [
     render: (o) =>
       o.carrier ? (
         <div className="flex items-center gap-2">
-          <CarrierLogo id={carrierIdFromName(o.carrier)} name={o.carrier} className="size-8" />
+          <CarrierLogo id={carrierIdFromName(o.carrier, o.trackingNo)} name={o.carrier} className="size-6" />
           <div>
             <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
               {o.carrier}
