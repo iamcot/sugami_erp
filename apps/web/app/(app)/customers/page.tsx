@@ -3,6 +3,7 @@
 import { formatVnd } from '@sugami/shared';
 import { Search, StickyNote } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
 import { Badge, PageHeader } from '@/components/ui';
@@ -74,16 +75,18 @@ function NoteIcon({ note }: { note: string }) {
       >
         <StickyNote className="size-4" />
       </button>
-      {pos && (
-        <div
-          role="tooltip"
-          onClick={(e) => e.stopPropagation()}
-          style={{ left: Math.max(8, pos.x), top: pos.y }}
-          className="fixed z-50 max-h-60 w-64 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900"
-        >
-          {note}
-        </div>
-      )}
+      {pos &&
+        createPortal(
+          <div
+            role="tooltip"
+            onClick={(e) => e.stopPropagation()}
+            style={{ left: Math.max(8, pos.x), top: pos.y }}
+            className="fixed z-50 max-h-60 w-64 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900"
+          >
+            {note}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
