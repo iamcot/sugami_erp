@@ -1,7 +1,7 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { Search, StickyNote } from 'lucide-react';
+import { Search, StickyNote, X } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { type Column, DataTable } from '@/components/data-table';
@@ -43,6 +43,9 @@ const SORTS = [
 const date = (s: string | null) =>
   s ? new Date(s).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '–';
 
+/** Closes the note popup that is open, so only one shows at a time. */
+let closeOpenNote: (() => void) | null = null;
+
 /** Note icon; a click shows the note in a small popup (not the row's detail drawer). */
 function NoteIcon({ note }: { note: string }) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -70,7 +73,11 @@ function NoteIcon({ note }: { note: string }) {
         onClick={(e) => {
           e.stopPropagation();
           const r = ref.current?.getBoundingClientRect();
-          if (r) setPos(pos ? null : { x: Math.min(r.left, window.innerWidth - 280), y: r.bottom + 4 });
+          if (pos) return setPos(null);
+          if (!r) return;
+          closeOpenNote?.();
+          closeOpenNote = () => setPos(null);
+          setPos({ x: Math.min(r.left, window.innerWidth - 280), y: r.bottom + 4 });
         }}
       >
         <StickyNote className="size-4" />
@@ -81,9 +88,17 @@ function NoteIcon({ note }: { note: string }) {
             role="tooltip"
             onClick={(e) => e.stopPropagation()}
             style={{ left: Math.max(8, pos.x), top: pos.y }}
-            className="fixed z-50 max-h-60 w-64 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900"
+            className="fixed z-50 max-h-60 w-64 overflow-auto rounded-lg border border-slate-200 bg-white p-3 pr-8 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900"
           >
-            {note}
+            <button
+              type="button"
+              aria-label="Đóng ghi chú"
+              onClick={() => setPos(null)}
+              className="absolute right-1.5 top-1.5 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+            >
+              <X className="size-4" />
+            </button>
+            <p className="whitespace-pre-wrap">{note}</p>
           </div>,
           document.body,
         )}
