@@ -3,8 +3,9 @@
 import { formatVnd } from '@sugami/shared';
 import { Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useDetail } from '@/components/detail-drawer';
+import { type CustomerSaved, useDetail } from '@/components/detail-drawer';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
+import { AreaSelect } from '@/components/vn-area-select';
 import { api } from '@/lib/api';
 
 interface Detail {
@@ -68,45 +69,94 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+interface Form {
+  name: string;
+  phone: string;
+  email: string;
+  addressLine: string;
+  region: string;
+  ward: string;
+}
+
+const toSaved = (c: Detail['customer']): CustomerSaved => ({
+  id: c.id,
+  code: c.code,
+  name: c.name,
+  phone: c.phone,
+  email: c.email,
+  addressLine: c.addressLine,
+  region: c.region,
+  ward: c.ward,
+  kvDebt: c.kvDebt,
+});
+
+/** Code `new` = the create form (nothing to load); otherwise the customer's view with an edit form. */
 export function CustomerDetail({ code, embedded }: { code: string; embedded?: boolean }) {
-  const { open } = useDetail();
+  const { open, close, optsFor } = useDetail();
+  const isNew = code === 'new';
+  const opts = optsFor('customer', code);
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [edit, setEdit] = useState<{
-    name: string;
-    phone: string;
-    email: string;
-    addressLine: string;
-  } | null>(null);
+  const [edit, setEdit] = useState<Form | null>(
+    isNew
+      ? {
+          name: opts?.initial?.name ?? '',
+          phone: opts?.initial?.phone ?? '',
+          email: opts?.initial?.email ?? '',
+          addressLine: opts?.initial?.addressLine ?? '',
+          region: opts?.initial?.region ?? '',
+          ward: opts?.initial?.ward ?? '',
+        }
+      : null,
+  );
   const [saving, setSaving] = useState(false);
+  /** The phone typed for a new customer already belongs to this one. */
+  const [dup, setDup] = useState<Detail['customer'] | null>(null);
 
   useEffect(() => {
+    if (isNew) return;
     api<Detail>(`/customers/${encodeURIComponent(code)}`)
       .then(setD)
       .catch((e: Error) => setError(e.message));
-  }, [code]);
+  }, [code, isNew]);
 
-  if (error) return <p className="text-sm text-rose-600">{error}</p>;
-  if (!d) return <p className="text-sm text-slate-500">Đang tải…</p>;
-  const c = d.customer;
+  if (error && !edit) return <p className="text-sm text-rose-600">{error}</p>;
+  if (!d && !isNew) return <p className="text-sm text-slate-500">Đang tải…</p>;
+  const c = d?.customer;
 
+  const body = (f: Form) => ({
+    name: f.name || null,
+    phone: f.phone || null,
+    email: f.email || null,
+    addressLine: f.addressLine || null,
+    region: f.region || null,
+    ward: f.ward || null,
+  });
   const save = async () => {
     if (!edit) return;
     setSaving(true);
+    setError(null);
     try {
-      setD(
-        await api<Detail>(`/customers/${encodeURIComponent(code)}`, {
-          method: 'PATCH',
-          json: {
-            name: edit.name || null,
-            phone: edit.phone || null,
-            email: edit.email || null,
-            addressLine: edit.addressLine || null,
-          },
-        }),
-      );
+      if (isNew) {
+        const r = await api<{ customer: Detail['customer']; existing: boolean }>('/customers', {
+          method: 'POST',
+          json: body(edit),
+        });
+        if (r.existing) {
+          setDup(r.customer);
+          return;
+        }
+        opts?.onSaved?.(toSaved(r.customer));
+        close();
+        return;
+      }
+      const next = await api<Detail>(`/customers/${encodeURIComponent(code)}`, {
+        method: 'PATCH',
+        json: body(edit),
+      });
+      setD(next);
       setEdit(null);
-      setError(null);
+      opts?.onSaved?.(toSaved(next.customer));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -119,10 +169,11 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
   return (
     <>
       <PageHeader
-        title={c.name ?? '(chưa có tên)'}
-        description={c.code ?? undefined}
+        title={isNew ? 'Khách hàng mới' : (c?.name ?? '(chưa có tên)')}
+        description={c?.code ?? undefined}
         actions={
-          !edit && (
+          !edit &&
+          c && (
             <Button
               variant="secondary"
               onClick={() =>
@@ -131,6 +182,8 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
                   phone: c.phone ?? '',
                   email: c.email ?? '',
                   addressLine: c.addressLine ?? '',
+                  region: c.region ?? '',
+                  ward: c.ward ?? '',
                 })
               }
             >
@@ -139,19 +192,21 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
           )
         }
       />
-      <div className={`mb-4 grid grid-cols-2 gap-3 ${embedded ? '' : 'md:grid-cols-4'}`}>
-        {[
-          ['Đơn trong Sugami', String(d.stats.orders)],
-          ['Chi tiêu trong Sugami', formatVnd(d.stats.spent)],
-          ['Tổng mua (KiotViet)', formatVnd(c.kvTotalSales)],
-          ['Nợ cần thu', formatVnd(c.kvDebt)],
-        ].map(([l, v]) => (
-          <Card key={l} className="p-3">
-            <div className="text-xs text-slate-500">{l}</div>
-            <div className="mt-1 text-lg font-semibold tabular-nums">{v}</div>
-          </Card>
-        ))}
-      </div>
+      {d && c && (
+        <div className={`mb-4 grid grid-cols-2 gap-3 ${embedded ? '' : 'md:grid-cols-4'}`}>
+          {[
+            ['Đơn trong Sugami', String(d.stats.orders)],
+            ['Chi tiêu trong Sugami', formatVnd(d.stats.spent)],
+            ['Tổng mua (KiotViet)', formatVnd(c.kvTotalSales)],
+            ['Nợ cần thu', formatVnd(c.kvDebt)],
+          ].map(([l, v]) => (
+            <Card key={l} className="p-3">
+              <div className="text-xs text-slate-500">{l}</div>
+              <div className="mt-1 text-lg font-semibold tabular-nums">{v}</div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Card className="mb-4 p-4">
         {edit ? (
@@ -173,19 +228,52 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
                 />
               </label>
             ))}
+            <div className="md:col-span-2">
+              <AreaSelect
+                province={edit.region}
+                ward={edit.ward}
+                onChange={(v) => setEdit({ ...edit, region: v.province, ward: v.ward })}
+              />
+            </div>
+            {error && <p className="text-sm text-rose-600 md:col-span-2">{error}</p>}
+            {dup && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 md:col-span-2 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+                <p>
+                  Số điện thoại <b>{dup.phone}</b> đã có trong danh sách khách:{' '}
+                  <b>{dup.name ?? '(không tên)'}</b>
+                  {dup.code ? ` (${dup.code})` : ''}
+                  {dup.addressLine ? `, ${dup.addressLine}` : ''}. Chưa tạo khách mới.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    onClick={() => {
+                      opts?.onSaved?.(toSaved(dup));
+                      close();
+                    }}
+                  >
+                    Dùng khách này
+                  </Button>
+                  <Button variant="secondary" onClick={() => setDup(null)}>
+                    Sửa số điện thoại
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="flex gap-2 md:col-span-2">
               <Button disabled={saving} onClick={save}>
                 Lưu
               </Button>
-              <Button variant="secondary" onClick={() => setEdit(null)}>
+              <Button variant="secondary" onClick={() => (isNew ? close() : setEdit(null))}>
                 Hủy
               </Button>
-              <span className="self-center text-xs text-slate-500">
-                Nhập lại file khách từ KiotViet có thể ghi đè các thông tin này.
-              </span>
+              {!isNew && (
+                <span className="self-center text-xs text-slate-500">
+                  Nhập lại file khách từ KiotViet có thể ghi đè các thông tin này.
+                </span>
+              )}
             </div>
           </div>
-        ) : (
+        ) : c ? (
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Điện thoại" value={c.phone} />
             <Field label="Email" value={c.email} />
@@ -208,59 +296,63 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
               }
             />
           </dl>
-        )}
+        ) : null}
       </Card>
 
-      <h2 className="mb-2 text-sm font-medium">Đơn hàng ({d.orders.length})</h2>
-      <Card className="overflow-hidden">
-        {d.orders.length === 0 ? (
-          <p className="p-4 text-sm text-slate-500">
-            Chưa có đơn nào trong Sugami. Nhập file hóa đơn từ KiotViet để thấy lịch sử mua.
-          </p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-900">
-              <tr>
-                <th className="px-4 py-2">Mã đơn</th>
-                <th className="px-4 py-2">Thời gian</th>
-                <th className="hidden px-4 py-2 md:table-cell">Hàng</th>
-                <th className="px-4 py-2 text-right">Tổng</th>
-                <th className="px-4 py-2">Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              {d.orders.map((o) => (
-                <tr key={o.id} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className="px-4 py-2">
-                    <button
-                      onClick={() => open('order', o.code)}
-                      className="font-mono text-xs text-brand-700 hover:underline dark:text-brand-50"
-                    >
-                      {o.code}
-                    </button>
-                    <div className="text-xs text-slate-500">{o.channel.name}</div>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-2 tabular-nums">{dt(o.orderedAt, true)}</td>
-                  <td className="hidden px-4 py-2 md:table-cell">
-                    {o.items.slice(0, 2).map((i, n) => (
-                      <p key={`${i.sku}-${n}`} className="line-clamp-1">
-                        <span className="tabular-nums text-slate-500">{i.qty}×</span> {i.name}
-                      </p>
-                    ))}
-                    {o.items.length > 2 && (
-                      <p className="text-xs text-slate-500">+{o.items.length - 2} mặt hàng</p>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums">
-                    {formatVnd(o.total)}
-                  </td>
-                  <td className="px-4 py-2">{STATUS[o.status] ?? o.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+      {d && (
+        <>
+          <h2 className="mb-2 text-sm font-medium">Đơn hàng ({d.orders.length})</h2>
+          <Card className="overflow-hidden">
+            {d.orders.length === 0 ? (
+              <p className="p-4 text-sm text-slate-500">
+                Chưa có đơn nào trong Sugami. Nhập file hóa đơn từ KiotViet để thấy lịch sử mua.
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-900">
+                  <tr>
+                    <th className="px-4 py-2">Mã đơn</th>
+                    <th className="px-4 py-2">Thời gian</th>
+                    <th className="hidden px-4 py-2 md:table-cell">Hàng</th>
+                    <th className="px-4 py-2 text-right">Tổng</th>
+                    <th className="px-4 py-2">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.orders.map((o) => (
+                    <tr key={o.id} className="border-t border-slate-100 dark:border-slate-800">
+                      <td className="px-4 py-2">
+                        <button
+                          onClick={() => open('order', o.code)}
+                          className="font-mono text-xs text-brand-700 hover:underline dark:text-brand-50"
+                        >
+                          {o.code}
+                        </button>
+                        <div className="text-xs text-slate-500">{o.channel.name}</div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 tabular-nums">{dt(o.orderedAt, true)}</td>
+                      <td className="hidden px-4 py-2 md:table-cell">
+                        {o.items.slice(0, 2).map((i, n) => (
+                          <p key={`${i.sku}-${n}`} className="line-clamp-1">
+                            <span className="tabular-nums text-slate-500">{i.qty}×</span> {i.name}
+                          </p>
+                        ))}
+                        {o.items.length > 2 && (
+                          <p className="text-xs text-slate-500">+{o.items.length - 2} mặt hàng</p>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums">
+                        {formatVnd(o.total)}
+                      </td>
+                      <td className="px-4 py-2">{STATUS[o.status] ?? o.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card>
+        </>
+      )}
     </>
   );
 }

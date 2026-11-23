@@ -3,7 +3,16 @@
 import { ArrowLeft, ExternalLink, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { CustomerDetail } from '@/components/customer-detail';
 import { ListingDetail } from '@/components/listing-detail';
 import { OrderDetail } from '@/components/order-detail';
@@ -11,13 +20,41 @@ import { ProductDetail } from '@/components/product-detail';
 
 export type DetailType = 'order' | 'customer' | 'product' | 'listing';
 
+/** A customer as the drawer hands it back to the screen that opened it (e.g. the sales screen). */
+export interface CustomerSaved {
+  id: string;
+  code: string | null;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  addressLine: string | null;
+  region: string | null;
+  ward: string | null;
+  kvDebt: number;
+}
+
+/** Extras for a drawer that is not just a view; kept in memory, never in the URL. */
+export interface DetailOpts {
+  /** Customer drawer with code `new`: values to start the form with. */
+  initial?: Partial<CustomerSaved>;
+  /** Called after a customer was created, edited, or an existing one was picked on a duplicate phone. */
+  onSaved?: (c: CustomerSaved) => void;
+}
+
 interface DetailApi {
-  open: (type: DetailType, code: string) => void;
+  open: (type: DetailType, code: string, opts?: DetailOpts) => void;
+  close: () => void;
+  optsFor: (type: DetailType, code: string) => DetailOpts | undefined;
   /** Last opened code per type; stays after the drawer closes so lists can keep the row highlighted. */
   selected: Partial<Record<DetailType, string>>;
 }
 
-const Ctx = createContext<DetailApi>({ open: () => undefined, selected: {} });
+const Ctx = createContext<DetailApi>({
+  open: () => undefined,
+  close: () => undefined,
+  optsFor: () => undefined,
+  selected: {},
+});
 
 /** Open an order or customer in the drawer from anywhere in the app. */
 export const useDetail = () => useContext(Ctx);
@@ -85,8 +122,12 @@ export function DetailProvider({ children }: { children: ReactNode }) {
     [pathname],
   );
 
+  const optsRef = useRef(new Map<string, DetailOpts>());
+  const optsFor = useCallback((type: DetailType, code: string) => optsRef.current.get(`${type}:${code}`), []);
   const open = useCallback(
-    (type: DetailType, code: string) => {
+    (type: DetailType, code: string, opts?: DetailOpts) => {
+      if (opts) optsRef.current.set(`${type}:${code}`, opts);
+      else optsRef.current.delete(`${type}:${code}`);
       const next = new URLSearchParams(params.toString());
       next.append(PARAM, `${type}:${code}`);
       router.push(hrefWith(next), { scroll: false });
@@ -107,7 +148,7 @@ export function DetailProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [top, close]);
 
-  const api = useMemo(() => ({ open, selected }), [open, selected]);
+  const api = useMemo(() => ({ open, close, optsFor, selected }), [open, close, optsFor, selected]);
 
   return (
     <Ctx.Provider value={api}>
@@ -135,12 +176,14 @@ export function DetailProvider({ children }: { children: ReactNode }) {
                 <span className="px-2 text-sm text-slate-500">{TITLE[shown.type]}</span>
               )}
               <div className="ml-auto flex items-center gap-1">
-                <Link
-                  href={`/${PATH[shown.type]}/${encodeURIComponent(shown.code)}`}
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  <ExternalLink className="size-4" /> Mở trang riêng
-                </Link>
+                {!(shown.type === 'customer' && shown.code === 'new') && (
+                  <Link
+                    href={`/${PATH[shown.type]}/${encodeURIComponent(shown.code)}`}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <ExternalLink className="size-4" /> Mở trang riêng
+                  </Link>
+                )}
                 <button
                   onClick={close}
                   aria-label="Đóng"

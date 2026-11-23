@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Badge, Button } from '@/components/ui';
+import { type CustomerSaved, useDetail } from '@/components/detail-drawer';
 import { OrderDetail } from '@/components/order-detail';
 import { AreaSelect } from '@/components/vn-area-select';
 import { formatRelativeDateTime } from '@/lib/datetime';
@@ -83,14 +84,6 @@ interface CustomerFull {
   ward: string | null;
   kvDebt: number;
 }
-interface HistoryOrder {
-  code: string;
-  channel: { name: string };
-  status: string;
-  total: number;
-  orderedAt: string;
-  items: { sku: string; name: string; qty: number }[];
-}
 interface RecentOrder {
   code: string;
   status: string;
@@ -156,238 +149,6 @@ function Thumb({ src, className = 'size-12' }: { src: string | null | undefined;
   );
 }
 
-/** Popup with the customer's details; saving edits the customer record. */
-function CustomerModal({
-  id,
-  initial,
-  onClose,
-  onSaved,
-}: {
-  /** null = a buyer typed on the sales screen, created when the order is confirmed. */
-  id: string | null;
-  initial?: Partial<CustomerFull>;
-  onClose: () => void;
-  onSaved: (c: CustomerFull) => void;
-}) {
-  const [c, setC] = useState<CustomerFull | null>(
-    id
-      ? null
-      : {
-          id: '',
-          code: null,
-          name: null,
-          phone: null,
-          email: null,
-          addressLine: null,
-          region: null,
-          ward: null,
-          kvDebt: 0,
-          ...initial,
-        },
-  );
-  const [err, setErr] = useState<string | null>(null);
-  const [stats, setStats] = useState<{ orders: number; spent: number } | null>(null);
-  const [history, setHistory] = useState<HistoryOrder[]>([]);
-  const [tab, setTab] = useState<'info' | 'history'>('info');
-  /** The phone typed for a new buyer already belongs to this customer. */
-  const [dup, setDup] = useState<CustomerFull | null>(null);
-  useEffect(() => {
-    if (!id) return;
-    api<{ customer: CustomerFull; stats: { orders: number; spent: number }; orders: HistoryOrder[] }>(
-      `/customers/${id}`,
-    )
-      .then((r) => {
-        setC(r.customer);
-        setStats(r.stats);
-        setHistory(r.orders);
-      })
-      .catch((e: Error) => setErr(e.message));
-  }, [id]);
-  const save = async () => {
-    if (!c) return;
-    if (!id) {
-      // a new buyer is saved to the customer list right away
-      try {
-        const r = await api<{ customer: CustomerFull; existing: boolean }>('/customers', {
-          method: 'POST',
-          json: {
-            name: c.name,
-            phone: c.phone,
-            email: c.email,
-            addressLine: c.addressLine,
-            region: c.region,
-            ward: c.ward,
-          },
-        });
-        if (r.existing) {
-          setDup(r.customer);
-          return;
-        }
-        onSaved(r.customer);
-        onClose();
-      } catch (e) {
-        setErr((e as Error).message);
-      }
-      return;
-    }
-    try {
-      await api(`/customers/${id}`, {
-        method: 'PATCH',
-        json: {
-          name: c.name,
-          phone: c.phone,
-          email: c.email,
-          addressLine: c.addressLine,
-          region: c.region,
-          ward: c.ward,
-        },
-      });
-      onSaved(c);
-      onClose();
-    } catch (e) {
-      setErr((e as Error).message);
-    }
-  };
-  const set = (k: keyof CustomerFull, v: string) => setC((cur) => (cur ? { ...cur, [k]: v } : cur));
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        className="flex h-[620px] max-h-[92vh] w-full max-w-2xl flex-col rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between">
-          <h2 className="text-lg font-semibold">
-            {c?.name ?? (id ? 'Khách hàng' : 'Khách hàng mới')}{' '}
-            <span className="text-sm font-normal text-slate-500">{c?.code}</span>
-          </h2>
-          <button aria-label="Đóng" tabIndex={-1} onClick={onClose}>
-            <X className="size-5" />
-          </button>
-        </div>
-        {stats && c && (
-          <p className="mt-2 text-sm text-slate-600">
-            Nợ: <b>{fmt(c.kvDebt)}</b> | Số lần mua: <b>{fmt(stats.orders)}</b> | Tổng bán:{' '}
-            <b>{fmt(stats.spent)}</b>
-          </p>
-        )}
-        <div className="mt-3 flex gap-6 border-b border-slate-200 text-sm dark:border-slate-700">
-          {(
-            [['info', 'Thông tin'], ...(id ? ([['history', 'Lịch sử đặt hàng']] as const) : [])] as const
-          ).map(([k, label]) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`-mb-px border-b-2 px-1 pb-2 ${tab === k ? 'border-brand-600 font-medium text-brand-700' : 'border-transparent text-slate-500'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {err && <p className="mt-2 text-sm text-rose-600">{err}</p>}
-        {dup && (
-          <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
-            <p>
-              Số điện thoại <b>{dup.phone}</b> đã có trong danh sách khách: <b>{dup.name ?? '(không tên)'}</b>
-              {dup.code ? ` (${dup.code})` : ''}
-              {dup.addressLine ? `, ${dup.addressLine}` : ''}. Chưa tạo khách mới.
-            </p>
-            <div className="mt-2 flex gap-2">
-              <Button
-                onClick={() => {
-                  onSaved(dup);
-                  onClose();
-                }}
-              >
-                Dùng khách này
-              </Button>
-              <Button variant="secondary" onClick={() => setDup(null)}>
-                Sửa số điện thoại
-              </Button>
-            </div>
-          </div>
-        )}
-        {tab === 'history' && (
-          <div className="mt-3 min-h-0 flex-1 overflow-auto">
-            {history.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-500">Chưa có đơn hàng nào.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white text-left text-xs text-slate-500 dark:bg-slate-900">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Mã đơn</th>
-                    <th className="px-3 py-2 font-medium">Thời gian</th>
-                    <th className="px-3 py-2 font-medium">Sản phẩm</th>
-                    <th className="px-3 py-2 text-right font-medium">Tổng tiền</th>
-                    <th className="px-3 py-2 font-medium">Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map((o) => (
-                    <tr key={o.code} className="align-top even:bg-slate-50 dark:even:bg-slate-800/50">
-                      <td className="px-3 py-2 font-medium">{o.code}</td>
-                      <td className="whitespace-nowrap px-3 py-2">{formatRelativeDateTime(o.orderedAt)}</td>
-                      <td className="px-3 py-2 text-xs text-slate-600">
-                        {o.items
-                          .slice(0, 3)
-                          .map((it) => `${it.qty} × ${it.name}`)
-                          .join('; ')}
-                        {o.items.length > 3 ? ` … (+${o.items.length - 3})` : ''}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmt(o.total)}</td>
-                      <td className="px-3 py-2">{STATUS_LABEL[o.status] ?? o.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-        {tab === 'info' && c && (
-          <div className="mt-4 grid min-h-0 flex-1 content-start gap-x-8 gap-y-3 overflow-auto pb-48 sm:grid-cols-2">
-            <label className="text-xs text-slate-500">
-              Mã khách hàng
-              <input className={line} value={c.code ?? ''} disabled />
-            </label>
-            <label className="text-xs text-slate-500">
-              Email
-              <input className={line} value={c.email ?? ''} onChange={(e) => set('email', e.target.value)} />
-            </label>
-            <label className="text-xs text-slate-500">
-              Tên khách hàng
-              <input className={line} value={c.name ?? ''} onChange={(e) => set('name', e.target.value)} />
-            </label>
-            <label className="text-xs text-slate-500">
-              Điện thoại
-              <input className={line} value={c.phone ?? ''} onChange={(e) => set('phone', e.target.value)} />
-            </label>
-            <label className="text-xs text-slate-500 sm:col-span-2">
-              Địa chỉ
-              <input
-                className={line}
-                value={c.addressLine ?? ''}
-                onChange={(e) => set('addressLine', e.target.value)}
-              />
-            </label>
-            <div className="sm:col-span-2">
-              <AreaSelect
-                province={c.region ?? ''}
-                ward={c.ward ?? ''}
-                onChange={(v) => setC((cur) => (cur ? { ...cur, region: v.province, ward: v.ward } : cur))}
-              />
-            </div>
-          </div>
-        )}
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Bỏ qua
-          </Button>
-          <Button onClick={() => void save()}>Lưu</Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const emptyPayload = (): Payload => ({
   lines: [],
   customer: null,
@@ -438,6 +199,7 @@ export default function PosPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [info, setInfo] = useState<Record<string, VariantInfo>>({});
+  const { open: openDetail } = useDetail();
   const [cinfo, setCinfo] = useState<Record<string, CustomerFull>>({});
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<VariantInfo[]>([]);
@@ -456,7 +218,6 @@ export default function PosPage() {
   const [paidInput, setPaidInput] = useState(0);
   const [done, setDone] = useState<{ code: string; order: ReceiptOrder } | null>(null);
   /** A customer id, or 'new' for the buyer being typed. */
-  const [customerOpen, setCustomerOpen] = useState<string | null>(null);
   const [recentOpen, setRecentOpen] = useState(false);
   const [recent, setRecent] = useState<RecentOrder[]>([]);
   // orders opened from the recent list live as extra tabs beside the drafts
@@ -597,6 +358,28 @@ export default function PosPage() {
       ...(draft.mode === 'delivery' ? { receiver: receiverOf(full) } : {}),
     });
   };
+  /** Details saved in the customer drawer flow into the order: the buyer, and the receiver of a delivery. */
+  const savedRef = useRef<(c: CustomerSaved) => void>(() => undefined);
+  savedRef.current = (c) => {
+    if (!draft) return;
+    setCinfo((cur) => ({ ...cur, [c.id]: c }));
+    patch({
+      customer: { id: c.id, name: c.name, phone: c.phone },
+      ...(draft.mode === 'delivery' ? { receiver: receiverOf(c) } : {}),
+    });
+  };
+  const openNewCustomer = (who: NonNullable<Draft['payload']['customer']>) =>
+    openDetail('customer', 'new', {
+      initial: {
+        name: who.name ?? null,
+        phone: who.phone ?? null,
+        email: who.email ?? null,
+        addressLine: who.addressLine ?? null,
+        region: who.region ?? null,
+        ward: who.ward ?? null,
+      },
+      onSaved: (c) => savedRef.current(c),
+    });
   /** A buyer typed on the screen: created together with the order when it is confirmed. */
   const newCustomer = (text: string) => {
     if (!draft) return;
@@ -604,7 +387,7 @@ export default function PosPage() {
     const who = { id: null, name: isPhone ? null : text, phone: isPhone ? text.replace(/\s/g, '') : null };
     setCq('');
     setChits([]);
-    setCustomerOpen('new');
+    openNewCustomer(who);
     patch({
       customer: who,
       ...(draft.mode === 'delivery'
@@ -1072,8 +855,8 @@ export default function PosPage() {
                     className="flex items-start gap-2 rounded-lg border border-dashed border-brand-600 p-2"
                     role="button"
                     tabIndex={0}
-                    onClick={() => setCustomerOpen('new')}
-                    onKeyDown={(e) => e.key === 'Enter' && setCustomerOpen('new')}
+                    onClick={() => openNewCustomer(p.customer!)}
+                    onKeyDown={(e) => e.key === 'Enter' && openNewCustomer(p.customer!)}
                   >
                     <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800">
                       <User className="size-4" />
@@ -1104,7 +887,9 @@ export default function PosPage() {
                   <div className="flex items-start gap-2 rounded-lg border border-slate-200 p-2 dark:border-slate-700">
                     <button
                       className="flex min-w-0 flex-1 items-start gap-3 text-left"
-                      onClick={() => setCustomerOpen(p.customer!.id!)}
+                      onClick={() =>
+                        openDetail('customer', p.customer!.id!, { onSaved: (c) => savedRef.current(c) })
+                      }
                     >
                       <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800">
                         <User className="size-4" />
@@ -1442,43 +1227,6 @@ export default function PosPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {customerOpen && (
-        <CustomerModal
-          id={customerOpen === 'new' ? null : customerOpen}
-          initial={
-            customerOpen === 'new'
-              ? {
-                  name: p.customer?.name ?? null,
-                  phone: p.customer?.phone ?? null,
-                  email: p.customer?.email ?? null,
-                  addressLine: p.customer?.addressLine ?? null,
-                  region: p.customer?.region ?? null,
-                  ward: p.customer?.ward ?? null,
-                }
-              : undefined
-          }
-          onClose={() => setCustomerOpen(null)}
-          onSaved={(c) => {
-            if (c.id) setCinfo((cur) => ({ ...cur, [c.id]: c }));
-            // saved details flow into the order: the buyer, and the receiver of a delivery
-            patch({
-              customer: c.id
-                ? { id: c.id, name: c.name, phone: c.phone }
-                : {
-                    id: null,
-                    name: c.name,
-                    phone: c.phone,
-                    email: c.email,
-                    addressLine: c.addressLine,
-                    region: c.region,
-                    ward: c.ward,
-                  },
-              ...(draft.mode === 'delivery' ? { receiver: receiverOf(c) } : {}),
-            });
-          }}
-        />
       )}
     </div>
   );
