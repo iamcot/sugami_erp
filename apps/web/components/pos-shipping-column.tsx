@@ -3,6 +3,7 @@
 import { formatVnd } from '@sugami/shared';
 import { ArrowUpDown, Clock, RefreshCw, Wallet, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CarrierLogo } from '@/components/carrier-logo';
 import { Badge, Button } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -212,6 +213,9 @@ export function PosShippingColumn({
   const chosen =
     all.find((r) => r.serviceId === picked && r.available) ?? (listOpen ? null : picked ? null : auto);
   const showList = !chosen;
+  // the parcel (box / size) is edited in the left column, under the COD options
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => setSlot(document.getElementById('pos-parcel-slot')), []);
   useEffect(() => {
     // switching service drops the extras picked for the previous one
     const id = chosen?.serviceId ?? null;
@@ -283,418 +287,423 @@ export function PosShippingColumn({
     </button>
   );
 
-  return (
-    <div className="flex min-h-0 flex-col rounded-lg bg-white text-sm dark:bg-slate-900">
-      <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
-        <div className="flex items-center justify-between">
-          <span className="font-medium">Hãng vận chuyển</span>
-          <button
-            type="button"
-            title="Tải lại giá các hãng"
-            aria-label="Tải lại giá các hãng"
-            disabled={loading}
-            className="rounded p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-60 dark:hover:bg-white/10"
-            onClick={() => setTick((t) => t + 1)}
+  const parcelSection = (
+    <section className="space-y-3 border-t border-slate-200 pt-3 dark:border-white/10">
+      <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Gói hàng</h3>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <label className="flex items-center gap-2">
+          <span className="text-slate-500">Hộp</span>
+          <select
+            className="rounded border border-slate-300 bg-transparent px-2 py-1 dark:border-slate-700"
+            value={custom ? 'custom' : (boxKey ?? '')}
+            onChange={(e) => {
+              if (e.target.value === 'custom') {
+                const b = boxes.find((x) => x.key === boxKey);
+                setCustom({
+                  g: res?.parcel.grams ?? 500,
+                  l: b?.lengthCm ?? 20,
+                  w: b?.widthCm ?? 15,
+                  h: b?.heightCm ?? 10,
+                });
+              } else {
+                setCustom(null);
+                setBoxKey(e.target.value);
+              }
+            }}
           >
-            <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+            {boxes.map((b) => (
+              <option key={b.key} value={b.key}>
+                {b.label}
+              </option>
+            ))}
+            <option value="custom">Size khác…</option>
+          </select>
+        </label>
+        {res && !custom && (
+          <span className="text-slate-600 dark:text-slate-300">
+            {(res.parcel.grams / 1000).toLocaleString('vi-VN')} kg
+          </span>
+        )}
+      </div>
+      {custom && (
+        <div className="grid grid-cols-4 gap-3 text-xs text-slate-500">
+          {(
+            [
+              ['g', 'Nặng (g)'],
+              ['l', 'Dài (cm)'],
+              ['w', 'Rộng (cm)'],
+              ['h', 'Cao (cm)'],
+            ] as const
+          ).map(([k, label]) => (
+            <label key={k} className="block">
+              {label}
+              <input
+                inputMode="numeric"
+                className="mt-1 w-full border-0 border-b border-slate-300 bg-transparent py-1 text-sm text-slate-900 outline-none focus:border-brand-600 dark:border-slate-700 dark:text-slate-100"
+                value={custom[k] || ''}
+                onChange={(e) =>
+                  setCustom({
+                    ...custom,
+                    [k]: Math.min(
+                      k === 'g' ? MAX_GRAMS : MAX_CM,
+                      Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0),
+                    ),
+                  })
+                }
+              />
+            </label>
+          ))}
         </div>
-        {loading && !res && <p className="text-slate-500">Đang lấy giá các hãng…</p>}
-        {error && <p className="text-rose-600">{error}</p>}
-        {res?.warnings.map((w) => (
-          <p key={w} className="text-xs text-amber-600">
-            {w}
-          </p>
-        ))}
+      )}
+      {custom && (
+        <p className="text-xs text-slate-500">
+          Cân nặng tính bằng gram (1 kg = 1000 g), tối đa 100.000 g; mỗi cạnh tối đa 200 cm.
+        </p>
+      )}
+      {!custom && res && res.parcel.unknownWeights > 0 && (
+        <p className="text-xs text-amber-600">
+          {res.parcel.unknownWeights} sản phẩm chưa có cân nặng, tạm tính theo mặc định.
+        </p>
+      )}
+    </section>
+  );
 
-        {chosen && (
-          <div className="rounded-lg border border-brand-500/40">
-            <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-white/10">
-              <CarrierLogo id={chosen.partnerId} name={chosen.partnerName} className="size-9" />
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">
-                  {chosen.partnerName} - {chosen.serviceName}
+  return (
+    <>
+      {slot && createPortal(parcelSection, slot)}
+      <div className="flex min-h-0 flex-col rounded-lg bg-white text-sm dark:bg-slate-900">
+        <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">Hãng vận chuyển</span>
+            <button
+              type="button"
+              title="Tải lại giá các hãng"
+              aria-label="Tải lại giá các hãng"
+              disabled={loading}
+              className="rounded p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-60 dark:hover:bg-white/10"
+              onClick={() => setTick((t) => t + 1)}
+            >
+              <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+          {loading && !res && <p className="text-slate-500">Đang lấy giá các hãng…</p>}
+          {error && <p className="text-rose-600">{error}</p>}
+          {res?.warnings.map((w) => (
+            <p key={w} className="text-xs text-amber-600">
+              {w}
+            </p>
+          ))}
+
+          {chosen && (
+            <div className="rounded-lg border border-brand-500/40">
+              <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-white/10">
+                <CarrierLogo id={chosen.partnerId} name={chosen.partnerName} className="size-9" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">
+                    {chosen.partnerName} - {chosen.serviceName}
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    {eta(chosen)
+                      ? `Dự kiến ${eta(chosen)}`
+                      : chosen.group === 'fast'
+                        ? 'Giao nhanh'
+                        : 'Giao thường'}
+                  </span>
                 </span>
-                <span className="block text-xs text-slate-500">
-                  {eta(chosen)
-                    ? `Dự kiến ${eta(chosen)}`
-                    : chosen.group === 'fast'
-                      ? 'Giao nhanh'
-                      : 'Giao thường'}
+                <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                  {formatVnd(chosen.price)}
                 </span>
-              </span>
-              <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-                {formatVnd(chosen.price)}
-              </span>
-              <button
-                type="button"
-                aria-label="Đổi hãng vận chuyển"
-                title="Đổi hãng vận chuyển"
-                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10"
-                onClick={() => {
-                  setPicked(null);
-                  setListOpen(true);
-                  setTab(chosen.group);
-                }}
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+                <button
+                  type="button"
+                  aria-label="Đổi hãng vận chuyển"
+                  title="Đổi hãng vận chuyển"
+                  className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10"
+                  onClick={() => {
+                    setPicked(null);
+                    setListOpen(true);
+                    setTab(chosen.group);
+                  }}
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
 
-            <div className="divide-y divide-slate-100 dark:divide-white/10">
-              <section className="space-y-3 px-4 py-4">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Gói hàng</h3>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <label className="flex items-center gap-2">
-                    <span className="text-slate-500">Hộp</span>
-                    <select
-                      className="rounded border border-slate-300 bg-transparent px-2 py-1 dark:border-slate-700"
-                      value={custom ? 'custom' : (boxKey ?? '')}
-                      onChange={(e) => {
-                        if (e.target.value === 'custom') {
-                          const b = boxes.find((x) => x.key === boxKey);
-                          setCustom({
-                            g: res?.parcel.grams ?? 500,
-                            l: b?.lengthCm ?? 20,
-                            w: b?.widthCm ?? 15,
-                            h: b?.heightCm ?? 10,
-                          });
-                        } else {
-                          setCustom(null);
-                          setBoxKey(e.target.value);
-                        }
-                      }}
-                    >
-                      {boxes.map((b) => (
-                        <option key={b.key} value={b.key}>
-                          {b.label}
-                        </option>
-                      ))}
-                      <option value="custom">Size khác…</option>
-                    </select>
-                  </label>
-                  {res && !custom && (
-                    <span className="text-slate-600 dark:text-slate-300">
-                      {(res.parcel.grams / 1000).toLocaleString('vi-VN')} kg
-                    </span>
-                  )}
-                </div>
-                {custom && (
-                  <div className="grid grid-cols-4 gap-3 text-xs text-slate-500">
-                    {(
-                      [
-                        ['g', 'Nặng (g)'],
-                        ['l', 'Dài (cm)'],
-                        ['w', 'Rộng (cm)'],
-                        ['h', 'Cao (cm)'],
-                      ] as const
-                    ).map(([k, label]) => (
-                      <label key={k} className="block">
-                        {label}
-                        <input
-                          inputMode="numeric"
-                          className="mt-1 w-full border-0 border-b border-slate-300 bg-transparent py-1 text-sm text-slate-900 outline-none focus:border-brand-600 dark:border-slate-700 dark:text-slate-100"
-                          value={custom[k] || ''}
-                          onChange={(e) =>
-                            setCustom({
-                              ...custom,
-                              [k]: Math.min(
-                                k === 'g' ? MAX_GRAMS : MAX_CM,
-                                Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0),
-                              ),
-                            })
-                          }
-                        />
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {custom && (
-                  <p className="text-xs text-slate-500">
-                    Cân nặng tính bằng gram (1 kg = 1000 g), tối đa 100.000 g; mỗi cạnh tối đa 200 cm.
-                  </p>
-                )}
-                {!custom && res && res.parcel.unknownWeights > 0 && (
-                  <p className="text-xs text-amber-600">
-                    {res.parcel.unknownWeights} sản phẩm chưa có cân nặng, tạm tính theo mặc định.
-                  </p>
-                )}
-              </section>
-
-              <section className="space-y-3 px-4 py-4">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Thanh toán</h3>
-                <p className="flex items-center gap-2">
-                  <Wallet className="size-4 text-slate-400" />
-                  {input.codAmount > 0 ? (
-                    <span>
-                      Thu hộ COD: <b className="tabular-nums">{formatVnd(input.codAmount + addedFee)}</b>
-                    </span>
-                  ) : (
-                    <span>Không thu hộ (khách đã trả đủ)</span>
-                  )}
-                </p>
-                {!ahamove && (
-                  <label className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={addFee}
-                      onChange={(e) => setAddFee(e.target.checked)}
-                    />
-                    <span>
-                      Cộng phí ship vào đơn
-                      <span className="block text-xs text-slate-500">
-                        {addFee
-                          ? 'Shop trả hãng, khách trả lại qua tiền hàng'
-                          : 'Người trả phí theo mặc định đã cài'}
-                      </span>
-                    </span>
-                  </label>
-                )}
-              </section>
-
-              {fastCard && (
+              <div className="divide-y divide-slate-100 dark:divide-white/10">
                 <section className="space-y-3 px-4 py-4">
-                  <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                    <Clock className="size-4" /> Hẹn lấy hàng
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {SCHEDULES.map(([id, label]) => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => {
-                          setSchedule(id);
-                          if (id === 'custom' && !customAt)
-                            setCustomAt(localInput(new Date(Date.now() + 2 * 3_600_000)));
-                        }}
-                        className={`rounded-full border px-3 py-1.5 text-xs ${schedule === id ? 'border-brand-600 bg-brand-50 font-medium text-brand-700 dark:bg-brand-500/10' : 'border-slate-300 dark:border-slate-700'}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {schedule === 'custom' && (
-                    <input
-                      type="datetime-local"
-                      className="w-full border-b border-slate-300 bg-transparent py-1 text-sm outline-none dark:border-slate-700"
-                      value={customAt}
-                      min={localInput(new Date())}
-                      onChange={(e) => setCustomAt(e.target.value)}
-                    />
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Thanh toán</h3>
+                  <p className="flex items-center gap-2">
+                    <Wallet className="size-4 text-slate-400" />
+                    {input.codAmount > 0 ? (
+                      <span>
+                        Thu hộ COD: <b className="tabular-nums">{formatVnd(input.codAmount + addedFee)}</b>
+                      </span>
+                    ) : (
+                      <span>Không thu hộ (khách đã trả đủ)</span>
+                    )}
+                  </p>
+                  {!ahamove && (
+                    <label className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={addFee}
+                        onChange={(e) => setAddFee(e.target.checked)}
+                      />
+                      <span>
+                        Cộng phí ship vào đơn
+                        <span className="block text-xs text-slate-500">
+                          {addFee
+                            ? 'Shop trả hãng, khách trả lại qua tiền hàng'
+                            : 'Người trả phí theo mặc định đã cài'}
+                        </span>
+                      </span>
+                    </label>
                   )}
-                  {schedule !== 'now' && (
-                    <p className="text-xs text-slate-500">
-                      Hẹn giờ thì hãng chỉ tìm tài xế gần giờ hẹn. Bấm “Tìm tài xế ngay” ở thẻ vận chuyển nếu
-                      cần gọi sớm.
+                </section>
+
+                {fastCard && (
+                  <section className="space-y-3 px-4 py-4">
+                    <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                      <Clock className="size-4" /> Hẹn lấy hàng
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {SCHEDULES.map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => {
+                            setSchedule(id);
+                            if (id === 'custom' && !customAt)
+                              setCustomAt(localInput(new Date(Date.now() + 2 * 3_600_000)));
+                          }}
+                          className={`rounded-full border px-3 py-1.5 text-xs ${schedule === id ? 'border-brand-600 bg-brand-50 font-medium text-brand-700 dark:bg-brand-500/10' : 'border-slate-300 dark:border-slate-700'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {schedule === 'custom' && (
+                      <input
+                        type="datetime-local"
+                        className="w-full border-b border-slate-300 bg-transparent py-1 text-sm outline-none dark:border-slate-700"
+                        value={customAt}
+                        min={localInput(new Date())}
+                        onChange={(e) => setCustomAt(e.target.value)}
+                      />
+                    )}
+                    {schedule !== 'now' && (
+                      <p className="text-xs text-slate-500">
+                        Hẹn giờ thì hãng chỉ tìm tài xế gần giờ hẹn. Bấm “Tìm tài xế ngay” ở thẻ vận chuyển
+                        nếu cần gọi sớm.
+                      </p>
+                    )}
+                  </section>
+                )}
+
+                {chosen.extras.length > 0 && (
+                  <section className="space-y-2 px-4 py-4">
+                    <p className="text-slate-600 dark:text-slate-300">Dịch vụ mở rộng</p>
+                    {chosen.extras.map((x) => {
+                      const on = extraPicks[x.id];
+                      const priceText =
+                        x.kind === 'tier'
+                          ? ''
+                          : x.price > 0 && x.price < 1
+                            ? `${Math.round(x.price * 100)}% phí quãng đường`
+                            : x.price > 0
+                              ? `+${formatVnd(x.price)}${x.kind === 'unit' ? ' / đơn vị' : ''}`
+                              : 'miễn phí';
+                      return (
+                        <div key={x.id} className="space-y-1">
+                          <label className="flex items-start gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={!!on}
+                              onChange={(e) =>
+                                setPick(
+                                  x.id,
+                                  e.target.checked
+                                    ? x.kind === 'tier'
+                                      ? { tierCode: x.tiers[0]?.code }
+                                      : x.kind === 'unit'
+                                        ? { num: 1 }
+                                        : {}
+                                    : null,
+                                )
+                              }
+                            />
+                            <span className="min-w-0 flex-1">
+                              {x.name}
+                              {priceText && <span className="ml-2 text-xs text-slate-500">{priceText}</span>}
+                              {x.description && (
+                                <span className="block text-xs text-slate-500">{x.description}</span>
+                              )}
+                            </span>
+                          </label>
+                          {on && x.kind === 'tier' && (
+                            <select
+                              className="ml-6 w-[calc(100%-1.5rem)] border-b border-slate-300 bg-transparent py-1 text-sm dark:border-slate-700"
+                              value={on.tierCode}
+                              onChange={(e) => setPick(x.id, { tierCode: e.target.value })}
+                            >
+                              {x.tiers.map((t) => (
+                                <option key={t.code} value={t.code}>
+                                  {t.name} (+{formatVnd(t.price)})
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {on && x.kind === 'unit' && (
+                            <input
+                              type="number"
+                              min={1}
+                              max={x.maxInput ?? 100}
+                              className="ml-6 w-24 border-b border-slate-300 bg-transparent py-1 text-sm outline-none dark:border-slate-700"
+                              value={on.num ?? 1}
+                              onChange={(e) =>
+                                setPick(x.id, {
+                                  num: Math.min(
+                                    x.maxInput ?? 100,
+                                    Math.max(1, Math.floor(Number(e.target.value)) || 1),
+                                  ),
+                                })
+                              }
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </section>
+                )}
+              </div>
+            </div>
+          )}
+
+          {showList && all.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1 border-b border-slate-200 dark:border-white/10">
+                {(
+                  [
+                    ['standard', 'Giao thường'],
+                    ['fast', 'Giao nhanh'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setTab(id)}
+                    className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === id ? 'border-brand-600 font-medium text-brand-700' : 'border-transparent text-slate-500'}`}
+                  >
+                    {label}{' '}
+                    <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                      {all.filter((r) => r.group === id).length}
+                    </span>
+                  </button>
+                ))}
+                <span className="flex-1" />
+                <button
+                  type="button"
+                  title={
+                    sort === 'price'
+                      ? 'Đang xếp theo giá, bấm để xếp theo thời gian'
+                      : 'Đang xếp theo thời gian, bấm để xếp theo giá'
+                  }
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
+                  onClick={() => setSort((v) => (v === 'price' ? 'time' : 'price'))}
+                >
+                  <ArrowUpDown className="size-4" /> {sort === 'price' ? 'Giá' : 'Thời gian'}
+                </button>
+              </div>
+              {grouped.map(([speed, list]) => (
+                <div key={speed}>
+                  {tab === 'fast' && (
+                    <p className="mt-1 px-1 py-1.5 text-xs font-medium text-slate-500">
+                      {SPEED_TITLE[speed]} ({list.length})
                     </p>
                   )}
-                </section>
-              )}
-
-              {chosen.extras.length > 0 && (
-                <section className="space-y-2 px-4 py-4">
-                  <p className="text-slate-600 dark:text-slate-300">Dịch vụ mở rộng</p>
-                  {chosen.extras.map((x) => {
-                    const on = extraPicks[x.id];
-                    const priceText =
-                      x.kind === 'tier'
-                        ? ''
-                        : x.price > 0 && x.price < 1
-                          ? `${Math.round(x.price * 100)}% phí quãng đường`
-                          : x.price > 0
-                            ? `+${formatVnd(x.price)}${x.kind === 'unit' ? ' / đơn vị' : ''}`
-                            : 'miễn phí';
-                    return (
-                      <div key={x.id} className="space-y-1">
-                        <label className="flex items-start gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            className="mt-1"
-                            checked={!!on}
-                            onChange={(e) =>
-                              setPick(
-                                x.id,
-                                e.target.checked
-                                  ? x.kind === 'tier'
-                                    ? { tierCode: x.tiers[0]?.code }
-                                    : x.kind === 'unit'
-                                      ? { num: 1 }
-                                      : {}
-                                  : null,
-                              )
-                            }
-                          />
-                          <span className="min-w-0 flex-1">
-                            {x.name}
-                            {priceText && <span className="ml-2 text-xs text-slate-500">{priceText}</span>}
-                            {x.description && (
-                              <span className="block text-xs text-slate-500">{x.description}</span>
-                            )}
-                          </span>
-                        </label>
-                        {on && x.kind === 'tier' && (
-                          <select
-                            className="ml-6 w-[calc(100%-1.5rem)] border-b border-slate-300 bg-transparent py-1 text-sm dark:border-slate-700"
-                            value={on.tierCode}
-                            onChange={(e) => setPick(x.id, { tierCode: e.target.value })}
-                          >
-                            {x.tiers.map((t) => (
-                              <option key={t.code} value={t.code}>
-                                {t.name} (+{formatVnd(t.price)})
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        {on && x.kind === 'unit' && (
-                          <input
-                            type="number"
-                            min={1}
-                            max={x.maxInput ?? 100}
-                            className="ml-6 w-24 border-b border-slate-300 bg-transparent py-1 text-sm outline-none dark:border-slate-700"
-                            value={on.num ?? 1}
-                            onChange={(e) =>
-                              setPick(x.id, {
-                                num: Math.min(
-                                  x.maxInput ?? 100,
-                                  Math.max(1, Math.floor(Number(e.target.value)) || 1),
-                                ),
-                              })
-                            }
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </section>
-              )}
-            </div>
-          </div>
-        )}
-
-        {showList && all.length > 0 && (
-          <div>
-            <div className="flex items-center gap-1 border-b border-slate-200 dark:border-white/10">
-              {(
-                [
-                  ['standard', 'Giao thường'],
-                  ['fast', 'Giao nhanh'],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setTab(id)}
-                  className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === id ? 'border-brand-600 font-medium text-brand-700' : 'border-transparent text-slate-500'}`}
-                >
-                  {label}{' '}
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    {all.filter((r) => r.group === id).length}
-                  </span>
-                </button>
-              ))}
-              <span className="flex-1" />
-              <button
-                type="button"
-                title={
-                  sort === 'price'
-                    ? 'Đang xếp theo giá, bấm để xếp theo thời gian'
-                    : 'Đang xếp theo thời gian, bấm để xếp theo giá'
-                }
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
-                onClick={() => setSort((v) => (v === 'price' ? 'time' : 'price'))}
-              >
-                <ArrowUpDown className="size-4" /> {sort === 'price' ? 'Giá' : 'Thời gian'}
-              </button>
-            </div>
-            {grouped.map(([speed, list]) => (
-              <div key={speed}>
-                {tab === 'fast' && (
-                  <p className="mt-1 px-1 py-1.5 text-xs font-medium text-slate-500">
-                    {SPEED_TITLE[speed]} ({list.length})
-                  </p>
-                )}
-                {list.map(row)}
-              </div>
-            ))}
-            {sorted.length === 0 && <p className="py-3 text-slate-500">Không có hãng nào ở nhóm này.</p>}
-          </div>
-        )}
-      </div>
-
-      <div className="shrink-0 space-y-2 border-t border-slate-200 p-3 dark:border-slate-800">
-        {chosen && (
-          <section className="max-h-56 space-y-2 overflow-auto rounded-lg border border-brand-500/40 px-4 py-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-slate-600 dark:text-slate-300">Hạn đóng hàng</span>
-              <span className="text-right font-medium">
-                {fastCard
-                  ? scheduleAt
-                    ? whenText(scheduleAt)
-                    : 'Ngay bây giờ'
-                  : chosen.packDeadline
-                    ? whenText(chosen.packDeadline)
-                    : 'Chưa đặt mốc lấy hàng'}
-              </span>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-slate-600 dark:text-slate-300">Phí giao hàng</span>
-              <span className="text-base font-semibold tabular-nums">{formatVnd(fee)}</span>
-            </div>
-            {chosen.breakdown.length > 1 &&
-              chosen.breakdown.map((b) => (
-                <div key={b.name} className="flex justify-between pl-3 text-xs text-slate-500">
-                  <span>{b.name}</span>
-                  <span className="tabular-nums">{formatVnd(b.value)}</span>
+                  {list.map(row)}
                 </div>
               ))}
-            {chosen.details && (
-              <details className="pt-1 text-xs text-slate-500">
-                <summary className="cursor-pointer text-brand-700">
-                  Điều khoản và biểu phí của dịch vụ
-                </summary>
-                <p className="mt-2 whitespace-pre-line">{chosen.details.trim()}</p>
-              </details>
-            )}
-            {addedFee > 0 && (
-              <div className="flex items-baseline justify-between">
-                <span className="text-slate-600 dark:text-slate-300">Khách cần trả (đã cộng phí ship)</span>
-                <span className="text-base font-semibold tabular-nums">
-                  {formatVnd(input.total + addedFee)}
+              {sorted.length === 0 && <p className="py-3 text-slate-500">Không có hãng nào ở nhóm này.</p>}
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 space-y-2 border-t border-slate-200 p-3 dark:border-slate-800">
+          {chosen && (
+            <section className="max-h-56 space-y-2 overflow-auto rounded-lg border border-brand-500/40 px-4 py-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-slate-600 dark:text-slate-300">Hạn đóng hàng</span>
+                <span className="text-right font-medium">
+                  {fastCard
+                    ? scheduleAt
+                      ? whenText(scheduleAt)
+                      : 'Ngay bây giờ'
+                    : chosen.packDeadline
+                      ? whenText(chosen.packDeadline)
+                      : 'Chưa đặt mốc lấy hàng'}
                 </span>
               </div>
-            )}
-          </section>
-        )}
-        {message}
-        <Button
-          className="h-12 w-full text-base"
-          disabled={busy || !chosen || scheduleBad}
-          onClick={() =>
-            chosen &&
-            onConfirm({
-              serviceId: chosen.serviceId,
-              quotedPrice: chosen.price,
-              boxKey,
-              ...customBody,
-              addFeeToOrder: addFee && !ahamove,
-              scheduleAt,
-              ...(chosen.serviceId === extrasFor && requests.length ? { ahamoveRequests: requests } : {}),
-              partnerName: chosen.partnerName,
-            })
-          }
-        >
-          {busy ? 'ĐANG ĐẶT ĐƠN…' : 'XÁC NHẬN ĐẶT ĐƠN'}
-        </Button>
-        <button
-          type="button"
-          disabled={busy}
-          className="w-full text-center text-xs text-slate-500 underline disabled:opacity-50"
-          onClick={onPlaceWithoutCarrier}
-        >
-          Đặt đơn, tạo vận đơn sau
-        </button>
+              <div className="flex items-baseline justify-between">
+                <span className="text-slate-600 dark:text-slate-300">Phí giao hàng</span>
+                <span className="text-base font-semibold tabular-nums">{formatVnd(fee)}</span>
+              </div>
+              {chosen.breakdown.length > 1 &&
+                chosen.breakdown.map((b) => (
+                  <div key={b.name} className="flex justify-between pl-3 text-xs text-slate-500">
+                    <span>{b.name}</span>
+                    <span className="tabular-nums">{formatVnd(b.value)}</span>
+                  </div>
+                ))}
+              {chosen.details && (
+                <details className="pt-1 text-xs text-slate-500">
+                  <summary className="cursor-pointer text-brand-700">
+                    Điều khoản và biểu phí của dịch vụ
+                  </summary>
+                  <p className="mt-2 whitespace-pre-line">{chosen.details.trim()}</p>
+                </details>
+              )}
+              {addedFee > 0 && (
+                <div className="flex items-baseline justify-between">
+                  <span className="text-slate-600 dark:text-slate-300">Khách cần trả (đã cộng phí ship)</span>
+                  <span className="text-base font-semibold tabular-nums">
+                    {formatVnd(input.total + addedFee)}
+                  </span>
+                </div>
+              )}
+            </section>
+          )}
+          {message}
+          <Button
+            className="h-12 w-full text-base"
+            disabled={busy || !chosen || scheduleBad}
+            onClick={() =>
+              chosen &&
+              onConfirm({
+                serviceId: chosen.serviceId,
+                quotedPrice: chosen.price,
+                boxKey,
+                ...customBody,
+                addFeeToOrder: addFee && !ahamove,
+                scheduleAt,
+                ...(chosen.serviceId === extrasFor && requests.length ? { ahamoveRequests: requests } : {}),
+                partnerName: chosen.partnerName,
+              })
+            }
+          >
+            {busy ? 'ĐANG ĐẶT ĐƠN…' : 'XÁC NHẬN ĐẶT ĐƠN'}
+          </Button>
+          <button
+            type="button"
+            disabled={busy}
+            className="w-full text-center text-xs text-slate-500 underline disabled:opacity-50"
+            onClick={onPlaceWithoutCarrier}
+          >
+            Đặt đơn, tạo vận đơn sau
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

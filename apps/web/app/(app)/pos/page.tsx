@@ -1091,6 +1091,7 @@ export default function PosPage() {
                         </span>
                       </label>
                     )}
+                    {carriersOn && <div id="pos-parcel-slot" />}
                   </div>
                 )}
                 {outOfStock > 0 && (
