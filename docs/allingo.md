@@ -47,6 +47,7 @@ Chọn dòng AhaMove thì khác Allingo ở chỗ: tài xế được gọi ngay
    ```
 
    Rồi `pm2 restart all --update-env`.
+2b. **Thử AhaMove** (chỉ đọc, không tạo chuyến): đặt `AHAMOVE_ENV=stg`, `AHAMOVE_API_KEY`, `AHAMOVE_MOBILE`, `AHAMOVE_PICKUP_NAME/PHONE/ADDRESS` trong `.env` rồi chạy `pnpm ahamove:probe`. Lệnh liệt kê dịch vụ của thành phố và báo giá thử từng dịch vụ tới một địa chỉ mẫu (đổi bằng `AHAMOVE_PROBE_DROPOFF`).
 3. **Kiểm tra kết nối** (chỉ đọc, không tạo gì): `pnpm allingo:probe`. Lệnh lấy token, liệt kê hãng, báo phí thử một địa chỉ **chỉ có chữ, không có tọa độ**. In `Text-only quote accepted` là Allingo nhận địa chỉ chữ; nếu báo `validation_failed` thì cần thêm bước tìm tọa độ (xem Rủi ro trong kế hoạch).
 4. **Webhook.** Trong portal Allingo, mục webhook của app:
    - URL: `https://hooks.sugami.vn/api/webhooks/allingo` (qua Cloudflare Tunnel, cùng đường với Pancake).
