@@ -36,6 +36,16 @@ export interface NewOrder {
   orderedAt: Date;
 }
 
+/** An existing order that changed in a way worth telling the owner (status moved, products replaced). */
+export interface OrderEvent {
+  code: string;
+  channel: string;
+  kind: 'status' | 'items';
+  from: string;
+  to: string;
+  total: number;
+}
+
 export interface OrderSyncSummary {
   dryRun: boolean;
   fetched: number;
@@ -59,6 +69,7 @@ export interface OrderSyncSummary {
   /** Marketplace codes learned from orders that exist in KiotViet too (code → Sugami variant). */
   skuMap: { learned: number; conflicts: number; ambiguous: number };
   newOrders: NewOrder[];
+  events: OrderEvent[];
   /** Orders that failed; the cursor does not move while there are any. */
   errors: { code: string; message: string }[];
 }
@@ -93,6 +104,7 @@ export async function syncPancakeOrders(
     duplicatesMerged: 0,
     skuMap: { learned: 0, conflicts: 0, ambiguous: 0 },
     newOrders: [],
+    events: [],
     errors: [],
   };
   const wanted: ExternalOrder[] = [];
@@ -487,6 +499,15 @@ export async function syncPancakeOrders(
       return;
     }
     summary.updated++;
+    if (prev.status !== o.status || relines)
+      summary.events.push({
+        code: o.code,
+        channel: o.saleChannel!,
+        kind: prev.status !== o.status ? 'status' : 'items',
+        from: prev.status,
+        to: String(o.status),
+        total: Number(fields.total),
+      });
     const reverse = (o.status === 'cancelled' || returnNow || relines) && prev.stockAppliedAt !== null;
     if (reverse) summary.stock.reversed += prev.lines.filter((l) => l.variantId).length;
     const reApply = relines ? linesToApply(o) : [];
@@ -611,6 +632,7 @@ function mergeSummaries(a: OrderSyncSummary, b: OrderSyncSummary): OrderSyncSumm
       ambiguous: a.skuMap.ambiguous + b.skuMap.ambiguous,
     },
     newOrders: [...a.newOrders, ...b.newOrders].slice(0, NEW_ORDERS_KEPT),
+    events: [...a.events, ...b.events].slice(0, NEW_ORDERS_KEPT),
     errors: [...a.errors, ...b.errors],
   };
 }

@@ -3,7 +3,6 @@
 import { cn } from '@sugami/ui';
 import {
   BarChart3,
-  Bell,
   ClipboardList,
   Clock,
   LayoutDashboard,
@@ -26,6 +25,7 @@ import { type ReactNode, Suspense, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { DetailProvider } from './detail-drawer';
 import { GlobalSearch } from './global-search';
+import { NotificationBell } from './notification-bell';
 import { PlatformDiamond } from './platform-icons';
 import { PwaBootstrap } from './app-settings';
 import { UserMenu } from './user-menu';
@@ -244,13 +244,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.2)]" />{' '}
             <SyncAge />
           </span>
-          <button
-            className="relative rounded-md p-2 text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-white/10"
-            aria-label="Thông báo"
-          >
-            <Bell className="size-5" />
-            <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-rose-500" />
-          </button>
+          <NotificationBell />
           <UserMenu />
         </div>
       </header>

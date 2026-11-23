@@ -915,3 +915,18 @@ model PurchaseOrderCost {
   @@index([orderId])
   @@map("purchase_order_costs")
 }
+
+/// What happened in the background (new order, order cancelled, sync trouble), shown under the bell and sent as push.
+model Notification {
+  id        String   @id @default(uuid(7)) @db.Char(36)
+  /// order_new, order_status, order_items, error
+  kind      String   @db.VarChar(24)
+  title     String   @db.VarChar(191)
+  body      String?  @db.VarChar(500)
+  url       String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([kind, createdAt])
+  @@map("notifications")
+}

@@ -1,6 +1,7 @@
 import { listWarehouses, PancakeClient, setStock } from '@sugami/channels-pancake';
 import type { PrismaClient } from '@sugami/db';
 import { runStockPush } from '@sugami/sync';
+import { reportError } from './activity.js';
 
 /** One pass of the automatic stock push (does nothing while it is paused in settings or orders are behind). */
 export async function pancakeStockPass(db: PrismaClient, log: (msg: string) => void = console.log) {
@@ -34,6 +35,16 @@ export async function pancakeStockPass(db: PrismaClient, log: (msg: string) => v
               .map((f) => `${f.sku} ${f.message}`)
               .join('; ')}`
           : ''),
+    );
+  if (r.failed.length)
+    await reportError(
+      db,
+      'Đẩy tồn lên Pancake bị lỗi',
+      `${r.failed.length} biến thể lỗi: ${r.failed
+        .slice(0, 3)
+        .map((f) => `${f.sku} ${f.message}`)
+        .join('; ')}`,
+      log,
     );
   return r;
 }

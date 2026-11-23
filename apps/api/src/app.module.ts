@@ -8,6 +8,7 @@ import { OrdersModule } from './orders/orders.module.js';
 import { PosModule } from './pos/pos.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { ContentModule } from './content/content.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 import { PurchasingModule } from './purchasing/purchasing.module.js';
 import { InventoryModule } from './inventory/inventory.module.js';
@@ -36,6 +37,7 @@ import { UsersController } from './users/users.controller.js';
     InventoryModule,
     DashboardModule,
     ContentModule,
+    NotificationsModule,
     ReportsModule,
     PurchasingModule,
     WebhooksModule,
