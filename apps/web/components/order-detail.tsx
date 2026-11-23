@@ -47,6 +47,7 @@ interface Order {
   orderedAt: string;
   completedAt: string | null;
   stockAppliedAt: string | null;
+  returnHandledAt: string | null;
   internalNote: string | null;
   channel: { code: string; name: string };
   customer: { id: string; kiotvietCode: string | null; name: string | null; phone: string | null } | null;
@@ -156,6 +157,25 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
       setActing(false);
     }
   };
+  // a returned parcel stays "to handle" until the shop checks it: back to stock, or written off
+  const closeReturn = async (restock: boolean) => {
+    if (!order) return;
+    const q = restock
+      ? `Nhập lại kho hàng hoàn đơn ${order.code}? Tồn sẽ được cộng lại.`
+      : `Đánh dấu đã xử lý đơn hoàn ${order.code} mà không nhập lại kho (hàng lỗi, mất)?`;
+    if (!window.confirm(q)) return;
+    setActing(true);
+    setError(null);
+    try {
+      await api(`/orders/${encodeURIComponent(order.code)}/return`, { method: 'POST', json: { restock } });
+      const r = await api<{ order: Order }>(`/orders/${encodeURIComponent(order.code)}`);
+      setOrder(r.order);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setActing(false);
+    }
+  };
   const print = async () => {
     if (!order) return;
     const t = await api<{ data: ReceiptTemplate[] }>('/receipt-templates');
@@ -218,6 +238,31 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
         }
       />
       {error && <p className="mb-2 text-sm text-rose-600">{error}</p>}
+      {order.status === 'returned' && (
+        <div
+          className={`mb-4 flex flex-wrap items-center gap-3 rounded-md border px-4 py-3 text-sm ${
+            order.returnHandledAt
+              ? 'border-slate-300 bg-white/60 text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-400'
+              : 'border-rose-300 bg-rose-50/80 text-rose-800 dark:border-rose-400/40 dark:bg-rose-400/10 dark:text-rose-200'
+          }`}
+        >
+          {order.returnHandledAt ? (
+            <span>Hàng hoàn đã xử lý lúc {dt(order.returnHandledAt)}.</span>
+          ) : (
+            <>
+              <span className="flex-1">
+                Hàng hoàn chưa xử lý. Kiểm hàng xong thì chọn nhập lại kho, hoặc bỏ nếu hàng lỗi/mất.
+              </span>
+              <Button disabled={acting} onClick={() => void closeReturn(true)}>
+                Nhập lại kho
+              </Button>
+              <Button variant="secondary" disabled={acting} onClick={() => void closeReturn(false)}>
+                Không nhập kho
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       {ship && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"

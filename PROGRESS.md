@@ -60,6 +60,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Quyết định đã chốt
 
+- 2026-11-23: Đơn **hoàn hàng** có thêm bước cuối "đã xử lý": kiểm hàng xong bấm *Nhập lại kho* (cộng tồn lại) hoặc *Không nhập kho* (hàng lỗi/mất). Menu chỉ đếm đơn hoàn chưa xử lý. Đơn hoàn bán tại quầy/KiotViet (đã hoàn tồn) tự tính là đã xử lý.
 - 2026-11-23: Giao diện **kính sáng** (D16): bố cục kiểu Gmail, góc vuông, khối kính trong mờ viền sáng, số liệu font mono; menu trái chia nhóm Đơn hàng / Kho / Nền tảng; icon sàn hình thoi có logo. Màu nhấn mặc định **xanh ngọc**, đổi được trong Cài đặt → Giao diện (xanh ngọc / xanh da trời / tím pastel, kính sáng / kính tối), lưu theo từng máy.
 - 2026-11-22: P4-P2 làm **Shopee VN + TikTok trước**, Shopee MY/PH để sau; chỉ bật tự đẩy tồn (P4-P3) sau khi Sugami đã tự nhận đơn từ Pancake (nếu không sẽ ghi đè tồn cũ lên tồn Pancake đã trừ đơn mới).
 - 2026-11-22: Sugami **có quản lý khách hàng** (D15): trang Khách hàng, nối với đơn qua mã khách KiotViet; lưu thông tin như file KiotViet xuất (phần lớn đã bị che), không lưu `Ghi chú`. Thay quyết định "chỉ lưu mã khách" bên dưới.
@@ -118,6 +119,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-22 | [P6] Trang Bán hàng tại quầy: nhiều đơn nháp, bán thường/giao hàng, trừ tồn, mẫu biên lai và in bill, đổi trạng thái tay | main |
 | 2026-11-22 | [P6] Bán hàng: ảnh sản phẩm, chọn ngày giờ, thẻ khách + popup, ngăn xác nhận + popup thành công, khung cố định, ngăn đơn gần đây | main |
 | 2026-11-23 | [UI] Giao diện kính sáng: bộ màu theo biến CSS, menu nhóm Đơn hàng/Kho/Nền tảng, icon sàn hình thoi, thẻ/nút/bảng/nhãn/KPI mới, chọn tông màu trong Cài đặt | xem commit `[UI]` |
+| 2026-11-23 | [UI] Trang Đơn hàng kiểu Gmail (thanh công cụ, nút lọc thả xuống, tab kênh, đơn cần xử lý in đậm), số đếm trên menu; đơn hoàn có bước "đã xử lý" (nhập lại kho / không nhập) | xem commit `[UI]` |
 
 ## P0 — Chuẩn bị & xác minh
 

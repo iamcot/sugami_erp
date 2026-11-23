@@ -1,10 +1,12 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { Search } from 'lucide-react';
+import { cn } from '@sugami/ui';
+import { ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
+import { FilterMenu } from '@/components/filter-menu';
 import { PlatformDiamond } from '@/components/platform-icons';
 import { Badge, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -33,6 +35,7 @@ interface OrderRow {
   shipProvince: string | null;
   note: string | null;
   updatedAt: string;
+  returnHandledAt: string | null;
   total: number;
   orderedAt: string;
   items: { sku: string; name: string; qty: number }[];
@@ -56,8 +59,9 @@ const GROUPS = [
   ['waiting', 'Chờ đóng'],
   ['shipping', 'Đang giao'],
   ['done', 'Đã xong'],
-  ['returned', 'Hoàn hàng'],
-  ['other', 'Khác'],
+  ['return_pending', 'Hoàn chờ xử lý'],
+  ['returned', 'Hoàn hàng (tất cả)'],
+  ['other', 'Đã hủy'],
 ] as const;
 
 const RANGES = [
@@ -105,6 +109,10 @@ const STATUS: Record<string, { label: string; tone: 'neutral' | 'brand' | 'succe
 };
 
 const fmtTime = (s: string) => formatRelativeDateTime(s);
+
+/** Orders the shop still has to act on: to pack, or a parcel back that nobody has checked. */
+const needsAction = (o: OrderRow) =>
+  ['new', 'confirmed', 'packing'].includes(o.status) || (o.status === 'returned' && !o.returnHandledAt);
 
 const KNOWN_CHANNELS = ['shopee', 'tiktok', 'store'];
 
@@ -279,9 +287,16 @@ const columns: Column<OrderRow>[] = [
     header: 'Trạng thái',
     sticky: true,
     className: 'whitespace-nowrap',
-    render: (o) => (
-      <Badge tone={STATUS[o.status]?.tone ?? 'neutral'}>{STATUS[o.status]?.label ?? o.status}</Badge>
-    ),
+    render: (o) =>
+      o.status === 'returned' ? (
+        o.returnHandledAt ? (
+          <Badge tone="neutral">Hoàn · đã xử lý</Badge>
+        ) : (
+          <Badge tone="danger">Hoàn · chờ xử lý</Badge>
+        )
+      ) : (
+        <Badge tone={STATUS[o.status]?.tone ?? 'neutral'}>{STATUS[o.status]?.label ?? o.status}</Badge>
+      ),
   },
 ];
 
@@ -300,6 +315,15 @@ function OrdersList() {
   const [res, setRes] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    api<{ waitingByChannel: Record<string, number> }>('/orders/counts').then(
+      (r) => setCounts(r.waitingByChannel),
+      () => {},
+    );
+  }, [reload]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -327,97 +351,161 @@ function OrdersList() {
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [qs.q, qs.channel, qs.group, qs.range, qs.from, qs.to, qs.page]);
+  }, [qs.q, qs.channel, qs.group, qs.range, qs.from, qs.to, qs.page, reload]);
 
+  const filtered = qs.q || qs.channel || qs.group || qs.range;
+  const pages = res ? Math.max(1, Math.ceil(res.total / 50)) : 1;
+  const page = Number(qs.page);
   return (
     <>
-      <PageHeader
-        title="Đơn hàng"
-        description={
-          res
-            ? `${res.revenueOrders.toLocaleString('vi-VN')} đơn · doanh thu ${formatVnd(res.revenue)} (không tính đơn hủy)`
-            : undefined
-        }
-      />
-      <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center">
-        <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+      <PageHeader title="Đơn hàng" />
+      <div className="glass rounded-xl">
+        {/* toolbar: refresh, summary, paging */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-300/50 px-3 py-2 dark:border-white/10">
+          <button
+            onClick={() => setReload((n) => n + 1)}
+            className="rounded-md border border-slate-300/80 bg-white/70 p-1.5 text-slate-600 hover:bg-white dark:border-white/15 dark:bg-white/5 dark:text-slate-300"
+            title="Tải lại"
+          >
+            <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+          </button>
+          {res && (
+            <span className="text-sm text-slate-600 dark:text-slate-400">
+              <b className="font-mono font-semibold text-slate-900 dark:text-white">
+                {res.revenueOrders.toLocaleString('vi-VN')}
+              </b>{' '}
+              đơn · doanh thu{' '}
+              <b className="font-mono font-semibold text-slate-900 dark:text-white">
+                {formatVnd(res.revenue)}
+              </b>
+              <span className="hidden sm:inline"> (không tính đơn hủy)</span>
+            </span>
+          )}
+          {res && (
+            <div className="ml-auto flex items-center gap-2 font-mono text-xs text-slate-500">
+              {res.total === 0 ? 0 : (page - 1) * 50 + 1}–{Math.min(page * 50, res.total)} /{' '}
+              {res.total.toLocaleString('vi-VN')}
+              <div className="flex">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setQs({ page: String(page - 1) })}
+                  className="rounded-l-md border border-slate-300/80 bg-white/70 p-1 hover:bg-white disabled:opacity-40 dark:border-white/15 dark:bg-white/5"
+                  aria-label="Trang trước"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button
+                  disabled={page >= pages}
+                  onClick={() => setQs({ page: String(page + 1) })}
+                  className="-ml-px rounded-r-md border border-slate-300/80 bg-white/70 p-1 hover:bg-white disabled:opacity-40 dark:border-white/15 dark:bg-white/5"
+                  aria-label="Trang sau"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        {/* filters */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-300/50 bg-white/30 px-3 py-2 dark:border-white/10 dark:bg-black/10">
+          <span className="hud-label text-slate-500">Lọc</span>
+          <FilterMenu
+            label="Trạng thái"
+            value={qs.group}
+            options={GROUPS}
+            onChange={(v) => setQs({ group: v, page: '1' })}
+          />
+          <FilterMenu
+            label="Thời gian"
+            value={qs.range}
+            options={RANGES}
+            onChange={(v) => setQs({ range: v, ...(v === 'custom' ? {} : { from: '', to: '' }), page: '1' })}
+            footer={
+              qs.range === 'custom' ? (
+                <div className="flex items-center gap-1 text-sm">
+                  <input
+                    type="date"
+                    value={qs.from}
+                    max={qs.to || undefined}
+                    onChange={(e) => setQs({ from: e.target.value, page: '1' })}
+                    className="h-8 rounded-md border border-slate-300 bg-white px-1.5 dark:border-slate-700 dark:bg-slate-900"
+                  />
+                  <span className="text-slate-400">→</span>
+                  <input
+                    type="date"
+                    value={qs.to}
+                    min={qs.from || undefined}
+                    onChange={(e) => setQs({ to: e.target.value, page: '1' })}
+                    className="h-8 rounded-md border border-slate-300 bg-white px-1.5 dark:border-slate-700 dark:bg-slate-900"
+                  />
+                </div>
+              ) : undefined
+            }
+          />
+          {filtered && (
+            <button
+              onClick={() => {
+                setSearch('');
+                setQs({ q: '', channel: '', group: '', range: '', from: '', to: '', page: '1' });
+              }}
+              className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-500"
+            >
+              Xóa bộ lọc
+            </button>
+          )}
+          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-slate-300/80 bg-white/80 px-2.5 text-sm md:ml-auto md:max-w-xs md:flex-none md:basis-80 dark:border-white/15 dark:bg-white/5">
+            <Search className="size-4 shrink-0 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Mã đơn, mã Shopee, vận đơn, SKU, SĐT"
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
+            />
+          </label>
+        </div>
+        {/* channel tabs */}
+        <div className="flex overflow-x-auto border-b border-slate-300/50 dark:border-white/10">
           {CHANNELS.map(([c, label]) => (
             <button
               key={c}
               onClick={() => setQs({ channel: c, page: '1' })}
-              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.channel === c ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
+              className={cn(
+                '-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium sm:min-w-40',
+                qs.channel === c
+                  ? 'border-brand-600 bg-gradient-to-t from-brand-500/10 to-transparent text-brand-700 dark:text-brand-500'
+                  : 'border-transparent text-slate-600 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-white/5',
+              )}
             >
+              {c ? <PlatformDiamond platform={c} className="size-[18px]" /> : null}
               {label}
+              {c && counts?.[c] ? (
+                <span className="rounded-sm bg-brand-600 px-1 font-mono text-[11px] font-semibold text-white">
+                  {counts[c]}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
-        <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm md:ml-auto md:max-w-xs dark:border-slate-800 dark:bg-slate-900">
-          <Search className="size-4 shrink-0 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Mã đơn, mã Shopee, vận đơn, SKU, SĐT khách"
-            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
-          />
-        </label>
+        {error && <p className="px-4 py-2 text-sm text-rose-600">{error}</p>}
+        <DataTable
+          bare
+          columns={columns}
+          rows={res?.data ?? []}
+          rowKey={(o) => o.id}
+          onRowClick={(o) => open('order', o.code)}
+          isSelected={(o) => selected.order === o.code}
+          rowEmphasis={needsAction}
+          page={Number(qs.page)}
+          pageSize={50}
+          total={res?.total}
+          onPage={(p) => setQs({ page: String(p) })}
+          loading={loading}
+          empty="Chưa có đơn. Nhập file chi tiết hóa đơn từ KiotViet ở mục Nhập KiotViet."
+        />
+        <p className="border-t border-slate-300/50 px-4 py-2 text-xs text-slate-500 dark:border-white/10">
+          Đơn in đậm có vạch màu bên trái là đơn cần xử lý: chờ đóng gói hoặc hàng hoàn chưa kiểm.
+        </p>
       </div>
-      <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-        <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-          {RANGES.map(([v, label]) => (
-            <button
-              key={v}
-              onClick={() => setQs({ range: v, ...(v === 'custom' ? {} : { from: '', to: '' }), page: '1' })}
-              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.range === v ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {qs.range === 'custom' && (
-          <div className="flex items-center gap-2 text-sm">
-            <input
-              type="date"
-              value={qs.from}
-              max={qs.to || undefined}
-              onChange={(e) => setQs({ from: e.target.value, page: '1' })}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-2 dark:border-slate-800 dark:bg-slate-900"
-            />
-            <span className="text-slate-400">→</span>
-            <input
-              type="date"
-              value={qs.to}
-              min={qs.from || undefined}
-              onChange={(e) => setQs({ to: e.target.value, page: '1' })}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-2 dark:border-slate-800 dark:bg-slate-900"
-            />
-          </div>
-        )}
-        <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 md:ml-auto dark:bg-slate-800">
-          {GROUPS.map(([v, label]) => (
-            <button
-              key={v}
-              onClick={() => setQs({ group: v, page: '1' })}
-              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.group === v ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
-      <DataTable
-        columns={columns}
-        rows={res?.data ?? []}
-        rowKey={(o) => o.id}
-        onRowClick={(o) => open('order', o.code)}
-        isSelected={(o) => selected.order === o.code}
-        page={Number(qs.page)}
-        pageSize={50}
-        total={res?.total}
-        onPage={(p) => setQs({ page: String(p) })}
-        loading={loading}
-        empty="Chưa có đơn. Nhập file chi tiết hóa đơn từ KiotViet ở mục Nhập KiotViet."
-      />
     </>
   );
 }

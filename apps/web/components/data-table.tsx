@@ -38,6 +38,8 @@ export function DataTable<T>({
   onPage,
   loading,
   empty = 'Không có dữ liệu',
+  rowEmphasis,
+  bare,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -55,6 +57,10 @@ export function DataTable<T>({
   onPage?: (page: number) => void;
   loading?: boolean;
   empty?: ReactNode;
+  /** Rows that need action: bold text and an accent bar on the left (like unread mail). */
+  rowEmphasis?: (row: T) => boolean;
+  /** Drawn inside another panel: no glass frame of its own. */
+  bare?: boolean;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const drag = useRef({ down: false, moved: false, x: 0, left: 0 });
@@ -93,7 +99,7 @@ export function DataTable<T>({
     a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left';
 
   return (
-    <div className="glass overflow-hidden rounded-xl">
+    <div className={bare ? 'overflow-hidden' : 'glass overflow-hidden rounded-xl'}>
       <div
         ref={scroller}
         onScroll={measure}
@@ -176,6 +182,8 @@ export function DataTable<T>({
                   className={cn(
                     'group',
                     'transition-shadow',
+                    rowEmphasis?.(r) &&
+                      'font-semibold [&>td:first-child]:shadow-[inset_3px_0_0_var(--accent-600)]',
                     isSelected?.(r)
                       ? 'bg-gradient-to-r from-brand-500/20 to-brand-500/5'
                       : 'hover:relative hover:z-[1] hover:bg-white/90 hover:shadow-[0_0_0_1px_rgb(var(--accent-rgb)/0.35),0_6px_18px_rgba(60,80,140,0.16)] dark:hover:bg-white/[0.07]',

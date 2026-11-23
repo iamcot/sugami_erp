@@ -16,6 +16,7 @@ import {
   Search,
   Settings,
   ShoppingBag,
+  PackageMinus,
   TriangleAlert,
   Truck,
   Undo2,
@@ -30,7 +31,9 @@ import { PlatformDiamond } from './platform-icons';
 import { PwaBootstrap } from './app-settings';
 import { UserMenu } from './user-menu';
 
-type NavItem = { href: string; label: string; icon?: LucideIcon; platform?: string };
+type CountKey = 'waiting' | 'shipping' | 'returnPending' | 'shopee' | 'tiktok' | 'low' | 'negative';
+type NavItem = { href: string; label: string; icon?: LucideIcon; platform?: string; count?: CountKey };
+type Counts = Partial<Record<CountKey, number>>;
 
 const navTop: NavItem[] = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
@@ -43,9 +46,14 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: 'Đơn hàng',
     items: [
       { href: '/orders', label: 'Tất cả đơn', icon: ShoppingBag },
-      { href: '/orders?group=waiting', label: 'Chờ đóng', icon: Clock },
-      { href: '/orders?group=shipping', label: 'Đang giao', icon: Truck },
-      { href: '/orders?group=returned', label: 'Hoàn hàng', icon: Undo2 },
+      { href: '/orders?group=waiting', label: 'Chờ đóng', icon: Clock, count: 'waiting' },
+      { href: '/orders?group=shipping', label: 'Đang giao', icon: Truck, count: 'shipping' },
+      {
+        href: '/orders?group=return_pending',
+        label: 'Hàng hoàn chờ xử lý',
+        icon: Undo2,
+        count: 'returnPending',
+      },
       { href: '/pos', label: 'Bán tại quầy', icon: Receipt },
     ],
   },
@@ -53,7 +61,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: 'Kho',
     items: [
       { href: '/products', label: 'Sản phẩm', icon: Package },
-      { href: '/products?view=low', label: 'Sắp hết / tồn âm', icon: TriangleAlert },
+      { href: '/products?view=negative', label: 'Tồn âm', icon: TriangleAlert, count: 'negative' },
+      { href: '/products?view=low', label: 'Sắp hết', icon: PackageMinus, count: 'low' },
       { href: '/inventory/documents', label: 'Phiếu kho', icon: ClipboardList },
       { href: '/purchasing', label: 'Nguồn hàng', icon: PackagePlus },
     ],
@@ -61,8 +70,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: 'Nền tảng',
     items: [
-      { href: '/orders?channel=shopee', label: 'Shopee', platform: 'shopee' },
-      { href: '/orders?channel=tiktok', label: 'TikTok Shop', platform: 'tiktok' },
+      { href: '/orders?channel=shopee', label: 'Shopee', platform: 'shopee', count: 'shopee' },
+      { href: '/orders?channel=tiktok', label: 'TikTok Shop', platform: 'tiktok', count: 'tiktok' },
       { href: '/data/pancake', label: 'Pancake', platform: 'pancake' },
       { href: '/data/import', label: 'Đồng bộ KiotViet', icon: RefreshCw },
     ],
@@ -117,18 +126,70 @@ const navItemClass = (on: boolean) =>
       : 'border-transparent text-slate-700 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-white/5',
   );
 
+/** Menu numbers: what still needs hands (orders to pack, parcels back, stock problems). Refreshed every minute. */
+function useNavCounts(pathname: string): Counts {
+  const [c, setC] = useState<Counts>({});
+  useEffect(() => {
+    const load = () => {
+      api<{
+        waiting: number;
+        shipping: number;
+        returnPending: number;
+        waitingByChannel: Record<string, number>;
+      }>('/orders/counts').then(
+        (r) =>
+          setC((p) => ({
+            ...p,
+            waiting: r.waiting,
+            shipping: r.shipping,
+            returnPending: r.returnPending,
+            shopee: r.waitingByChannel.shopee ?? 0,
+            tiktok: r.waitingByChannel.tiktok ?? 0,
+          })),
+        () => {},
+      );
+      api<{ total: number; totals: { negative: number } }>('/inventory?view=low&pageSize=1').then(
+        (r) => setC((p) => ({ ...p, low: r.total, negative: r.totals.negative })),
+        () => {},
+      );
+    };
+    load();
+    const t = setInterval(load, 60_000);
+    return () => clearInterval(t);
+  }, [pathname]);
+  return c;
+}
+
+/** Urgent counts (things to act on) are filled; informational ones are plain text. */
+const URGENT: CountKey[] = ['waiting', 'returnPending', 'negative'];
+
 function SideNav() {
   const pathname = usePathname();
   const params = useSearchParams();
   const active = activeHref(pathname, params);
-  const item = ({ href, label, icon: Icon, platform }: NavItem) => (
+  const counts = useNavCounts(pathname);
+  const item = ({ href, label, icon: Icon, platform, count }: NavItem) => (
     <Link key={href} href={href} className={navItemClass(active === href)}>
       {platform ? (
         <PlatformDiamond platform={platform} className="-mx-0.5 size-5" />
       ) : (
         Icon && <Icon className={cn('size-4', active === href ? 'text-brand-600' : 'text-slate-500')} />
       )}
-      {label}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {count && !!counts[count] && (
+        <span
+          className={cn(
+            'font-mono text-[11px] tabular-nums',
+            URGENT.includes(count)
+              ? 'min-w-5 rounded-sm bg-brand-600 px-1 text-center font-semibold text-white shadow-[0_1px_4px_rgb(var(--accent-rgb)/0.4)]'
+              : active === href
+                ? 'text-brand-700 dark:text-brand-500'
+                : 'text-slate-500',
+          )}
+        >
+          {counts[count]!.toLocaleString('vi-VN')}
+        </span>
+      )}
     </Link>
   );
   return (

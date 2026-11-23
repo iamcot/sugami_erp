@@ -699,6 +699,8 @@ model Order {
   source              String      @db.VarChar(32)
   /// Set when sale_out movements were written for this order (null = no stock effect).
   stockAppliedAt      DateTime?   @map("stock_applied_at")
+  /// A returned parcel the shop has checked (put back in stock or written off). Null on a returned order = still to handle.
+  returnHandledAt     DateTime?   @map("return_handled_at")
   internalNote        String?     @map("internal_note") @db.VarChar(1000)
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")

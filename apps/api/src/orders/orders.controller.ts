@@ -1,9 +1,21 @@
-import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpException,
+  NotFoundException,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import type { OrderStatus, Prisma } from '@sugami/db';
 import { z } from 'zod';
-import { RequirePermissions } from '../auth/decorators.js';
+import type { AuthUser } from '../auth/auth.types.js';
+import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { handleReturn, ReturnError } from './order-returns.js';
 
 const STATUSES = [
   'new',
@@ -21,7 +33,7 @@ const ListQuery = z.object({
   /** Where the order was created: pos (counter), pancake, kiotviet_excel. */
   source: z.string().trim().max(32).optional(),
   status: z.enum(STATUSES).optional(),
-  group: z.enum(['waiting', 'shipping', 'done', 'returned', 'other']).optional(),
+  group: z.enum(['waiting', 'shipping', 'done', 'returned', 'return_pending', 'other']).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -36,6 +48,14 @@ const GROUPS: Record<string, OrderStatus[]> = {
   returned: ['returned'],
   other: ['cancelled'],
 };
+
+/** Filter for a status group; return_pending = returned parcels the shop has not checked yet. */
+const groupWhere = (group: string): Prisma.OrderWhereInput =>
+  group === 'return_pending'
+    ? { status: 'returned', returnHandledAt: null }
+    : { status: { in: GROUPS[group] } };
+
+const ReturnBody = z.object({ restock: z.boolean() });
 
 @Controller('orders')
 export class OrdersController {
@@ -60,7 +80,7 @@ export class OrdersController {
       ...(q.channel ? { channel: { code: q.channel } } : {}),
       ...(q.source ? { source: q.source } : {}),
       ...(q.status ? { status: q.status as OrderStatus } : {}),
-      ...(q.group ? { status: { in: GROUPS[q.group] } } : {}),
+      ...(q.group ? groupWhere(q.group) : {}),
       ...(q.from || q.to
         ? { orderedAt: { ...(q.from ? { gte: q.from } : {}), ...(q.to ? { lt: q.to } : {}) } }
         : {}),
@@ -82,7 +102,7 @@ export class OrdersController {
       }),
       db.order.count({ where }),
       db.order.aggregate({
-        where: { ...where, status: q.status ?? (q.group ? { in: GROUPS[q.group] } : { not: 'cancelled' }) },
+        where: q.status || q.group ? where : { ...where, status: { not: 'cancelled' } },
         _sum: { total: true },
         _count: true,
       }),
@@ -112,6 +132,7 @@ export class OrdersController {
         shipPhone: o.shipPhone,
         shipProvince: o.shipProvince,
         note: o.internalNote,
+        returnHandledAt: o.returnHandledAt?.toISOString() ?? null,
         updatedAt: o.updatedAt.toISOString(),
         total: Number(o.total),
         orderedAt: o.orderedAt.toISOString(),
@@ -124,6 +145,45 @@ export class OrdersController {
       revenue: Number(sums._sum.total ?? 0),
       revenueOrders: sums._count,
     };
+  }
+
+  /** Numbers for the side menu: what still needs the shop's hands. */
+  @Get('counts')
+  @RequirePermissions('orders.read')
+  async counts() {
+    const db = this.prisma.client;
+    const waiting = { status: { in: GROUPS.waiting } };
+    const [waitingCount, shipping, returnPending, byChannel] = await Promise.all([
+      db.order.count({ where: waiting }),
+      db.order.count({ where: { status: 'shipped' } }),
+      db.order.count({ where: groupWhere('return_pending') }),
+      db.order.groupBy({ by: ['channelId'], where: waiting, _count: true }),
+    ]);
+    const channels = await db.channel.findMany({
+      where: { id: { in: byChannel.map((c) => c.channelId) } },
+      select: { id: true, code: true },
+    });
+    const code = new Map(channels.map((c) => [c.id, c.code]));
+    const waitingByChannel: Record<string, number> = {};
+    for (const c of byChannel) {
+      const k = code.get(c.channelId) ?? 'other';
+      waitingByChannel[k] = (waitingByChannel[k] ?? 0) + c._count;
+    }
+    return { waiting: waitingCount, shipping, returnPending, waitingByChannel };
+  }
+
+  /** Close a returned parcel: put the goods back in stock, or write them off. */
+  @Post(':code/return')
+  @HttpCode(200)
+  @RequirePermissions('orders.write', 'inventory.write')
+  async handleReturn(@Param('code') code: string, @Body() raw: unknown, @CurrentUser() user: AuthUser) {
+    const b = parseInput(ReturnBody, raw);
+    try {
+      return await handleReturn(this.prisma.client, code, b.restock, user.id);
+    } catch (err) {
+      if (err instanceof ReturnError) throw new HttpException({ message: err.message }, err.status);
+      throw err;
+    }
   }
 
   @Get(':code')

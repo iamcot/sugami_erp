@@ -302,6 +302,8 @@ export async function runPosAction(
         fulfillment: kind,
         shippingStatus: SHIPPING_TEXT[action.to],
         stockAppliedAt: willHold ? (order.stockAppliedAt ?? new Date()) : null,
+        // a counter return puts the goods back right here, so there is nothing left to handle
+        returnHandledAt: action.to === 'returned' ? new Date() : null,
         completedAt: done
           ? new Date()
           : action.to === 'cancelled' || action.to === 'returned'
