@@ -1,4 +1,4 @@
-// Kiểm tra .env đã có các biến quan trọng chưa (chỉ in có/chưa, không in giá trị) và API đang chạy có nhận khóa push không.
+// Kiểm tra .env đã có các biến quan trọng chưa (chỉ in có/chưa, không in giá trị) và API có đang chạy không.
 import { existsSync } from 'node:fs';
 
 if (!existsSync('.env')) console.log('Không thấy file .env ở thư mục này:', process.cwd());
@@ -18,9 +18,10 @@ for (const k of keys) console.log(`${process.env[k] ? 'có   ' : 'CHƯA '} ${k}`
 
 try {
   const port = process.env.API_PORT || 4000;
-  const r = await fetch(`http://localhost:${port}/api/push/config`);
-  const j = await r.json();
-  console.log(`\nAPI đang chạy ${j.publicKey ? 'ĐÃ' : 'CHƯA'} nhận khóa push (VAPID)`);
+  const r = await fetch(`http://localhost:${port}/api/health`);
+  console.log(
+    `\nAPI trả lời (${r.status}). Nhớ khởi động lại API sau khi sửa .env: pm2 restart all --update-env`,
+  );
 } catch {
   console.log('\nKhông gọi được API trên máy này (đang tắt?)');
 }
