@@ -9,7 +9,10 @@ export const metadata: Metadata = {
   applicationName: 'Sugami',
   appleWebApp: { capable: true, title: 'Sugami', statusBarStyle: 'default' },
   icons: {
-    icon: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    icon: [
+      { url: '/favicon.ico', sizes: '48x48' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
     apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }],
   },
 };

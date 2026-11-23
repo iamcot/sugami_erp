@@ -71,12 +71,7 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-dvh place-items-center px-4">
       <div className="w-full max-w-sm">
-        <div className="flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-lg bg-brand-600 font-bold text-white">
-            S
-          </span>
-          <span className="text-lg font-semibold">Sugami ERP</span>
-        </div>
+        <img src="/icons/logo.png" alt="SuGaMi" className="mx-auto h-36 w-auto" />
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">Đăng nhập</h1>
         <p className="mt-1 text-sm text-slate-500">Dùng tài khoản do chủ shop cấp.</p>
         <Suspense>

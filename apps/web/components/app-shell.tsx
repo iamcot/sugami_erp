@@ -213,9 +213,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh lg:pl-56">
       <PwaBootstrap />
       <aside className="glass fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-y-0 border-l-0 pt-3 lg:flex">
-        <Link href="/" className="mb-3 flex items-center gap-2.5 px-4">
-          <span className="btn-accent grid size-8 place-items-center text-sm font-bold">S</span>
-          <span className="text-[15px] font-bold uppercase tracking-[0.18em]">Sugami</span>
+        <Link href="/" className="mb-2 flex justify-center px-4" aria-label="Sugami">
+          <img src="/icons/logo.png" alt="SuGaMi" className="h-20 w-auto drop-shadow-sm" />
         </Link>
         <Suspense>
           <SideNav />
@@ -234,9 +233,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <header className="glass sticky top-0 z-10 flex min-h-14 items-center gap-3 border-x-0 border-t-0 px-4 pt-[env(safe-area-inset-top)]">
         <span className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-brand-500 to-transparent opacity-70" />
-        <span className="btn-accent grid size-8 shrink-0 place-items-center text-sm font-bold lg:hidden">
-          S
-        </span>
+        <img src="/icons/mark-64.png" alt="SuGaMi" className="size-8 shrink-0 lg:hidden" />
         {/* pages can put their own toolbar here (the sales page does); others get the site search */}
         <div id="app-header-slot" className="flex min-w-0 flex-1 items-center">
           {!pathname.startsWith('/pos') && <GlobalSearch />}
