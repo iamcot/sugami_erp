@@ -181,3 +181,15 @@ thead.text-xs th {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
+/* "ERP" next to the logo, drawn like the logo's letters: chunky, pastel, maroon outline, white halo. */
+.logo-word {
+  font-family: 'Fredoka', var(--font-sans);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  -webkit-text-stroke: 3px #6e1418;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 0 0 #fff) drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff)
+    drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff) drop-shadow(0 2px 3px rgb(110 20 24 / 0.25));
+}
