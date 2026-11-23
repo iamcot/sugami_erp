@@ -4,3 +4,4 @@ export * from './mapping.js';
 export * from './adapter.js';
 export * from './push.js';
 export * from './listings.js';
+export * from './chat.js';

@@ -31,6 +31,7 @@
 | D14 | Mỗi tài khoản sàn trong Pancake là một **kênh riêng** trong Sugami, tên theo "tên gợi nhớ" trong Pancake; phân biệt theo ID tài khoản, tiền tệ lưu riêng cho MY/PH | 3 shop Shopee cùng `marketplace_id` -3; đơn MY/PH không tính bằng VND |
 | D15 | Sugami **có quản lý khách hàng**: trang Khách hàng, nối với đơn qua mã khách KiotViet. Lưu thông tin khách đúng như file KiotViet xuất (phần lớn đã bị che), không lưu `Ghi chú`. Thay quyết định cũ "chỉ lưu mã khách" | Chủ shop yêu cầu 22/11/2026 và gửi file mẫu |
 | D16 | Giao diện **kính sáng**: bố cục kiểu Gmail, góc vuông, khối kính trong mờ, số liệu font mono, menu nhóm Đơn hàng / Kho / Nền tảng. Màu nhấn chọn trong Cài đặt (mặc định xanh ngọc), có bản kính tối | Chủ shop chốt 23/11/2026 sau khi xem bản mẫu; người dùng chính là nhân viên nữ nên mặc định nền sáng |
+| D17 | Chat Shopee đọc từ Pancake **Pages API** bằng page access token, **polling theo yêu cầu** (cache 20 giây), không bật webhook | Webhook tính 2 trang trong gói cước (Standard chỉ 3 trang); shop dưới 10 đơn/ngày không cần tức thì. Dài hạn thay bằng Shopee/TikTok trực tiếp |
 
 ## 8.3 Câu hỏi còn mở
 

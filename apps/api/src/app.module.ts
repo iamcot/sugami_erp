@@ -15,6 +15,7 @@ import { InventoryModule } from './inventory/inventory.module.js';
 import { StockDocumentsModule } from './stock-documents/stock-documents.module.js';
 import { PushModule } from './push/push.module.js';
 import { PancakeModule } from './pancake/pancake.module.js';
+import { ChatModule } from './chat/chat.module.js';
 import { WebhooksModule } from './webhooks/webhooks.module.js';
 import { ImportsModule } from './imports/imports.module.js';
 import { MediaModule } from './media/media.module.js';
@@ -42,6 +43,7 @@ import { UsersController } from './users/users.controller.js';
     PurchasingModule,
     WebhooksModule,
     PancakeModule,
+    ChatModule,
     PushModule,
     StockDocumentsModule,
   ],

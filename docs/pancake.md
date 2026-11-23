@@ -131,3 +131,17 @@ Pancake chỉ đẩy tồn lên tin đăng đã được liên kết trong chín
 - Tồn bán được = tồn kho Sugami (kho `PANCAKE_SYNC_WAREHOUSE`) trừ hàng đang giữ cho đơn giao ở trang Bán hàng, không âm. Số đã đẩy lần cuối lưu ở `external_refs.hash` của biến thể Pancake.
 - Chỉ đẩy khi con trỏ đơn Pancake (`pancake:orders`) mới hơn 20 phút, để không ghi đè tồn Pancake bằng số chưa trừ các đơn Pancake đã nhận.
 - Lần đầu: "Xem chênh lệch" rồi "Đặt tồn Pancake theo Sugami" (đồng bộ cả cửa hàng và ghi nhớ số đã đẩy), sau đó mới bật tự động. Chỉ một nơi đẩy tồn lên sàn: tắt đồng bộ tồn bên KiotViet trước.
+
+## Chat Shopee (menu Chat, chỉ đọc)
+
+Chat nằm ở **Pages API** (`https://pages.fm/api/public_api/v1/pages/<page_id>/...`), khác API POS: dùng *page access token* tạo ở Pancake → trang Shopee → Cài đặt → Công cụ, không dùng API key POS (key POS bị từ chối ở đây). Page id của trang Shopee có dạng `spo_<số>` (khác shop id POS).
+
+Đã kiểm chứng ngày 2026-11-23 trên trang Shopee SuGaMi (chỉ đọc):
+
+- `GET /conversations` (bắt buộc `page_id`, `since`, `until` cách nhau tối đa 1 tháng, `page_number`) trả hội thoại loại `INBOX` (chat) và `RATING` (đánh giá sao, tin là `[5⭐]`), có `seen`, `snippet`, `tags`, `last_sent_by`. Thời gian là UTC không có múi giờ.
+- `GET /conversations/<id>/messages` trả 20 tin mới nhất, `current_count` để lấy tin cũ hơn. Người gửi là shop khi `from.id` trùng page id. Nội dung là HTML nhỏ; có tin tự động của Shopee (`shopee_faq_messages`).
+- Tài liệu không ghi giới hạn tần suất; 40 lần gọi liên tiếp không bị chặn. Client tự giới hạn 2 lần/giây.
+- **Webhook có**, nhưng bật cho một trang tính **2 trang** trong gói cước (gói Standard chỉ 3 trang) nên **không dùng**: Sugami đọc theo yêu cầu khi mở menu Chat (cache 20 giây).
+- Chưa thử: gửi tin trả lời (tin đến khách thật), ảnh trong chat, token còn dùng được sau khi hết dùng thử không.
+
+Cấu hình: `PANCAKE_CHAT_PAGE_ID`, `PANCAKE_CHAT_TOKEN` trong `.env` (không commit). Mã: `packages/channels/pancake/src/chat.ts`, API `GET /chat/conversations`, `GET /chat/conversations/:id/messages` (quyền `orders.read`), trang `/chat` với bộ lọc loại, chưa đọc, chờ trả lời, khoảng ngày, tìm theo tên/nội dung.

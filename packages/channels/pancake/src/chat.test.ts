@@ -1,0 +1,128 @@
+import { describe, expect, it, vi } from 'vitest';
+import { PancakeChatClient, parseChatTime, plainText, toConversation, toMessage } from './chat.js';
+import { PancakeError } from './client.js';
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+
+// Synthetic samples in the documented shape; no real shop or customer data.
+const conv = (over: Record<string, unknown> = {}) => ({
+  id: 'spo_1_100',
+  type: 'INBOX',
+  seen: false,
+  from: { id: 'sp_9', name: 'buyer_a', username: 'buyer_a' },
+  last_sent_by: { id: 'sp_9', name: 'buyer_a' },
+  snippet: 'Còn hàng không shop',
+  message_count: 0,
+  tags: [null, { id: 3, text: 'Hỏi hàng' }],
+  assignee_ids: [],
+  inserted_at: '2026-11-22T03:00:00.000000',
+  updated_at: '2026-11-22T03:47:04.000000',
+  ...over,
+});
+
+function makeClient(handler: (url: URL) => Response) {
+  const fetchMock = vi.fn(async (input: string | URL | Request) => handler(new URL(String(input))));
+  const client = new PancakeChatClient({
+    pageId: 'spo_1',
+    pageAccessToken: 'secret-token',
+    fetch: fetchMock as unknown as typeof fetch,
+    sleep: async () => {},
+    retryDelaysMs: [1],
+  });
+  return { client, fetchMock };
+}
+
+describe('chat mapping', () => {
+  it('reads Pancake times as UTC', () => {
+    expect(parseChatTime('2026-11-22T03:47:04.000000').toISOString()).toBe('2026-11-22T03:47:04.000Z');
+    expect(parseChatTime(undefined).getTime()).toBe(0);
+  });
+
+  it('strips message HTML', () => {
+    expect(plainText('<div>Chào &amp; cảm ơn<br>shop</div>')).toBe('Chào & cảm ơn\nshop');
+    expect(plainText('<div></div>')).toBe('');
+  });
+
+  it('maps a conversation and drops empty tags', () => {
+    const c = toConversation(conv(), 'spo_1');
+    expect(c).toMatchObject({
+      id: 'spo_1_100',
+      kind: 'INBOX',
+      customerName: 'buyer_a',
+      seen: false,
+      lastSentByShop: false,
+      tags: ['Hỏi hàng'],
+    });
+    expect(toConversation(conv({ last_sent_by: { id: 'spo_1' } }), 'spo_1').lastSentByShop).toBe(true);
+  });
+
+  it('marks messages sent by the shop page', () => {
+    const m = toMessage(
+      { id: 'm1', inserted_at: '2026-11-22T03:47:00.000000', from: { id: 'spo_1' }, original_message: 'Dạ ạ', attachments: [{ type: 'image' }] },
+      'spo_1',
+    );
+    expect(m).toMatchObject({ fromShop: true, text: 'Dạ ạ', attachments: ['image'] });
+  });
+});
+
+describe('PancakeChatClient', () => {
+  it('lists conversations newest first and sends the documented parameters', async () => {
+    const { client, fetchMock } = makeClient((url) => {
+      expect(url.pathname).toBe('/api/public_api/v1/pages/spo_1/conversations');
+      expect(url.searchParams.get('page_access_token')).toBe('secret-token');
+      expect(url.searchParams.get('since')).toBe('1000');
+      expect(url.searchParams.get('until')).toBe('2000');
+      return url.searchParams.get('page_number') === '1'
+        ? json({
+            success: true,
+            total: 2,
+            conversations: [
+              conv({ id: 'old', updated_at: '2026-11-10T00:00:00.000000' }),
+              conv({ id: 'new', updated_at: '2026-11-22T00:00:00.000000' }),
+            ],
+          })
+        : json({ success: true, conversations: [] });
+    });
+    const list = await client.listConversations({ since: new Date(1_000_000), until: new Date(2_000_000) });
+    expect(list.map((c) => c.id)).toEqual(['new', 'old']);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops when a page repeats the previous one', async () => {
+    const { client, fetchMock } = makeClient(() => json({ success: true, conversations: [conv()] }));
+    const list = await client.listConversations({ since: new Date(0), until: new Date(1000) });
+    expect(list).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('lists messages oldest first', async () => {
+    const { client } = makeClient((url) => {
+      expect(url.pathname).toBe('/api/public_api/v1/pages/spo_1/conversations/spo_1_100/messages');
+      return json({
+        messages: [
+          { id: 'b', inserted_at: '2026-11-22T03:47:04.000000', from: { id: 'sp_9' }, message: 'Đã nhận' },
+          { id: 'a', inserted_at: '2026-11-22T03:47:00.000000', from: { id: 'spo_1' }, message: 'Dạ' },
+        ],
+      });
+    });
+    const msgs = await client.listMessages('spo_1_100');
+    expect(msgs.map((m) => m.id)).toEqual(['a', 'b']);
+    expect(msgs[0]!.fromShop).toBe(true);
+  });
+
+  it('retries a 5xx once', async () => {
+    let calls = 0;
+    const { client } = makeClient(() => (++calls === 1 ? json({}, 502) : json({ messages: [] })));
+    await expect(client.listMessages('x')).resolves.toEqual([]);
+    expect(calls).toBe(2);
+  });
+
+  it('never puts the token in an error', async () => {
+    const { client } = makeClient(() => json({ success: false, message: 'Invalid access_token', error_code: 102 }, 200));
+    const err = await client.listMessages('x').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(PancakeError);
+    expect((err as Error).message).not.toContain('secret-token');
+    expect((err as PancakeError).errorCode).toBe(102);
+  });
+});

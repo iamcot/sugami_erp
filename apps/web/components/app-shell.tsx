@@ -7,6 +7,7 @@ import {
   Clock,
   LayoutDashboard,
   type LucideIcon,
+  MessageCircle,
   Package,
   PackagePlus,
   Receipt,
@@ -39,6 +40,7 @@ const navTop: NavItem[] = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/reports', label: 'Báo cáo', icon: BarChart3 },
   { href: '/customers', label: 'Khách hàng', icon: Users },
+  { href: '/chat', label: 'Chat', icon: MessageCircle },
 ];
 
 const navSections: { title: string; items: NavItem[] }[] = [
