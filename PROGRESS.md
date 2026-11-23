@@ -16,7 +16,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P3 — Media & content | 0/8 | |
 | P4 — Kết nối sàn trực tiếp | 1/15 | Đang thử Pancake POS làm lớp trung gian (P4-P1 xong) |
 | P5 — Thay KiotViet | 0/7 | |
-| P6 — Mở rộng | – | Lên kế hoạch sau P5 |
+| P6 — Mở rộng | – | Bán tại quầy xong; P6-SHIP (vận chuyển Allingo) giai đoạn 1 đã code, chờ thử khóa test |
 
 ## Đang làm
 
@@ -42,6 +42,12 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - Webhook (tùy chọn, sau khi iMac chạy ổn): cần `hooks.sugami.vn` đã qua Cloudflare Tunnel; cấu hình theo docs/pancake.md.
 - Khi có đơn thật đầu tiên: chạy lại `pnpm pancake:probe` để xác nhận mã sàn TikTok (-9) và cách đơn gắn ID tài khoản.
 
+**Vận chuyển Allingo (P6-SHIP, [docs/allingo.md](docs/allingo.md)):**
+- Điền `ALLINGO_APP_ID`, `ALLINGO_APP_SECRET` (khóa test) vào `.env`, chạy `pnpm allingo:probe`: cho biết Allingo có nhận địa chỉ chỉ có chữ (không tọa độ) và địa chỉ 2 cấp không.
+- Cấu hình webhook trong portal Allingo: `https://hooks.sugami.vn/api/webhooks/allingo`, chép secret vào `ALLINGO_WEBHOOK_SECRET`.
+- Cài đặt → Vận chuyển: nhập điểm lấy hàng, cỡ hộp; thử trọn vòng một đơn trên khóa test.
+- Hỏi Allingo: phí dùng, phí COD, chu kỳ trả COD; xin duyệt app chạy thật.
+
 **Việc khác:**
 - P1-13: thử import vào KiotViet các file từ trang KiotViet → Xuất sang KiotViet và trang Phiếu kho; báo KiotViet có nhận không.
 - P1-23: tạo khóa thông báo (`pnpm vapid:generate`), cài app lên điện thoại, thử thông báo (docs/ops/pwa.md). Nên đăng ký UptimeRobot/Healthchecks.io theo dõi `https://erp.sugami.vn/health`.
@@ -60,6 +66,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Quyết định đã chốt
 
+- 2026-11-23: Vận chuyển đơn **shop tự giao** qua **Allingo** (không Nhanh.vn, Pancake không có API vận chuyển). Khoảng 20 đơn tự giao/tháng; giao thường mặc định **SPX**, giao nhanh chọn bên rẻ nhất (thường AhaMove). Phí ship mặc định **khách trả**; bật "Cộng phí ship vào đơn" thì shop trả hãng và phí cộng vào tổng đơn/COD. **Không mua bảo hiểm hàng.** Hộp theo cân: nhỏ ≤ 500 g, vừa ≤ 3 kg, lớn > 3 kg. Điểm lấy hàng nhập trong Cài đặt → Vận chuyển. Gửi địa chỉ chữ 2 cấp trước, chỉ thêm tọa độ nếu Allingo từ chối (docs/allingo.md).
 - 2026-11-23: Chat Shopee đọc qua Pancake Pages API bằng **polling theo yêu cầu**, không bật webhook vì webhook tính 2 trang trong gói cước (docs/pancake.md). Ô trả lời đã làm và chủ shop xác nhận gửi được qua Shopee (page token + public_api).
 - 2026-11-23: Đơn **hoàn hàng** từ sàn: khi Pancake báo hàng đã về shop, Sugami **tự cộng lại tồn** (giống sàn) và tính là đã xử lý; nếu hàng lỗi/mất thì bấm *Báo hàng lỗi/mất* trong đơn để trừ ra (phiếu `damage`). Đơn hoàn cũ còn giữ tồn vẫn "chờ xử lý": *Nhập lại kho* hoặc *Không nhập kho*. Menu chỉ đếm đơn hoàn chưa xử lý.
 - 2026-11-23: Giao diện **kính sáng** (D16): bố cục kiểu Gmail, góc vuông, khối kính trong mờ viền sáng, số liệu font mono; menu trái chia nhóm Đơn hàng / Kho / Nền tảng; icon sàn hình thoi có logo. Màu nhấn mặc định **xanh ngọc**, đổi được trong Cài đặt → Giao diện (xanh ngọc / xanh da trời / tím pastel, kính sáng / kính tối), lưu theo từng máy.
@@ -122,6 +129,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-23 | [UI] Giao diện kính sáng: bộ màu theo biến CSS, menu nhóm Đơn hàng/Kho/Nền tảng, icon sàn hình thoi, thẻ/nút/bảng/nhãn/KPI mới, chọn tông màu trong Cài đặt | xem commit `[UI]` |
 | 2026-11-23 | [UI] Trang Đơn hàng kiểu Gmail (thanh công cụ, nút lọc thả xuống, tab kênh, đơn cần xử lý in đậm), số đếm trên menu; đơn hoàn có bước "đã xử lý" (nhập lại kho / không nhập) | xem commit `[UI]` |
 | 2026-11-23 | Đơn hoàn từ sàn tự cộng lại tồn khi hàng về shop; nút Báo hàng lỗi/mất trong đơn; bỏ nút Tạo đơn ở menu | xem commit `[P4-P2]` |
+| 2026-11-23 | [P6-SHIP] Vận chuyển cho đơn tự giao qua Allingo, giai đoạn 1: client + chữ ký webhook + trạng thái, bảng shipments, API báo phí/tạo/hủy/in, webhook + worker quét bù, bảng giá và thẻ vận chuyển trong chi tiết đơn, Cài đặt → Vận chuyển, hướng dẫn docs/allingo.md | xem commit `[P6-SHIP]` |
 
 ## P0 — Chuẩn bị & xác minh
 

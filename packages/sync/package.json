@@ -19,7 +19,8 @@
   "dependencies": {
     "@sugami/channels-core": "workspace:*",
     "@sugami/db": "workspace:*",
-    "@sugami/shared": "workspace:*"
+    "@sugami/shared": "workspace:*",
+    "@sugami/carriers-allingo": "workspace:*"
   },
   "devDependencies": {
     "@sugami/channels-pancake": "workspace:*",

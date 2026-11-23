@@ -19,4 +19,5 @@ export function redisConnectionFromUrl(url: string | undefined): RedisConnection
 export const QUEUES = {
   system: 'system',
   pancake: 'pancake',
+  allingo: 'allingo',
 } as const;

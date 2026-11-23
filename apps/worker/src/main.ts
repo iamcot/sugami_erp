@@ -5,6 +5,7 @@ import { QUEUES, redisConnectionFromUrl } from './config.js';
 import { pancakeOrderPass, pancakeOrderSyncEnabled } from './pancake-orders.js';
 import { pancakeStockPass } from './pancake-stock.js';
 import { chatPass, chatSyncEnabled } from './chat.js';
+import { shippingEnabled, shippingPass } from './shipping.js';
 
 const redisOptions = redisConnectionFromUrl(process.env.REDIS_URL);
 // BullMQ in native ESM needs a constructed client; workers require maxRetriesPerRequest: null.
@@ -46,7 +47,9 @@ if (chatOn) {
   console.log('[worker] Pancake chat watch on (every 2 minutes)');
 } else {
   await pancakeQueue.removeJobScheduler('chat');
-  console.log('[worker] Pancake chat watch off (set PANCAKE_CHAT_PAGES or PANCAKE_CHAT_PAGE_ID + PANCAKE_CHAT_TOKEN)');
+  console.log(
+    '[worker] Pancake chat watch off (set PANCAKE_CHAT_PAGES or PANCAKE_CHAT_PAGE_ID + PANCAKE_CHAT_TOKEN)',
+  );
 }
 if (ordersOn || chatOn) {
   pancakeWorker = new Worker(
@@ -67,12 +70,40 @@ if (ordersOn || chatOn) {
   );
 }
 
+// Allingo shipments: stored webhooks are processed every minute; every unfinished shipment is also read
+// from Allingo every 15 minutes (and at start), so nothing is lost while the iMac or the tunnel was down.
+const allingoQueue = new Queue(QUEUES.allingo, { connection });
+let allingoWorker: Worker | undefined;
+if (shippingEnabled()) {
+  await allingoQueue.upsertJobScheduler('webhooks', { every: 60_000 }, { name: 'webhooks' });
+  await allingoQueue.upsertJobScheduler('poll', { every: 15 * 60_000 }, { name: 'poll' });
+  await allingoQueue.add('poll', {}, { jobId: `allingo-poll-startup-${Date.now()}`, removeOnComplete: true });
+  allingoWorker = new Worker(
+    QUEUES.allingo,
+    async (job) => {
+      if (job.name === 'webhooks' || job.name === 'poll') return shippingPass(db, job.name);
+      throw new Error(`Unknown job: ${job.name}`);
+    },
+    { connection, concurrency: 1 },
+  );
+  allingoWorker.on('failed', (job, err) =>
+    console.error(`[worker] allingo ${job?.name} failed:`, err.message),
+  );
+  console.log('[worker] Allingo shipment sync on (webhooks every minute, poll every 15 minutes)');
+} else {
+  await allingoQueue.removeJobScheduler('webhooks');
+  await allingoQueue.removeJobScheduler('poll');
+  console.log('[worker] Allingo shipment sync off (set ALLINGO_APP_ID and ALLINGO_APP_SECRET)');
+}
+
 worker.on('failed', (job, err) => console.error(`[worker] job ${job?.name} failed:`, err.message));
 console.log(`Sugami worker connected to redis://${redisOptions.host}:${redisOptions.port}`);
 
 const shutdown = async (): Promise<void> => {
   await worker.close();
   await pancakeWorker?.close();
+  await allingoWorker?.close();
+  await allingoQueue.close();
   await pancakeQueue.close();
   await db.$disconnect();
   await systemQueue.close();

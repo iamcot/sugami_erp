@@ -6,6 +6,7 @@ import { CustomersModule } from './customers/customers.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { PosModule } from './pos/pos.module.js';
+import { ShippingModule } from './shipping/shipping.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { ContentModule } from './content/content.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -33,6 +34,7 @@ import { UsersController } from './users/users.controller.js';
     CatalogModule,
     OrdersModule,
     PosModule,
+    ShippingModule,
     CustomersModule,
     ListingsModule,
     InventoryModule,

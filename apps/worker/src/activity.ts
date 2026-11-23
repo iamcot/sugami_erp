@@ -20,7 +20,7 @@ const FRESH_MS = 6 * 3600 * 1000;
 const ERROR_EVERY_MS = 30 * 60_000;
 
 export interface Activity extends PushPayload {
-  kind: 'order_new' | 'order_status' | 'order_items' | 'chat_new' | 'error';
+  kind: 'order_new' | 'order_status' | 'order_items' | 'chat_new' | 'shipment' | 'error';
   title: string;
   /** Also send as push (the bell always gets it). */
   push: boolean;
@@ -87,7 +87,11 @@ export async function recordActivity(
   if (items.length === 0) return;
   // burst summaries exist only for push
   const logged = items.filter(
-    (a) => !((a.kind === 'order_new' && a.tag === 'orders-new') || (a.kind === 'chat_new' && a.tag === 'chat-burst')),
+    (a) =>
+      !(
+        (a.kind === 'order_new' && a.tag === 'orders-new') ||
+        (a.kind === 'chat_new' && a.tag === 'chat-burst')
+      ),
   );
   try {
     await db.notification.createMany({

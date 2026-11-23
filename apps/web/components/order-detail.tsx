@@ -4,6 +4,7 @@ import { formatVnd } from '@sugami/shared';
 import { useEffect, useState } from 'react';
 import { useDetail } from '@/components/detail-drawer';
 import { Printer } from 'lucide-react';
+import { ShippingPanel } from '@/components/shipping-panel';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
@@ -43,6 +44,7 @@ interface Order {
   total: number;
   paidAmount: number;
   codAmount: number;
+  fulfillment: string | null;
   shippingFee: number;
   orderedAt: string;
   completedAt: string | null;
@@ -292,6 +294,14 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
           )}
         </div>
       )}
+      <ShippingPanel
+        order={order}
+        onChanged={() =>
+          void api<{ order: Order }>(`/orders/${encodeURIComponent(order.code)}`).then((r) =>
+            setOrder(r.order),
+          )
+        }
+      />
       {ship && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"

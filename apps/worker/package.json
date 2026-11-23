@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sugami/carriers-allingo": "workspace:*",
     "@sugami/channels-pancake": "workspace:*",
     "@sugami/db": "workspace:*",
     "@sugami/notify": "workspace:*",

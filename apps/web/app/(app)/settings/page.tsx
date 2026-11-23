@@ -1,6 +1,6 @@
 'use client';
 
-import { Receipt } from 'lucide-react';
+import { Receipt, Truck } from 'lucide-react';
 import Link from 'next/link';
 import { StockPushCard } from '@/components/stock-push-card';
 import { ThemePicker } from '@/components/theme-picker';
@@ -20,6 +20,16 @@ export default function SettingsPage() {
             </div>
             <p className="mt-1 text-sm text-slate-500">
               Thiết kế bill in bằng máy in nhiệt: dòng chữ, chi tiết đơn hàng, tổng tiền, giảm giá.
+            </p>
+          </Card>
+        </Link>
+        <Link href="/settings/shipping">
+          <Card className="p-4 hover:bg-white/80 dark:hover:bg-white/5">
+            <div className="flex items-center gap-2 font-medium">
+              <Truck className="size-4" /> Vận chuyển
+            </div>
+            <p className="mt-1 text-sm text-slate-500">
+              Điểm lấy hàng, cỡ hộp và mặc định khi tạo vận đơn qua Allingo.
             </p>
           </Card>
         </Link>

@@ -43,6 +43,8 @@
 5. Tên miền **sugami.vn**; ERP dùng `erp.sugami.vn`, webhook dùng `hooks.sugami.vn` (đã xác nhận). Còn cần: iMac là Intel hay Apple Silicon, RAM bao nhiêu?
 6. Claude viết toàn bộ code, commit thẳng lên `main`; theo dõi tiến độ ở `PROGRESS.md` (đã xác nhận).
 
+**Vận chuyển đơn tự giao (23/11/2026, chủ shop xác nhận):** dùng Allingo (đã loại Nhanh.vn; Pancake không có API vận chuyển); khoảng 20 đơn/tháng; giao thường SPX, giao nhanh bên rẻ nhất (thường AhaMove); phí ship mặc định khách trả, có ô cộng phí vào đơn thì shop trả; không mua bảo hiểm; ba cỡ hộp theo cân (≤ 500 g, ≤ 3 kg, > 3 kg); điểm lấy hàng nhập trong app. Chi tiết: [allingo.md](allingo.md).
+
 ## 8.4 Việc cần xác minh kỹ thuật (GĐ0)
 
 - KiotViet: tên sự kiện webhook Retail, header chữ ký, cách băm body; đơn sàn là order hay invoice, có mã đơn sàn/phí không; tạo phiếu nhập qua API có tự đẩy tồn lên sàn không.

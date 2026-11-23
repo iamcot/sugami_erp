@@ -710,6 +710,7 @@ model Order {
   customer            Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
   warehouse           Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   lines               OrderLine[]
+  shipments           Shipment[]
 
   @@index([channelId, orderedAt])
   @@index([orderedAt])
@@ -956,4 +957,95 @@ model ChatConversation {
 
   @@index([lastFromBuyer, lastMessageAt])
   @@map("chat_conversations")
+}
+
+// ---------------------------------------------------------------------------
+// Shipping (self-delivered orders, via the Allingo carrier gateway)
+// ---------------------------------------------------------------------------
+
+/// Small key/value settings edited in the app (shipping: pickup point, box sizes, defaults).
+model AppSetting {
+  key       String   @id @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
+
+/// One waybill created at a carrier for an order. An order can have several (cancel, then create again).
+model Shipment {
+  id                 String          @id @default(uuid(7)) @db.Char(36)
+  orderId            String          @map("order_id") @db.Char(36)
+  /// Gateway: "allingo".
+  provider           String          @db.VarChar(32)
+  /// Gateway shipment id (Allingo "ord_..."); null until the carrier call succeeded.
+  externalId         String?         @map("external_id") @db.VarChar(64)
+  /// Gateway public tracking id ("ALG-...").
+  trackId            String?         @map("track_id") @db.VarChar(64)
+  partnerCode        String          @map("partner_code") @db.VarChar(32)
+  partnerName        String?         @map("partner_name") @db.VarChar(64)
+  serviceId          String          @map("service_id") @db.VarChar(64)
+  serviceName        String?         @map("service_name") @db.VarChar(128)
+  /// The carrier's own waybill number.
+  partnerTrackNo     String?         @map("partner_track_no") @db.VarChar(64)
+  /// Last raw status from the gateway (order level, then carrier level).
+  status             String          @default("queued") @db.VarChar(40)
+  /// waiting, picked_up, delivered, canceled, returning, returned, failed_attempt.
+  phase              String          @default("waiting") @db.VarChar(20)
+  feeDelivery        BigInt          @default(0) @map("fee_delivery")
+  feeInsurance       BigInt          @default(0) @map("fee_insurance")
+  feeCod             BigInt          @default(0) @map("fee_cod")
+  feeTotal           BigInt          @default(0) @map("fee_total")
+  /// Price shown when the seller picked this service.
+  quotedPrice        BigInt          @default(0) @map("quoted_price")
+  codAmount          BigInt          @default(0) @map("cod_amount")
+  /// sender = the shop pays the carrier, receiver = the buyer pays.
+  payee              String          @default("receiver") @db.VarChar(16)
+  weightGrams        Int             @map("weight_grams")
+  lengthCm           Int             @map("length_cm")
+  widthCm            Int             @map("width_cm")
+  heightCm           Int             @map("height_cm")
+  trackLink          String?         @map("track_link") @db.VarChar(500)
+  partnerTrackLink   String?         @map("partner_track_link") @db.VarChar(500)
+  /// Sent with the create call; a repeat of it returns the same shipment instead of a second one.
+  idempotencyKey     String          @unique @map("idempotency_key") @db.VarChar(128)
+  livemode           Boolean         @default(false)
+  /// Stock was taken because this shipment's parcel was picked up (so a return can give it back).
+  pickedUpAt         DateTime?       @map("picked_up_at")
+  deliveredAt        DateTime?       @map("delivered_at")
+  canceledAt         DateTime?       @map("canceled_at")
+  lastEventAt        DateTime?       @map("last_event_at")
+  lastPolledAt       DateTime?       @map("last_polled_at")
+  error              String?         @db.VarChar(500)
+  createdBy          String?         @map("created_by") @db.Char(36)
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  order              Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  events             ShipmentEvent[]
+
+  @@unique([provider, externalId])
+  @@index([orderId])
+  @@index([phase, lastPolledAt])
+  @@map("shipments")
+}
+
+/// Append-only timeline of a shipment: webhook events and polled scans, deduplicated by their gateway id.
+model ShipmentEvent {
+  id              String   @id @default(uuid(7)) @db.Char(36)
+  shipmentId      String   @map("shipment_id") @db.Char(36)
+  /// Gateway event id ("evt_...") or the timeline scan id; unique per shipment.
+  externalEventId String   @map("external_event_id") @db.VarChar(128)
+  status          String   @db.VarChar(40)
+  statusName      String?  @map("status_name") @db.VarChar(191)
+  note            String?  @db.VarChar(500)
+  location        String?  @db.VarChar(255)
+  occurredAt      DateTime @map("occurred_at")
+  /// webhook or poll.
+  source          String   @db.VarChar(16)
+  createdAt       DateTime @default(now()) @map("created_at")
+  shipment        Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@unique([shipmentId, externalEventId])
+  @@index([shipmentId, occurredAt])
+  @@map("shipment_events")
 }

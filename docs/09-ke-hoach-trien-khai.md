@@ -130,3 +130,20 @@ Quy ước:
 ## P6 — Mở rộng (lên kế hoạch chi tiết sau)
 
 Đơn Facebook/Zalo, website riêng, thông báo Telegram/Zalo, báo cáo tuổi tồn/ABC, lịch content.
+
+### P6-SHIP — Vận chuyển cho đơn tự giao qua Allingo ([docs/allingo.md](allingo.md))
+
+| ID | Task | Phụ thuộc | Tiêu chí hoàn thành |
+|----|------|-----------|---------------------|
+| P6-SHIP-01 | `packages/carriers/allingo`: client, ký webhook, ánh xạ trạng thái, `pnpm allingo:probe` | – | Test client/chữ ký/trạng thái xanh |
+| P6-SHIP-02 | Migration `shipments`, `shipment_events`, `app_settings` | – | Prisma generate + migration |
+| P6-SHIP-03 | Tọa độ địa chỉ (chỉ làm nếu probe cho thấy Allingo đòi) | SHIP-01 | 👤 Chạy probe trước |
+| P6-SHIP-04 | API báo phí, tạo, hủy, in vận đơn, cài đặt | SHIP-01, 02 | Test hàm thuần xanh; 👤 thử khóa thử |
+| P6-SHIP-05 | Giao diện: bảng giá, thẻ vận chuyển, Cài đặt → Vận chuyển | SHIP-04 | Typecheck + lint xanh; 👤 xem giao diện |
+| P6-SHIP-06 | Webhook `/webhooks/allingo` + worker xử lý và quét bù 15 phút | SHIP-01, 02 | Test ánh xạ đơn xanh; 👤 thử khóa thử |
+| P6-SHIP-07 | Chuyển khóa thật, chạy 1 tuần với 1 hãng | SHIP-06 | 👤 Allingo duyệt app live |
+| P6-SHIP-08 | Xem phí ship trong trang Bán hàng; tạo/in vận đơn hàng loạt | SHIP-07 | – |
+| P6-SHIP-09 | Lọc đơn giao lỗi/đang hoàn, link tra cứu gửi khách qua chat | SHIP-07 | – |
+| P6-SHIP-10 | Đối soát COD từ ví Allingo, tự "Hoàn tất" | SHIP-07 | – |
+| P6-SHIP-11 | Phí ship thật vào lãi gộp; báo cáo phí ship và tỉ lệ hoàn theo hãng | SHIP-10 | – |
+| P6-SHIP-12 | (Tùy chọn) giao nhanh: hiện tài xế, đặt giờ lấy | SHIP-07 | – |
