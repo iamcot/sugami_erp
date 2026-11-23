@@ -18,6 +18,22 @@ const BRAND: Record<string, string> = {
   gsm: 'bg-sky-500 text-white',
 };
 
+/** Carrier id (as Allingo or Ahamove reports it, lowercase) → logo file in `public/carriers`. */
+const FILE: Record<string, string> = {
+  bestexpress: 'best',
+  best: 'best',
+  jt: 'jnt',
+  jnt: 'jnt',
+  viettelpost: 'viettel',
+  viettel: 'viettel',
+  gsm: 'greensm',
+  greensm: 'greensm',
+  bedelivery: 'be',
+  be: 'be',
+  grabexpress: 'grab',
+};
+const fileOf = (id: string) => FILE[id] ?? id;
+
 /**
  * Carrier mark. Uses the logo file `public/carriers/<id>.png` when the shop has put one there,
  * otherwise a badge in the carrier's colour with its initials.
@@ -36,7 +52,7 @@ export function CarrierLogo({
   if (!missing)
     return (
       <img
-        src={`/carriers/${encodeURIComponent(key)}.png`}
+        src={`/carriers/${encodeURIComponent(fileOf(key))}.png`}
         alt={name ?? id}
         className={`${className} shrink-0 rounded-md bg-white object-contain p-0.5 ring-1 ring-slate-200 dark:ring-white/10`}
         onError={() => setMissing(true)}
