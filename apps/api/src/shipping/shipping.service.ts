@@ -487,6 +487,20 @@ export class ShippingService {
     order = await this.loadOrder(code);
     if (body.serviceId.startsWith(AHAMOVE_PREFIX)) {
       // Ahamove is booked directly; the order moves on when the driver has the parcel, see pos/ahamove.ts
+      // The buyer pays the fee: add it to the order first so the COD sent to Ahamove includes it.
+      const fee = body.addFeeToOrder && body.quotedPrice > 0 ? BigInt(body.quotedPrice) : 0n;
+      const charge = async (sign: 1n | -1n) => {
+        if (fee === 0n) return;
+        await db.order.update({
+          where: { code },
+          data: {
+            otherIncome: { increment: sign * fee },
+            total: { increment: sign * fee },
+            ...(Number(order.codAmount) > 0 ? { codAmount: { increment: sign * fee } } : {}),
+          },
+        });
+      };
+      await charge(1n);
       try {
         await bookOrder(
           db,
@@ -499,6 +513,7 @@ export class ShippingService {
         // a driver is looked for now, or at the booked time: that is the packing deadline
         await db.order.update({ where: { code }, data: { shipByAt: scheduleAt ?? new Date() } });
       } catch (err) {
+        await charge(-1n);
         this.fail(err);
       }
       return this.forOrder(order.code);

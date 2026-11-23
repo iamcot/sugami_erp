@@ -262,13 +262,12 @@ export function PosShippingColumn({
   })();
   const scheduleBad =
     fastCard && schedule === 'custom' && (!customAt || new Date(customAt).getTime() < Date.now());
-  const ahamove = chosen?.partnerId === 'ahamove';
   const addonsFee =
     chosen && chosen.serviceId === extrasFor && !chosen.serviceId.startsWith('ahamove:')
       ? chosen.extras.reduce((sum, x) => sum + (extraPicks[x.id] ? x.price : 0), 0)
       : 0;
   const fee = (chosen?.price ?? 0) + addonsFee;
-  const addedFee = addFee && !ahamove ? fee : 0;
+  const addedFee = addFee ? fee : 0;
 
   const row = (r: Quote) => (
     <button
@@ -454,24 +453,29 @@ export function PosShippingColumn({
                       <span>Không thu hộ (khách đã trả đủ)</span>
                     )}
                   </p>
-                  {!ahamove && (
-                    <label className="flex items-start gap-2">
-                      <input
-                        type="checkbox"
-                        className="mt-1"
-                        checked={addFee}
-                        onChange={(e) => setAddFee(e.target.checked)}
-                      />
-                      <span>
-                        Cộng phí ship vào đơn
-                        <span className="block text-xs text-slate-500">
-                          {addFee
-                            ? 'Shop trả hãng, khách trả lại qua tiền hàng'
-                            : 'Người trả phí theo mặc định đã cài'}
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-slate-500">Ai trả phí ship</p>
+                    {(
+                      [
+                        [false, 'Shop trả', 'Phí ship do shop chịu, tiền khách trả giữ nguyên'],
+                        [true, 'Khách trả', 'Cộng phí ship vào đơn, khách trả lại qua tiền hàng / COD'],
+                      ] as const
+                    ).map(([v, label, hint]) => (
+                      <label key={label} className="flex items-start gap-2">
+                        <input
+                          type="radio"
+                          name="ship-payer"
+                          className="mt-1"
+                          checked={addFee === v}
+                          onChange={() => setAddFee(v)}
+                        />
+                        <span>
+                          {label}
+                          <span className="block text-xs text-slate-500">{hint}</span>
                         </span>
-                      </span>
-                    </label>
-                  )}
+                      </label>
+                    ))}
+                  </div>
                 </section>
 
                 {fastCard && (
@@ -714,7 +718,7 @@ export function PosShippingColumn({
                 quotedPrice: fee,
                 boxKey,
                 ...customBody,
-                addFeeToOrder: addFee && !ahamove,
+                addFeeToOrder: addFee,
                 scheduleAt,
                 ...(chosen.serviceId === extrasFor && requests.length ? { extraChoices: requests } : {}),
                 partnerName: chosen.partnerName,
