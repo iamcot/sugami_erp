@@ -39,9 +39,18 @@ const ON_DEMAND = new Set([
   'greensm',
 ]);
 
-export function groupOf(q: Pick<AllingoQuote, 'partner' | 'estimated_minutes'>): QuoteGroup {
+export function groupOf(
+  q: Pick<AllingoQuote, 'partner' | 'estimated_minutes' | 'mode'> & Partial<AllingoQuote>,
+): QuoteGroup {
+  // Allingo labels nothing itself; the request filter (standard / on_demand) is the authority when we used it
+  if (q.mode) return q.mode === 'on_demand' ? 'fast' : 'standard';
   const id = q.partner.id.toLowerCase();
-  if (ON_DEMAND.has(id) || [...ON_DEMAND].some((p) => id.startsWith(p))) return 'fast';
+  // exact ids: a prefix test would take "bestexpress" for "be"
+  if (ON_DEMAND.has(id) || id.startsWith('grab')) return 'fast';
+  const name = (q.service_name ?? '').toLowerCase();
+  if (/on[- ]?demand|siêu tốc|hỏa tốc|instant/.test(name)) return 'fast';
+  // a range counted in days is a normal parcel whatever the minutes say
+  if (/ngày|day/i.test(q.estimated_delivery_range ?? '')) return 'standard';
   return q.estimated_minutes != null && q.estimated_minutes <= 360 ? 'fast' : 'standard';
 }
 

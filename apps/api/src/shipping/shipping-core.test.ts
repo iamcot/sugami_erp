@@ -112,3 +112,35 @@ describe('speed buckets', () => {
     expect(speedOf(guessMinutes({ etaMinutes: null, serviceName: 'Tiêu chuẩn' }))).toBe('today');
   });
 });
+
+describe('quote groups', () => {
+  const q = (id: string, extra: Record<string, unknown> = {}) => ({
+    service_id: id,
+    service_name: id,
+    partner: { id, name: id },
+    price: 1,
+    ...extra,
+  });
+  it('uses the delivery-mode filter the quote was asked with', () => {
+    const rows = toQuoteRows([
+      q('simulator', { mode: 'standard', estimated_minutes: 5 }),
+      q('x', { mode: 'on_demand' }),
+    ]);
+    expect(rows.find((r) => r.partnerId === 'simulator')?.group).toBe('standard');
+    expect(rows.find((r) => r.partnerId === 'x')?.group).toBe('fast');
+  });
+  it('without a filter: a range in days is a normal parcel and bestexpress is not Be', () => {
+    const rows = toQuoteRows([
+      q('simulator', { estimated_minutes: 5, estimated_delivery_range: '1-2 ngày' }),
+      q('bestexpress', { estimated_minutes: 2880 }),
+      q('ahamove'),
+    ]);
+    expect(rows.map((r) => [r.partnerId, r.group])).toEqual(
+      expect.arrayContaining([
+        ['simulator', 'standard'],
+        ['bestexpress', 'standard'],
+        ['ahamove', 'fast'],
+      ]),
+    );
+  });
+});

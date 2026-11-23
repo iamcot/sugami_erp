@@ -287,8 +287,21 @@ export class ShippingService {
     const fromAllingo = async (): Promise<AllingoQuote[]> => {
       const problem = pickupProblem(settings.pickup);
       if (problem) throw new BadRequestException(problem);
-      const res = await this.client().quote(buildInquiry(settings.pickup, to, parcel));
-      return res.quotes ?? [];
+      const client = this.client();
+      const inquiry = buildInquiry(settings.pickup, to, parcel);
+      // ask per delivery mode: the filter is how Allingo tells normal carriers from driver-direct ones
+      const modes = ['standard', 'on_demand'] as const;
+      const parts = await Promise.allSettled(modes.map((type) => client.quote({ ...inquiry, type })));
+      if (parts.every((x) => x.status === 'fulfilled')) {
+        const seen = new Set<string>();
+        return parts.flatMap((x, i) =>
+          (x.status === 'fulfilled' ? (x.value.quotes ?? []) : [])
+            .filter((q) => !seen.has(q.service_id) && seen.add(q.service_id))
+            .map((q) => ({ ...q, mode: modes[i] })),
+        );
+      }
+      // the filter was refused: one plain request, modes guessed from the carrier
+      return (await client.quote(inquiry)).quotes ?? [];
     };
     const fromAhamove = async (): Promise<AllingoQuote[]> =>
       (

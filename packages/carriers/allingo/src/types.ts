@@ -54,6 +54,8 @@ export interface AllingoQuote {
   available?: boolean;
   error_code?: string | null;
   currency?: string;
+  /** Set by Sugami, not by Allingo: the `type` filter this quote was requested with. */
+  mode?: 'standard' | 'on_demand';
 }
 
 export interface InquiryResponse {
