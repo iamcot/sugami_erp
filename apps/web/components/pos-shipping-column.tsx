@@ -1,7 +1,7 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { ArrowUpDown, Clock, RefreshCw, Wallet, X } from 'lucide-react';
+import { ArrowUpDown, Clock, Info, RefreshCw, Wallet, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CarrierLogo } from '@/components/carrier-logo';
@@ -144,6 +144,7 @@ export function PosShippingColumn({
   const [picked, setPicked] = useState<string | null>(null);
   // Ahamove extras switched on: id → choice (tier code or count); belongs to the service in `extrasFor`
   const [extraPicks, setExtraPicks] = useState<Record<string, { tierCode?: string; num?: number }>>({});
+  const [infoOpen, setInfoOpen] = useState<string | null>(null);
   const [extrasFor, setExtrasFor] = useState<string | null>(null);
   /** The seller pressed X: show the whole list even though a carrier is chosen. */
   const [listOpen, setListOpen] = useState(false);
@@ -552,7 +553,25 @@ export function PosShippingColumn({
                               {x.name}
                               {priceText && <span className="ml-2 text-xs text-slate-500">{priceText}</span>}
                               {x.description && (
-                                <span className="block text-xs text-slate-500">{x.description}</span>
+                                <span className="relative ml-1.5 inline-block align-middle">
+                                  <button
+                                    type="button"
+                                    aria-label={`Chú thích: ${x.name}`}
+                                    className="text-slate-400 hover:text-brand-700"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setInfoOpen((cur) => (cur === x.id ? null : x.id));
+                                    }}
+                                    onBlur={() => setInfoOpen((cur) => (cur === x.id ? null : cur))}
+                                  >
+                                    <Info className="size-4" />
+                                  </button>
+                                  {infoOpen === x.id && (
+                                    <span className="absolute left-0 top-6 z-20 block w-64 rounded-md border border-slate-200 bg-white p-2.5 text-xs font-normal text-slate-600 shadow-lg dark:border-white/15 dark:bg-slate-800 dark:text-slate-200">
+                                      {x.description}
+                                    </span>
+                                  )}
+                                </span>
                               )}
                             </span>
                           </label>
