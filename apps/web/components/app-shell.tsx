@@ -22,7 +22,7 @@ import {
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { api, DATA_CHANGED } from '@/lib/api';
 import { DetailProvider } from './detail-drawer';
 import { GlobalSearch } from './global-search';
 import { NotificationBell } from './notification-bell';
@@ -154,7 +154,18 @@ function useNavCounts(pathname: string): Counts {
     };
     load();
     const t = setInterval(load, 60_000);
-    return () => clearInterval(t);
+    // after any change made in the app (complete an order, adjust stock...) refresh at once
+    let soon: ReturnType<typeof setTimeout> | undefined;
+    const onChanged = () => {
+      clearTimeout(soon);
+      soon = setTimeout(load, 500);
+    };
+    window.addEventListener(DATA_CHANGED, onChanged);
+    return () => {
+      clearInterval(t);
+      clearTimeout(soon);
+      window.removeEventListener(DATA_CHANGED, onChanged);
+    };
   }, [pathname]);
   return c;
 }

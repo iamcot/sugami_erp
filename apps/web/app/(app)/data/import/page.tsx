@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload, XCircle } from 'l
 import { useRef, useState } from 'react';
 import { KiotVietTabs } from '../../../../components/kiotviet-tabs';
 import { Badge, Button, Card, PageHeader } from '../../../../components/ui';
-import { ApiError } from '../../../../lib/api';
+import { ApiError, DATA_CHANGED } from '../../../../lib/api';
 
 interface Issue {
   row: number;
@@ -91,6 +91,7 @@ async function send(kind: Kind, file: File, dryRun: boolean): Promise<Summary> {
     throw Object.assign(new ApiError(body.message ?? `Lỗi ${res.status}`, res.status), {
       issues: body.issues,
     });
+  if (!dryRun) window.dispatchEvent(new Event(DATA_CHANGED));
   return { ...body, kind } as Summary;
 }
 

@@ -3,6 +3,7 @@
 import { Link2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Card } from '@/components/ui';
+import { DATA_CHANGED } from '@/lib/api';
 
 interface Group {
   key: string;
@@ -30,6 +31,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { credentials: 'same-origin', ...init });
   const body = (await r.json().catch(() => ({}))) as T & { message?: string };
   if (!r.ok) throw new Error(body.message ?? `Lỗi ${r.status}`);
+  if ((init?.method ?? 'GET') !== 'GET') window.dispatchEvent(new Event(DATA_CHANGED));
   return body;
 }
 
