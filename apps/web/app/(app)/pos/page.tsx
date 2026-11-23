@@ -740,10 +740,14 @@ export default function PosPage() {
                   const low = v && v.available < l.qty;
                   return (
                     <li key={l.variantId} className="px-3 py-2">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm sm:flex-nowrap">
+                      <div
+                        className={`flex flex-wrap items-center gap-x-3 gap-y-2 text-sm ${shipReady ? '' : 'sm:flex-nowrap'}`}
+                      >
                         <span className="w-5 text-slate-400">{i + 1}</span>
                         <Thumb src={v?.image} className="size-12" />
-                        <span className="min-w-0 flex-1 max-sm:basis-[calc(100%-6.5rem)]">
+                        <span
+                          className={`min-w-0 flex-1 ${shipReady ? 'basis-[calc(100%-6.5rem)]' : 'max-sm:basis-[calc(100%-6.5rem)]'}`}
+                        >
                           <span className="line-clamp-2">
                             {v?.productName}{' '}
                             <span className="text-slate-500">{optionText(v?.optionValues)}</span>
@@ -803,7 +807,7 @@ export default function PosPage() {
                             <Plus className="size-3.5" />
                           </button>
                         </span>
-                        <span className="w-24 sm:w-28">
+                        <span className={`w-24 ${shipReady ? '' : 'sm:w-28'}`}>
                           <Money
                             value={l.price}
                             onChange={(n) =>
@@ -815,7 +819,9 @@ export default function PosPage() {
                             }
                           />
                         </span>
-                        <span className="w-20 text-right font-medium tabular-nums max-sm:flex-1 sm:w-28">
+                        <span
+                          className={`w-20 text-right font-medium tabular-nums max-sm:flex-1 ${shipReady ? 'flex-1' : 'sm:w-28'}`}
+                        >
                           {fmt(l.price * l.qty)}
                         </span>
                         <button
@@ -830,7 +836,9 @@ export default function PosPage() {
                   );
                 })}
               </ul>
-              <div className="grid shrink-0 gap-3 border-t border-slate-200 p-3 text-sm sm:grid-cols-[1fr_auto] dark:border-slate-800">
+              <div
+                className={`grid shrink-0 gap-3 border-t border-slate-200 p-3 text-sm dark:border-slate-800 ${shipReady ? '' : 'sm:grid-cols-[1fr_auto]'}`}
+              >
                 <textarea
                   className="resize-none rounded-md border border-slate-200 bg-transparent p-2 text-sm dark:border-slate-700"
                   rows={3}
@@ -838,7 +846,7 @@ export default function PosPage() {
                   value={p.note}
                   onChange={(e) => patch({ note: e.target.value })}
                 />
-                <div className="w-full space-y-1 sm:w-80 sm:min-w-64">
+                <div className={`w-full space-y-1 ${shipReady ? '' : 'sm:w-80 sm:min-w-64'}`}>
                   <div className="flex justify-between">
                     <span>Tổng tiền hàng ({p.lines.reduce((a, l) => a + l.qty, 0)})</span>
                     <span className="tabular-nums">{fmt(subtotal)}</span>
