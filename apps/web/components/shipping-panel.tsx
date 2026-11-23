@@ -157,6 +157,7 @@ export function ShippingPanel({
         feeNote: order.shippingFeeCharged > 0 ? 'đã cộng vào thu hộ' : 'shop trả',
         cod: order.codAmount,
         qr: order.trackingUrl ?? order.trackingNo ?? order.code,
+        logoUrl: `${window.location.origin}/carriers/ahamove.png`,
       });
       if (!ok) setError('Trình duyệt chặn cửa sổ in, hãy cho phép cửa sổ bật lên cho trang này');
     } catch (e) {

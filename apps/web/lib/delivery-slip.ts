@@ -13,6 +13,8 @@ export interface DeliverySlip {
   cod: number;
   /** What the QR code opens: the tracking link, else the trip code. */
   qr: string;
+  /** Absolute URL of the carrier logo (a print window has no base URL of its own). */
+  logoUrl?: string;
 }
 
 const esc = (s: string) =>
@@ -40,7 +42,9 @@ export function deliverySlipHtml(d: DeliverySlip): string {
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #111; font-size: 13px; }
   .slip { border: 1.5px solid #111; padding: 14px 18px; }
-  h1 { margin: 0 0 6px; font-size: 26px; border-bottom: 1.5px solid #111; padding-bottom: 6px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1.5px solid #111; padding-bottom: 6px; }
+  .head img { height: 44px; width: auto; display: block; }
+  h1 { margin: 0; font-size: 26px; }
   .meta { margin: 8px 0 12px; display: flex; gap: 22px; flex-wrap: wrap; }
   .meta b { font-size: 15px; }
   .top { display: grid; grid-template-columns: 1fr 1fr 110px; gap: 16px; align-items: start; }
@@ -55,7 +59,7 @@ export function deliverySlipHtml(d: DeliverySlip): string {
   p { margin: 2px 0; }
 </style></head><body>
 <div class="slip">
-  <h1>Phiếu giao hàng</h1>
+  <div class="head"><h1>Phiếu giao hàng</h1>${d.logoUrl ? `<img src="${esc(d.logoUrl)}" alt="AhaMove">` : ''}</div>
   <div class="meta"><span>Mã đơn: <b>${esc(d.tripCode)}</b></span><span>Ngày tạo: <b>${esc(at)}</b></span></div>
   <div class="top">
     <div><h2>Người gửi</h2><p>${esc(d.sender.name)}</p><p>${esc(d.sender.address)}</p><p><b>${esc(d.sender.phone)}</b></p></div>
