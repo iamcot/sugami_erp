@@ -72,14 +72,14 @@ export function StockPushCard() {
     });
 
   return (
-    <Card className="mt-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-medium">Đẩy tồn lên Pancake (rồi lên sàn)</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Khi tồn Sugami đổi (bán, nhập, kiểm kho, đơn mới từ sàn), tồn bán được (trừ hàng đang giữ cho đơn
-            giao) tự cập nhật lên Pancake; Pancake đẩy tiếp cho tin đăng đã liên kết. Chỉ đẩy khi đã kéo hết
-            đơn mới và chỉ một nơi đẩy tồn lên sàn: tắt đồng bộ tồn bên KiotViet trước khi bật.
+    <Card className="space-y-5 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-medium">Đẩy tồn lên Pancake, rồi lên sàn</h3>
+          <p className="mt-1 max-w-2xl text-sm text-slate-500">
+            Khi tồn Sugami đổi (bán, nhập, kiểm kho, đơn mới từ sàn), tồn bán được tự cập nhật lên Pancake.
+            Chỉ đẩy khi đã kéo hết đơn mới, và chỉ một nơi đẩy tồn lên sàn: tắt đồng bộ tồn bên KiotViet trước
+            khi bật.
           </p>
         </div>
         {st && (
@@ -96,45 +96,67 @@ export function StockPushCard() {
         )}
       </div>
       {st && (
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-          {st.onPancake.toLocaleString('vi-VN')} mã đã có trên Pancake · {st.pending.toLocaleString('vi-VN')}{' '}
-          mã đang chờ đẩy · lần chạy tự động gần nhất:{' '}
-          {st.lastRunAt ? formatRelativeDateTime(st.lastRunAt) : 'chưa có'} · đơn Pancake kéo về lần cuối:{' '}
-          {st.ordersSyncedAt ? formatRelativeDateTime(st.ordersSyncedAt) : 'chưa có'}
-          {!st.ordersCaughtUp && <span className="text-amber-600"> (chưa kịp, tự động đẩy sẽ chờ)</span>}
-        </p>
+        <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          {(
+            [
+              ['Mã đã có trên Pancake', st.onPancake.toLocaleString('vi-VN')],
+              ['Mã đang chờ đẩy', st.pending.toLocaleString('vi-VN')],
+              ['Lần chạy tự động gần nhất', st.lastRunAt ? formatRelativeDateTime(st.lastRunAt) : 'chưa có'],
+              [
+                'Đơn Pancake kéo về lần cuối',
+                st.ordersSyncedAt ? formatRelativeDateTime(st.ordersSyncedAt) : 'chưa có',
+              ],
+            ] as const
+          ).map(([label, value]) => (
+            <div key={label} className="rounded-lg bg-slate-50 px-3 py-2.5 dark:bg-white/5">
+              <dt className="text-xs text-slate-500">{label}</dt>
+              <dd className="mt-0.5 font-medium tabular-nums">{value}</dd>
+            </div>
+          ))}
+          {!st.ordersCaughtUp && (
+            <p className="col-span-full text-xs text-amber-600">Chưa kéo kịp đơn mới, tự động đẩy sẽ chờ.</p>
+          )}
+        </dl>
       )}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button variant="secondary" disabled={busy !== null} onClick={() => doCompare(false)}>
-          1. Xem chênh lệch với Pancake
-        </Button>
-        {confirmApply ? (
-          <>
-            <Button disabled={busy !== null} onClick={() => doCompare(true)}>
-              Chắc chắn: đặt Pancake theo Sugami
+      <div className="space-y-4">
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Lần đầu</p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" disabled={busy !== null} onClick={() => doCompare(false)}>
+              1. Xem chênh lệch với Pancake
             </Button>
-            <Button variant="ghost" onClick={() => setConfirmApply(false)}>
-              Hủy
+            {confirmApply ? (
+              <>
+                <Button disabled={busy !== null} onClick={() => doCompare(true)}>
+                  Chắc chắn: đặt Pancake theo Sugami
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmApply(false)}>
+                  Hủy
+                </Button>
+              </>
+            ) : (
+              <Button variant="secondary" disabled={busy !== null} onClick={() => setConfirmApply(true)}>
+                2. Đặt tồn Pancake theo Sugami (tất cả)
+              </Button>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Bấm 1 để xem, 2 để đồng bộ cả cửa hàng (tồn Sugami đè lên Pancake), rồi mới bật tự động.
+          </p>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Thay đổi chờ đẩy</p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" disabled={busy !== null} onClick={() => doRun(true)}>
+              Xem thay đổi chờ đẩy
             </Button>
-          </>
-        ) : (
-          <Button variant="secondary" disabled={busy !== null} onClick={() => setConfirmApply(true)}>
-            2. Đặt tồn Pancake theo Sugami (tất cả)
-          </Button>
-        )}
-        <Button variant="secondary" disabled={busy !== null} onClick={() => doRun(true)}>
-          Xem thay đổi chờ đẩy
-        </Button>
-        <Button variant="secondary" disabled={busy !== null} onClick={() => doRun(false)}>
-          Đẩy thay đổi ngay
-        </Button>
+            <Button variant="secondary" disabled={busy !== null} onClick={() => doRun(false)}>
+              Đẩy thay đổi ngay
+            </Button>
+          </div>
+        </div>
       </div>
-      <p className="mt-2 text-xs text-slate-500">
-        Lần đầu: bấm 1 để xem, 2 để đồng bộ cả cửa hàng (ghi tồn Sugami đè lên Pancake), rồi mới bật tự động.
-      </p>
-      {busy && (
-        <p className="mt-2 text-sm text-slate-500">Đang chạy… có thể mất vài phút với hàng nghìn mã.</p>
-      )}
+      {busy && <p className="text-sm text-slate-500">Đang chạy… có thể mất vài phút với hàng nghìn mã.</p>}
       {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
       {compare && (
         <div className="mt-3 text-sm">

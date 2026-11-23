@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@sugami/ui';
-import { Check, Palette } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ACCENTS, applyTheme, DEFAULT_THEME, MODES, readTheme, type Theme } from '@/lib/theme';
 import { Card } from './ui';
@@ -18,14 +18,11 @@ export function ThemePicker() {
   };
 
   return (
-    <Card className="mt-4 p-4">
-      <div className="flex items-center gap-2 font-medium">
-        <Palette className="size-4" /> Giao diện
-      </div>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+    <Card className="p-4">
+      <p className="text-sm text-slate-600 dark:text-slate-400">
         Chọn màu nhấn và nền sáng/tối. Lưu riêng trên từng máy, mỗi người tự chọn được.
       </p>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid gap-5 sm:grid-cols-2">
         <div>
           <p className="hud-label mb-2 text-slate-500">Màu nhấn</p>
           <div className="flex flex-wrap gap-2">

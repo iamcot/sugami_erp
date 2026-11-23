@@ -112,10 +112,10 @@ export default function ShippingSettingsPage() {
   };
 
   return (
-    <>
+    <div className="max-w-4xl">
       <PageHeader
         title="Vận chuyển"
-        description="Điểm lấy hàng, cỡ hộp và mặc định khi tạo vận đơn qua Allingo"
+        description="Điểm lấy hàng, cỡ hộp, hãng giao thường và dịch vụ AhaMove"
       />
       <Card className="mb-4 flex flex-wrap items-center gap-3 p-4 text-sm">
         <span className="font-medium">Kết nối Allingo</span>
@@ -342,6 +342,6 @@ export default function ShippingSettingsPage() {
           <span className={`text-sm ${msg.ok ? 'text-emerald-600' : 'text-rose-600'}`}>{msg.text}</span>
         )}
       </div>
-    </>
+    </div>
   );
 }
