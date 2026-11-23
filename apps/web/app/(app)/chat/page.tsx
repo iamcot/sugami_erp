@@ -1,8 +1,8 @@
 'use client';
 
 import { cn } from '@sugami/ui';
-import { ArrowLeft, MessageCircle, RefreshCw, Search, Send, Star } from 'lucide-react';
-import { Suspense, useEffect, useState } from 'react';
+import { ArrowLeft, CornerDownLeft, MessageCircle, RefreshCw, Search, Star } from 'lucide-react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
@@ -63,6 +63,15 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const [draft, setDraft] = useState('');
+  const box = useRef<HTMLTextAreaElement>(null);
+
+  // Grow with the text (up to the CSS max height), shrink back after sending.
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [draft]);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -82,6 +91,7 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
       });
       setDraft('');
       setReload((n) => n + 1);
+      box.current?.focus();
     } catch (e) {
       setSendError((e as Error).message);
     } finally {
@@ -154,23 +164,37 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
       {conv.kind === 'INBOX' ? (
         <div className="space-y-2 border-t border-slate-200/70 px-4 py-3 dark:border-slate-700/60">
           {sendError && <p className="text-sm text-rose-600">{sendError}</p>}
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void send();
-            }}
-            maxLength={2000}
-            rows={2}
-            placeholder="Nhập tin trả lời khách…"
-            className="w-full resize-none rounded-lg border border-slate-200 bg-white/80 px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-white/5"
-          />
-          <div className="flex items-center justify-end gap-2">
-            <span className="mr-auto hidden text-xs text-slate-500 sm:inline">Ctrl/⌘ + Enter để gửi</span>
-            <Button onClick={send} disabled={sending || !draft.trim()}>
-              <Send className="size-4" /> {sending ? 'Đang gửi…' : 'Gửi'}
-            </Button>
+          <div className="flex items-end gap-2 rounded-xl border border-slate-200 bg-white/80 py-2 pl-3 pr-2 focus-within:border-brand-500 dark:border-slate-700 dark:bg-white/5">
+            <textarea
+              ref={box}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter sends, Shift+Enter breaks the line; Enter that confirms Vietnamese IME text is left alone.
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+              maxLength={2000}
+              rows={1}
+              placeholder="Nhập tin trả lời khách…"
+              className="max-h-40 min-h-6 flex-1 resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-slate-400"
+            />
+            <button
+              type="button"
+              onClick={() => void send()}
+              disabled={sending || !draft.trim()}
+              aria-label="Gửi (Enter)"
+              title="Gửi (Enter)"
+              className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-500 text-white transition hover:bg-brand-600 disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-white/10 dark:disabled:text-slate-500"
+            >
+              {sending ? <RefreshCw className="size-4 animate-spin" /> : <CornerDownLeft className="size-4" />}
+            </button>
           </div>
+          <p className="text-[11px] text-slate-500">
+            Nhấn <b>Enter</b> để gửi · <b>Shift + Enter</b> để xuống dòng
+          </p>
         </div>
       ) : (
         <p className="border-t border-slate-200/70 px-4 py-2 text-xs text-slate-500 dark:border-slate-700/60">
