@@ -26,6 +26,7 @@ import {
   quoteStops,
 } from '../pos/ahamove.js';
 import { runPosAction } from '../pos/pos-orders.js';
+import { addShippingFee, removeShippingFee } from '../pos/shipping-fee-charge.js';
 import { PosError } from '../pos/pos-orders.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -488,19 +489,7 @@ export class ShippingService {
     if (body.serviceId.startsWith(AHAMOVE_PREFIX)) {
       // Ahamove is booked directly; the order moves on when the driver has the parcel, see pos/ahamove.ts
       // The buyer pays the fee: add it to the order first so the COD sent to Ahamove includes it.
-      const fee = body.addFeeToOrder && body.quotedPrice > 0 ? BigInt(body.quotedPrice) : 0n;
-      const charge = async (sign: 1n | -1n) => {
-        if (fee === 0n) return;
-        await db.order.update({
-          where: { code },
-          data: {
-            otherIncome: { increment: sign * fee },
-            total: { increment: sign * fee },
-            ...(Number(order.codAmount) > 0 ? { codAmount: { increment: sign * fee } } : {}),
-          },
-        });
-      };
-      await charge(1n);
+      await addShippingFee(db, code, body.addFeeToOrder ? BigInt(Math.max(0, body.quotedPrice)) : 0n);
       try {
         await bookOrder(
           db,
@@ -513,7 +502,7 @@ export class ShippingService {
         // a driver is looked for now, or at the booked time: that is the packing deadline
         await db.order.update({ where: { code }, data: { shipByAt: scheduleAt ?? new Date() } });
       } catch (err) {
-        await charge(-1n);
+        await removeShippingFee(db, order.id);
         this.fail(err);
       }
       return this.forOrder(order.code);
@@ -637,6 +626,7 @@ export class ShippingService {
         shippingFee: parcel.payee === 'sender' ? BigInt(feeTotal) : 0n,
       };
       if (body.addFeeToOrder && addedFee > 0) {
+        orderData.shippingFeeCharged = { increment: BigInt(addedFee) };
         orderData.otherIncome = { increment: BigInt(addedFee) };
         orderData.total = { increment: BigInt(addedFee) };
         if (Number(order.codAmount) > 0) orderData.codAmount = { increment: BigInt(addedFee) };
@@ -662,6 +652,8 @@ export class ShippingService {
       where: { id: s.id },
       data: { phase: 'canceled', status: 'canceled', canceledAt: new Date() },
     });
+    // the buyer's share of the fee goes back out of the order
+    await removeShippingFee(db, s.orderId);
     return { ok: true };
   }
 
@@ -705,10 +697,14 @@ export class ShippingService {
     if (!s.scheduledAt || s.phase !== 'waiting')
       throw new ConflictException('Vận đơn này không phải chuyến hẹn giờ đang chờ');
     const quoted = Number(s.quotedPrice);
+    // cancelling takes the buyer's share of the fee out of the order; the new waybill puts it back
+    const buyerPays =
+      ((await db.order.findUnique({ where: { code }, select: { shippingFeeCharged: true } }))
+        ?.shippingFeeCharged ?? 0n) > 0n;
     await this.cancel(s.id);
     return this.create(
       code,
-      { serviceId: s.serviceId ?? '', quotedPrice: quoted, addFeeToOrder: false },
+      { serviceId: s.serviceId ?? '', quotedPrice: quoted, addFeeToOrder: buyerPays },
       userId,
     );
   }

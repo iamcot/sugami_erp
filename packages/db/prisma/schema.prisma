@@ -697,6 +697,8 @@ model Order {
   codAmount           BigInt      @default(0) @map("cod_amount")
   /// Fee paid to the carrier ("Phí trả ĐTGH").
   shippingFee         BigInt      @default(0) @map("shipping_fee")
+  /// Part of the order total that is the shipping fee the buyer pays (added at waybill creation, removed on cancel).
+  shippingFeeCharged  BigInt      @default(0) @map("shipping_fee_charged")
   orderedAt           DateTime    @map("ordered_at")
   completedAt         DateTime?   @map("completed_at")
   /// kiotviet_excel, shopee_api, manual...

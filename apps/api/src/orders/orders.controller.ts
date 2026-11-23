@@ -247,6 +247,7 @@ export class OrdersController {
         paidAmount: Number(o.paidAmount),
         codAmount: Number(o.codAmount),
         shippingFee: Number(o.shippingFee),
+        shippingFeeCharged: Number(o.shippingFeeCharged),
         platformFee: Number(o.platformFee),
         lines: o.lines.map((l) => ({
           ...l,

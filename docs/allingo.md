@@ -102,3 +102,9 @@ Chạy thử webhook không cần Allingo: `curl` tới `/api/webhooks/allingo` 
 - `GET /partners/:id/services` trả từng dịch vụ kèm `limits` (tải trọng, kích thước), `supports_cod`, `supports_insurance` và `addons` (có `key`, `price`, `price_type` flat, `carrier_option`). Sugami nạp danh sách này (cache 1 giờ): dịch vụ không nhận được hàng/COD bị đánh dấu không khả dụng kèm lý do; addon có `key` (không phải `carrier_option`) hiện ở mục "Dịch vụ mở rộng" của thẻ hãng, gửi qua `addon_keys` khi tạo vận đơn.
 - Môi trường TEST: chỉ Simulator có giá khi báo giá; Simulator **không hỗ trợ COD**. `estimated_source` của Simulator là `service_config` (số cố định), nên "5 phút" và "1-2 ngày" tự mâu thuẫn.
 - Giá addon trong danh mục: GHN, SPX miễn phí; VNPost và Viettel Post "đồng kiểm" 16.200 đ và 16.500 đ; Lalamove chưa có giá. **Chưa kiểm chứng:** cộng phí addon vào giá báo giá do Sugami tự tính từ danh mục, chưa so với phí thật trên đơn Allingo.
+
+## Ai trả phí ship
+
+- Chọn ở cột giữa khi bán giao hàng: **Shop trả** (mặc định) hoặc **Khách trả (cộng vào đơn)**. Khách trả: phí cộng vào tổng đơn, "Thu khác" và COD (nếu có COD); số đã cộng lưu ở `orders.shipping_fee_charged` (migration `20261123150000_shipping_fee_charged`).
+- Hủy vận đơn/chuyến thì phí đã cộng được trừ ra khỏi đơn; "Tìm tài xế ngay" hủy rồi đặt lại thì cộng lại.
+- Thẻ vận chuyển ghi "khách trả, đã cộng vào đơn" khi `shipping_fee_charged > 0`, ngược lại "shop trả".

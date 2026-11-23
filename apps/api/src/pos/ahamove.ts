@@ -1,3 +1,4 @@
+import { removeShippingFee } from './shipping-fee-charge.js';
 import {
   ahamoveFromEnv,
   AhamoveError,
@@ -293,6 +294,7 @@ export async function cancelTrip(db: PrismaClient, code: string, reason: string)
   } catch (err) {
     return explain(err);
   }
+  await removeShippingFee(db, o.id);
   // still packing: free the order so another trip can be booked; already handed over: keep the record
   await db.order.update({
     where: { code },

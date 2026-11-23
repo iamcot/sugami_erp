@@ -47,6 +47,7 @@ interface Order {
   codAmount: number;
   fulfillment: string | null;
   shippingFee: number;
+  shippingFeeCharged: number;
   orderedAt: string;
   completedAt: string | null;
   stockAppliedAt: string | null;

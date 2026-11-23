@@ -95,6 +95,7 @@ export function ShippingPanel({
     trackingUrl: string | null;
     shippingStatus: string | null;
     shippingFee: number;
+    shippingFeeCharged: number;
   };
   onChanged: () => void;
   /** Open the price table as soon as the order can take a waybill (right after a delivery order is made). */
@@ -243,6 +244,9 @@ export function ShippingPanel({
               <div>
                 <span className="text-slate-500">Phí giao hàng: </span>
                 <span className="font-mono">{formatVnd(order.shippingFee)}</span>
+                <span className="text-slate-500">
+                  {order.shippingFeeCharged > 0 ? ' (khách trả, đã cộng vào đơn)' : ' (shop trả)'}
+                </span>
               </div>
             )}
             {order.trackingUrl &&
@@ -324,7 +328,15 @@ export function ShippingPanel({
             <div>
               <span className="text-slate-500">Phí giao hàng: </span>
               <span className="font-mono">{formatVnd(active.feeTotal || active.quotedPrice)}</span>{' '}
-              <span className="text-slate-500">({active.payee === 'sender' ? 'shop trả' : 'khách trả'})</span>
+              <span className="text-slate-500">
+                (
+                {order.shippingFeeCharged > 0
+                  ? 'khách trả, đã cộng vào đơn'
+                  : active.payee === 'sender'
+                    ? 'shop trả'
+                    : 'khách trả'}
+                )
+              </span>
             </div>
             {active.codAmount > 0 && (
               <div>
