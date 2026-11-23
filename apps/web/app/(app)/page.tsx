@@ -4,7 +4,7 @@ import { formatVnd } from '@sugami/shared';
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Badge, Card, PageHeader } from '@/components/ui';
+import { Badge, Card, Kpi, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import type { InventoryResponse } from '@/lib/inventory';
 
@@ -214,11 +214,7 @@ export default function DashboardPage() {
       {d && <HealthCard checks={healthChecks(d)} />}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {(kpis.length ? kpis : Array.from({ length: 4 }, () => null)).map((k, i) => (
-          <Card key={k?.label ?? i} className="p-4">
-            <p className="text-xs text-slate-500 sm:text-sm dark:text-slate-400">{k?.label ?? ' '}</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums sm:text-2xl">{k?.value ?? '…'}</p>
-            <p className="mt-1 text-xs text-slate-500">{k?.sub ?? ' '}</p>
-          </Card>
+          <Kpi key={k?.label ?? i} label={k?.label ?? ' '} value={k?.value ?? '…'} sub={k?.sub ?? ' '} />
         ))}
       </div>
 
@@ -242,7 +238,7 @@ export default function DashboardPage() {
               return (
                 <div key={s.date} className="flex flex-1 flex-col items-center gap-2">
                   <div
-                    className="flex w-full max-w-8 flex-col-reverse overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800"
+                    className="flex w-full max-w-8 flex-col-reverse overflow-hidden rounded-sm bg-slate-200/50 dark:bg-white/5"
                     style={{ height: '10rem' }}
                     title={`${dayLabel(s.date)}: ${formatVnd(totals[i] ?? 0)} · ${s.orders} đơn`}
                   >

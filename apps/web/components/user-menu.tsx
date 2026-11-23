@@ -41,10 +41,10 @@ export function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full py-0.5 pl-0.5 pr-2 text-white hover:bg-white/20"
+        className="flex items-center gap-2 rounded-full py-0.5 pl-0.5 pr-2 text-slate-700 hover:bg-white/70 dark:text-slate-200 dark:hover:bg-white/10"
         aria-label="Tài khoản"
       >
-        <span className="grid size-8 place-items-center rounded-full bg-white text-xs font-semibold text-brand-700">
+        <span className="grid size-8 place-items-center rounded-full bg-gradient-to-b from-violet-300 to-violet-500 text-xs font-semibold text-white shadow-[0_2px_8px_rgba(139,92,246,0.35)]">
           {initials}
         </span>
         <span className="hidden max-w-32 truncate text-sm font-medium md:block">{me?.name}</span>

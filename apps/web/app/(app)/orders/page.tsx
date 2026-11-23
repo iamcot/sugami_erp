@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
+import { PlatformDiamond } from '@/components/platform-icons';
 import { Badge, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
@@ -105,23 +106,21 @@ const STATUS: Record<string, { label: string; tone: 'neutral' | 'brand' | 'succe
 
 const fmtTime = (s: string) => formatRelativeDateTime(s);
 
-const CHANNEL_ICON: Record<string, { letter: string; cls: string }> = {
-  shopee: { letter: 'S', cls: 'bg-orange-500 text-white' },
-  tiktok: { letter: 'T', cls: 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' },
-  store: { letter: 'Đ', cls: 'bg-brand-600 text-white' },
-};
+const KNOWN_CHANNELS = ['shopee', 'tiktok', 'store'];
 
 function ChannelIcon({ channel }: { channel: OrderRow['channel'] }) {
-  const i = CHANNEL_ICON[channel.code] ?? {
-    letter: channel.name.slice(0, 1),
-    cls: 'bg-slate-400 text-white',
-  };
+  if (KNOWN_CHANNELS.includes(channel.code))
+    return (
+      <span title={channel.name}>
+        <PlatformDiamond platform={channel.code} className="size-5" />
+      </span>
+    );
   return (
     <span
       title={channel.name}
-      className={`grid size-5 shrink-0 place-items-center rounded text-[11px] font-bold ${i.cls}`}
+      className="grid size-5 shrink-0 place-items-center rounded bg-slate-400 text-[11px] font-bold text-white"
     >
-      {i.letter}
+      {channel.name.slice(0, 1)}
     </span>
   );
 }

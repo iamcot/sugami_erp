@@ -713,12 +713,12 @@ export default function PosPage() {
               <button
                 aria-label="Đơn gần đây"
                 title="Đơn đã tạo gần đây"
-                className="rounded-md bg-brand-700 p-2 text-white hover:bg-white/20"
+                className="rounded-md bg-brand-700 p-2 text-white hover:bg-brand-600"
                 onClick={() => setRecentOpen((o) => !o)}
               >
                 <ListOrdered className="size-5" />
               </button>
-              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-white px-3 py-2 text-sm dark:bg-slate-900">
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-slate-300/80 bg-white/80 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
                 <Search className="size-4 text-slate-400" />
                 <input
                   ref={searchRef}
@@ -784,7 +784,7 @@ export default function PosPage() {
               {drafts.map((d) => (
                 <div
                   key={d.id}
-                  className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${d.id === active && !orderTab ? 'bg-white font-medium text-brand-700' : 'bg-brand-700 text-white'}`}
+                  className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${d.id === active && !orderTab ? 'bg-brand-700 font-medium text-white' : 'bg-white/70 text-slate-700 dark:bg-white/10 dark:text-slate-200'}`}
                 >
                   <button
                     onClick={() => {
@@ -803,7 +803,7 @@ export default function PosPage() {
               {orderTabs.map((code) => (
                 <div
                   key={code}
-                  className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${orderTab === code ? 'bg-white font-medium text-brand-700' : 'bg-brand-700 text-white'}`}
+                  className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${orderTab === code ? 'bg-brand-700 font-medium text-white' : 'bg-white/70 text-slate-700 dark:bg-white/10 dark:text-slate-200'}`}
                 >
                   <button onClick={() => setOrderTab(code)} className="flex items-center gap-1">
                     <Receipt className="size-3.5" /> {code}
@@ -821,7 +821,7 @@ export default function PosPage() {
                 </div>
               ))}
               <button
-                className="shrink-0 rounded-md p-1.5 text-white hover:bg-white/20"
+                className="shrink-0 rounded-md p-1.5 text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-white/10"
                 aria-label="Thêm hóa đơn"
                 onClick={() => {
                   setOrderTab(null);

@@ -93,7 +93,7 @@ export function DataTable<T>({
     a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left';
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="glass overflow-hidden rounded-xl">
       <div
         ref={scroller}
         onScroll={measure}
@@ -112,7 +112,7 @@ export function DataTable<T>({
         className="overflow-x-auto"
       >
         <table className={cn('w-full text-sm', loading && 'opacity-60')}>
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+          <thead className="hud-label border-b border-slate-300/60 bg-white/40 text-slate-500 dark:border-white/10 dark:bg-black/20 dark:text-slate-400">
             <tr>
               {columns.map((c) => {
                 const active = sort && c.sortKey === sort.sort;
@@ -125,7 +125,7 @@ export function DataTable<T>({
                       c.className,
                       c.sticky &&
                         cn(
-                          'sticky right-0 bg-slate-50 dark:bg-slate-900',
+                          'sticky right-0 bg-[#f4f7fb] dark:bg-[#0b1322]',
                           covering &&
                             'border-l border-slate-300 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.25)] dark:border-slate-600',
                         ),
@@ -134,8 +134,8 @@ export function DataTable<T>({
                     {c.sortKey && onSort ? (
                       <button
                         className={cn(
-                          'inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-100',
-                          active && 'text-slate-900 dark:text-slate-100',
+                          'inline-flex items-center gap-1 uppercase hover:text-slate-900 dark:hover:text-slate-100',
+                          active && 'text-brand-700 dark:text-brand-500',
                         )}
                         onClick={() =>
                           onSort({
@@ -160,7 +160,7 @@ export function DataTable<T>({
               })}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          <tbody className="divide-y divide-slate-200/70 dark:divide-white/[0.06]">
             {rows.length === 0 && (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-10 text-center text-slate-500">
@@ -175,9 +175,10 @@ export function DataTable<T>({
                   key={rowKey(r)}
                   className={cn(
                     'group',
+                    'transition-shadow',
                     isSelected?.(r)
-                      ? 'bg-brand-50 dark:bg-brand-700/20'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                      ? 'bg-gradient-to-r from-brand-500/20 to-brand-500/5'
+                      : 'hover:relative hover:z-[1] hover:bg-white/90 hover:shadow-[0_0_0_1px_rgb(var(--accent-rgb)/0.35),0_6px_18px_rgba(60,80,140,0.16)] dark:hover:bg-white/[0.07]',
                     onRowClick && 'cursor-pointer',
                   )}
                   onClick={onRowClick ? () => onRowClick(r) : undefined}
@@ -188,11 +189,12 @@ export function DataTable<T>({
                       className={cn(
                         'px-4 py-2.5',
                         alignClass(c.align),
+                        c.align === 'right' && 'font-mono text-[12.5px] tracking-tight tabular-nums',
                         c.className,
                         c.sticky &&
                           (isSelected?.(r)
-                            ? 'bg-brand-50 dark:bg-brand-700/20'
-                            : 'bg-white group-hover:bg-slate-50 dark:bg-slate-900 dark:group-hover:bg-slate-800') +
+                            ? 'bg-brand-50 dark:bg-[#0f2230]'
+                            : 'bg-[#f7f9fc] group-hover:bg-white dark:bg-[#0b1322] dark:group-hover:bg-[#121c2e]') +
                             ' sticky right-0' +
                             (covering
                               ? ' border-l border-slate-300 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.25)] dark:border-slate-600'
@@ -215,14 +217,14 @@ export function DataTable<T>({
         </table>
       </div>
       {onPage && total !== undefined && (
-        <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-4 py-2 text-sm text-slate-500 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-2 border-t border-slate-300/60 bg-white/30 px-4 py-2 font-mono text-xs text-slate-500 dark:border-white/10 dark:bg-black/20">
           <span>
             {total === 0 ? 0 : ((page ?? 1) - 1) * (pageSize ?? 0) + 1}–
             {Math.min((page ?? 1) * (pageSize ?? 0), total)} / {total.toLocaleString('vi-VN')}
           </span>
           <div className="flex items-center gap-1">
             <button
-              className="rounded-md p-1.5 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-800"
+              className="rounded-md border border-slate-300/70 bg-white/70 p-1 hover:bg-white disabled:opacity-40 dark:border-white/15 dark:bg-white/5"
               disabled={(page ?? 1) <= 1}
               onClick={() => onPage((page ?? 1) - 1)}
               aria-label="Trang trước"
@@ -233,7 +235,7 @@ export function DataTable<T>({
               {page ?? 1}/{pages}
             </span>
             <button
-              className="rounded-md p-1.5 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-800"
+              className="rounded-md border border-slate-300/70 bg-white/70 p-1 hover:bg-white disabled:opacity-40 dark:border-white/15 dark:bg-white/5"
               disabled={(page ?? 1) >= pages}
               onClick={() => onPage((page ?? 1) + 1)}
               aria-label="Trang sau"

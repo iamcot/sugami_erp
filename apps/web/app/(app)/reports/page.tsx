@@ -2,7 +2,7 @@
 
 import { formatVnd } from '@sugami/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, PageHeader } from '@/components/ui';
+import { Card, Kpi, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 
 type By = 'month' | 'channel' | 'product' | 'sku';
@@ -120,11 +120,7 @@ export default function ReportsPage() {
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {(kpis.length ? kpis : Array.from({ length: 4 }, () => null)).map((k, i) => (
-          <Card key={k?.label ?? i} className="p-4">
-            <p className="text-xs text-slate-500 sm:text-sm dark:text-slate-400">{k?.label ?? ' '}</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums sm:text-2xl">{k?.value ?? '…'}</p>
-            <p className="mt-1 text-xs text-slate-500">{k?.sub ?? ' '}</p>
-          </Card>
+          <Kpi key={k?.label ?? i} label={k?.label ?? ' '} value={k?.value ?? '…'} sub={k?.sub ?? ' '} />
         ))}
       </div>
       {t && t.estimated > 0 && (
