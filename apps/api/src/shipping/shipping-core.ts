@@ -61,7 +61,14 @@ export type Speed = 'instant' | 'h4' | 'today' | 'other';
  * Minutes a courier needs: the carrier's own estimate when it gives one, otherwise a guess from the
  * service name ("Siêu tốc", "2H", "Nhanh"...), so couriers can be grouped and sorted by time.
  */
-export function guessMinutes(q: { etaMinutes: number | null; serviceName: string }): number | null {
+export function guessMinutes(q: {
+  etaMinutes: number | null;
+  serviceName: string;
+  etaText?: string | null;
+}): number | null {
+  // "1-2 ngày": the carrier's own text is days, whatever minutes it also reports
+  const days = /(\d+)(?:\s*-\s*(\d+))?\s*ngày/i.exec(q.etaText ?? '');
+  if (days) return Number(days[2] ?? days[1]) * 1440;
   if (q.etaMinutes != null) return q.etaMinutes;
   const n = q.serviceName.toLowerCase();
   const hours = /(\d+)\s*(h\b|giờ)/.exec(n);
@@ -137,10 +144,10 @@ export function toQuoteRows(quotes: AllingoQuote[]): QuoteRow[] {
     if (ok.length > 1) {
       const minPrice = Math.min(...ok.map((r) => r.price));
       ok.forEach((r) => (r.cheapest = r.price === minPrice));
-      const withEta = ok.filter((r) => r.etaMinutes != null);
+      const withEta = ok.filter((r) => r.sortMinutes != null);
       if (withEta.length > 1) {
-        const minEta = Math.min(...withEta.map((r) => r.etaMinutes!));
-        withEta.forEach((r) => (r.fastest = r.etaMinutes === minEta));
+        const minEta = Math.min(...withEta.map((r) => r.sortMinutes!));
+        withEta.forEach((r) => (r.fastest = r.sortMinutes === minEta));
       }
     }
   }

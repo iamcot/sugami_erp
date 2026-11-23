@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildInquiry, groupOf, orderWeight, pickBox, toQuoteRows } from './shipping-core.js';
+import { buildInquiry, groupOf, guessMinutes, orderWeight, pickBox, toQuoteRows } from './shipping-core.js';
 import { DEFAULT_SHIPPING } from './shipping-settings.js';
 
 const q = (partner: string, price: number, minutes: number | null, available = true) => ({
@@ -167,5 +167,11 @@ describe('pickup times', () => {
     const out = applyCarrierSettings(rows, { spx: { enabled: true, pickupTimes: ['10:00'] } });
     expect(out.map((r) => r.partnerId).sort()).toEqual(['ahamove', 'spx']);
     expect(applyCarrierSettings(rows, {}).length).toBe(3);
+  });
+});
+
+describe('guessMinutes with day texts', () => {
+  it('reads "1-2 ngày" as days even when minutes are reported', () => {
+    expect(guessMinutes({ etaMinutes: 30, serviceName: 'X', etaText: 'Dự kiến 1-2 ngày' })).toBe(2880);
   });
 });
