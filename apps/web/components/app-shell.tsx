@@ -266,6 +266,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.2)]" />{' '}
             <SyncAge />
           </span>
+          <ChatButton active={pathname.startsWith('/chat')} />
           <NotificationBell />
           <UserMenu />
         </div>
@@ -321,4 +322,40 @@ function SyncAge() {
   if (m < 60) return <>Đồng bộ {m} phút trước</>;
   if (m < 1440) return <>Đồng bộ {Math.floor(m / 60)} giờ trước</>;
   return <>Đồng bộ {Math.floor(m / 1440)} ngày trước</>;
+}
+
+/** Phones only (the sidebar has Chat on wide screens): chat icon with the count of chats needing a reply. */
+function ChatButton({ active }: { active: boolean }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const load = () =>
+      api<{ attention: number }>('/chat/counts').then(
+        (r) => setN(r.attention),
+        () => {},
+      );
+    load();
+    const t = setInterval(load, 60_000);
+    window.addEventListener(DATA_CHANGED, load);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener(DATA_CHANGED, load);
+    };
+  }, []);
+  return (
+    <Link
+      href="/chat"
+      aria-label={n ? `Chat, ${n} cần trả lời` : 'Chat'}
+      className={cn(
+        'relative rounded-md p-2 hover:bg-white/70 lg:hidden dark:hover:bg-white/10',
+        active ? 'text-brand-700 dark:text-brand-500' : 'text-slate-600 dark:text-slate-300',
+      )}
+    >
+      <MessageCircle className="size-5" />
+      {n > 0 && (
+        <span className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-4 text-white">
+          {n > 99 ? '99+' : n}
+        </span>
+      )}
+    </Link>
+  );
 }
