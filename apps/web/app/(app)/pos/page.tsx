@@ -230,6 +230,13 @@ export default function PosPage() {
   const [carriersOn, setCarriersOn] = useState(false);
   const [shipMsg, setShipMsg] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** The popup after a delivery sale with a carrier: what was made, then new sale or view the order. */
+  const [placed, setPlaced] = useState<{
+    code: string;
+    partner: string;
+    scheduleAt?: string;
+    error?: string;
+  } | null>(null);
   useEffect(() => {
     api<{ configured: boolean; ahamove: boolean }>('/shipping/status')
       .then((s) => setCarriersOn(s.configured || s.ahamove))
@@ -539,8 +546,6 @@ export default function PosPage() {
     setDrafts(rest);
     if (!rest.length) await newDraft();
     else setActive(rest[0]!.id);
-    setOrderTabs((t) => (t.includes(code) ? t : [...t, code]));
-    setOrderTab(code);
     try {
       await api(`/orders/${encodeURIComponent(code)}/shipments`, {
         method: 'POST',
@@ -559,10 +564,12 @@ export default function PosPage() {
       });
       setShipOnOpen(null);
       setNotice(null);
+      setPlaced({ code, partner: sel.partnerName, scheduleAt: sel.scheduleAt });
     } catch (e) {
       // the order is made; the waybill can be retried from its card
       setShipOnOpen(code);
       setNotice(`Đã tạo đơn ${code} nhưng chưa đặt được ${sel.partnerName}: ${(e as Error).message}`);
+      setPlaced({ code, partner: sel.partnerName, error: (e as Error).message });
     }
     void loadRecent().catch(() => undefined);
     setBusy(false);
@@ -1339,6 +1346,65 @@ export default function PosPage() {
             >
               {busy ? 'ĐANG TẠO ĐƠN…' : 'XÁC NHẬN'}
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* delivery sale placed with a carrier */}
+      {placed && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 text-center shadow-xl dark:bg-slate-900">
+            {placed.error ? (
+              <>
+                <p className="text-lg font-semibold text-amber-700">Đã tạo đơn, chưa tạo được vận đơn</p>
+                <p className="mt-1 text-sm text-slate-500">Mã đơn {placed.code}</p>
+                <p className="mt-2 text-sm text-rose-600">
+                  {placed.partner}: {placed.error}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">Mở đơn để chọn lại hãng và tạo vận đơn.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-semibold text-emerald-700">
+                  {placed.scheduleAt ? 'Đã tạo đơn và hẹn giờ vận đơn' : 'Đã tạo đơn và vận đơn'}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Mã đơn {placed.code} · {placed.partner}
+                </p>
+                {placed.scheduleAt && (
+                  <p className="mt-2 text-sm">
+                    Hẹn lấy hàng lúc{' '}
+                    <b>
+                      {new Date(placed.scheduleAt).toLocaleString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        day: '2-digit',
+                        month: '2-digit',
+                      })}
+                    </b>
+                  </p>
+                )}
+              </>
+            )}
+            <div className="mt-5 flex justify-center gap-2">
+              <Button
+                onClick={() => {
+                  setPlaced(null);
+                }}
+              >
+                Tạo đơn mới
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setOrderTabs((t) => (t.includes(placed.code) ? t : [...t, placed.code]));
+                  setOrderTab(placed.code);
+                  setPlaced(null);
+                }}
+              >
+                Xem đơn hàng
+              </Button>
+            </div>
           </div>
         </div>
       )}

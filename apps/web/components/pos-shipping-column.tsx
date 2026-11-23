@@ -695,14 +695,12 @@ export function PosShippingColumn({
                   <p className="mt-2 whitespace-pre-line">{chosen.details.trim()}</p>
                 </details>
               )}
-              {addedFee > 0 && (
-                <div className="flex items-baseline justify-between">
-                  <span className="text-slate-600 dark:text-slate-300">Khách cần trả (đã cộng phí ship)</span>
-                  <span className="text-base font-semibold tabular-nums">
-                    {formatVnd(input.total + addedFee)}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-baseline justify-between border-t border-slate-200 pt-2 dark:border-white/10">
+                <span className="font-medium">Khách cần trả{addedFee > 0 ? ' (đã cộng phí ship)' : ''}</span>
+                <span className="text-lg font-semibold tabular-nums text-brand-700">
+                  {formatVnd(input.total + addedFee)}
+                </span>
+              </div>
             </section>
           )}
           {message}
