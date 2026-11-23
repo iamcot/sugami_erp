@@ -65,6 +65,7 @@ Chạy thử webhook không cần Allingo: `curl` tới `/api/webhooks/allingo` 
 
 ## Chưa biết, cần thử
 
-- Allingo có nhận địa chỉ chỉ có chữ (tài liệu ghi `location` bắt buộc) và địa chỉ 2 cấp sau sáp nhập 2025 không → `pnpm allingo:probe`.
+- ~~Allingo có nhận địa chỉ chỉ có chữ~~: nhận (probe 23/11, khóa test), không cần tọa độ. Còn thử với địa chỉ thật trước khi chạy thật.
+- AhaMove có bật cho tài khoản không (danh sách hãng của tài khoản test không có).
 - Phí dùng Allingo, phí thu hộ COD, chu kỳ trả COD về tài khoản shop.
 - Định dạng chính xác `status_event` trong webhook; mã xử lý đọc cả `data.object.status`/`delivery.status` nên vẫn chạy nếu thiếu.

@@ -43,7 +43,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 - Khi có đơn thật đầu tiên: chạy lại `pnpm pancake:probe` để xác nhận mã sàn TikTok (-9) và cách đơn gắn ID tài khoản.
 
 **Vận chuyển Allingo (P6-SHIP, [docs/allingo.md](docs/allingo.md)):**
-- Điền `ALLINGO_APP_ID`, `ALLINGO_APP_SECRET` (khóa test) vào `.env`, chạy `pnpm allingo:probe`: cho biết Allingo có nhận địa chỉ chỉ có chữ (không tọa độ) và địa chỉ 2 cấp không.
+- ✅ 23/11: `pnpm allingo:probe` với khóa test chạy được: Allingo nhận địa chỉ chỉ có chữ (không cần tọa độ). Danh sách hãng của tài khoản test không có AhaMove (chỉ bestexpress, ghn, grab, jt, lalamove, ntl, spx, vnpost, viettelpost, gsm): cần hỏi Allingo.
 - Cấu hình webhook trong portal Allingo: `https://hooks.sugami.vn/api/webhooks/allingo`, chép secret vào `ALLINGO_WEBHOOK_SECRET`.
 - Cài đặt → Vận chuyển: nhập điểm lấy hàng, cỡ hộp; thử trọn vòng một đơn trên khóa test.
 - Hỏi Allingo: phí dùng, phí COD, chu kỳ trả COD; xin duyệt app chạy thật.

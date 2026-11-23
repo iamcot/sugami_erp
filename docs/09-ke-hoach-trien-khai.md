@@ -137,7 +137,7 @@ Quy ước:
 |----|------|-----------|---------------------|
 | P6-SHIP-01 | `packages/carriers/allingo`: client, ký webhook, ánh xạ trạng thái, `pnpm allingo:probe` | – | Test client/chữ ký/trạng thái xanh |
 | P6-SHIP-02 | Migration `shipments`, `shipment_events`, `app_settings` | – | Prisma generate + migration |
-| P6-SHIP-03 | Tọa độ địa chỉ (chỉ làm nếu probe cho thấy Allingo đòi) | SHIP-01 | 👤 Chạy probe trước |
+| P6-SHIP-03 | ~~Tọa độ địa chỉ~~ Bỏ: probe 23/11 cho thấy Allingo nhận địa chỉ chỉ có chữ | SHIP-01 | ✅ Không cần làm |
 | P6-SHIP-04 | API báo phí, tạo, hủy, in vận đơn, cài đặt | SHIP-01, 02 | Test hàm thuần xanh; 👤 thử khóa thử |
 | P6-SHIP-05 | Giao diện: bảng giá, thẻ vận chuyển, Cài đặt → Vận chuyển | SHIP-04 | Typecheck + lint xanh; 👤 xem giao diện |
 | P6-SHIP-06 | Webhook `/webhooks/allingo` + worker xử lý và quét bù 15 phút | SHIP-01, 02 | Test ánh xạ đơn xanh; 👤 thử khóa thử |
