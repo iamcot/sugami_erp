@@ -135,6 +135,17 @@ export async function quoteStops(
       extras,
     );
     const byId = new Map(list.map((s) => [s.id, s]));
+    // a service Ahamove left out of its answer still shows, as unavailable, so nothing vanishes silently
+    for (const s of list)
+      if (!quotes.some((q) => q.serviceId === s.id))
+        quotes.push({
+          serviceId: s.id,
+          fee: 0,
+          distanceKm: null,
+          durationMinutes: null,
+          breakdown: [],
+          error: 'Ahamove không báo giá dịch vụ này cho tuyến này',
+        });
     return quotes
       .map((q) => {
         const s = byId.get(q.serviceId);
