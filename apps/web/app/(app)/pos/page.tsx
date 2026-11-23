@@ -443,7 +443,14 @@ export default function PosPage() {
   const when = toLocal(p?.orderedAt ?? null);
   const setWhen = (date: string, time: string) => date && time && patch({ orderedAt: fromLocal(date, time) });
   const customer = p?.customer?.id ? cinfo[p.customer.id] : undefined;
-  const rcv = p?.receiver;
+  // The carrier search starts when the seller leaves a receiver field (or picks a customer / area),
+  // not on every keystroke: a half-typed phone number would trigger a search per digit.
+  const [rcv, setRcv] = useState<Payload['receiver'] | null>(null);
+  const customerId = p?.customer?.id ?? null;
+  useEffect(() => {
+    setRcv(p?.receiver ?? null);
+  }, [draft?.id, customerId]);
+  const commitRcv = (r?: Payload['receiver']) => setRcv(r ?? p?.receiver ?? null);
   /** A delivery sale with everything a carrier needs: the carrier column slides in. */
   const shipReady =
     carriersOn &&
@@ -452,7 +459,13 @@ export default function PosPage() {
     p.lines.length > 0 &&
     !!p.customer &&
     !!rcv &&
-    !!(rcv.name.trim() && rcv.phone.trim() && rcv.address.trim() && rcv.area.trim() && rcv.ward.trim());
+    !!(
+      rcv.name.trim() &&
+      rcv.phone.replace(/\D/g, '').length >= 10 &&
+      rcv.address.trim() &&
+      rcv.area.trim() &&
+      rcv.ward.trim()
+    );
 
   const closeDraft = async (id: string) => {
     await api(`/pos/drafts/${id}`, { method: 'DELETE' }).catch(() => undefined);
@@ -1037,6 +1050,7 @@ export default function PosPage() {
                           className={line}
                           placeholder="Nhập tên"
                           value={p.receiver.name}
+                          onBlur={() => commitRcv()}
                           onChange={(e) => patch({ receiver: { ...p.receiver, name: e.target.value } })}
                         />
                       </label>
@@ -1046,6 +1060,7 @@ export default function PosPage() {
                           className={line}
                           placeholder="Nhập số điện thoại"
                           value={p.receiver.phone}
+                          onBlur={() => commitRcv()}
                           onChange={(e) => patch({ receiver: { ...p.receiver, phone: e.target.value } })}
                         />
                       </label>
@@ -1056,13 +1071,18 @@ export default function PosPage() {
                         className={line}
                         placeholder="Số nhà, ngõ, đường"
                         value={p.receiver.address}
+                        onBlur={() => commitRcv()}
                         onChange={(e) => patch({ receiver: { ...p.receiver, address: e.target.value } })}
                       />
                     </label>
                     <AreaSelect
                       province={p.receiver.area}
                       ward={p.receiver.ward}
-                      onChange={(v) => patch({ receiver: { ...p.receiver, area: v.province, ward: v.ward } })}
+                      onChange={(v) => {
+                        const next = { ...p.receiver, area: v.province, ward: v.ward };
+                        patch({ receiver: next });
+                        commitRcv(next);
+                      }}
                     />
                     {!carriersOn && (
                       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -1131,7 +1151,7 @@ export default function PosPage() {
             {shipReady && p && (
               <PosShippingColumn
                 input={{
-                  receiver: p.receiver,
+                  receiver: rcv ?? p.receiver,
                   lines: p.lines.map((l) => ({ variantId: l.variantId, qty: l.qty })),
                   codAmount: p.cod ? Math.max(0, total - Math.min(p.paid, total)) : 0,
                   total,
