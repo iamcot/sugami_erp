@@ -11,12 +11,12 @@ import {
 } from '@nestjs/common';
 import {
   CHAT_MAX_RANGE_DAYS,
-  chatChannelOf,
   type ChatConversation,
   type ChatPageConfig,
   chatPagesFromEnv,
   PancakeChatClient,
   PancakeError,
+  pageChannel,
   pageOfConversation,
 } from '@sugami/channels-pancake';
 import { CHAT_LOOKBACK_DAYS, needsAttention } from '@sugami/sync';
@@ -66,7 +66,7 @@ export class ChatController {
   }
 
   private clientFor(page: ChatPageConfig) {
-    return new PancakeChatClient({ pageId: page.pageId, pageAccessToken: page.token });
+    return new PancakeChatClient({ pageId: page.pageId, pageAccessToken: page.token, channel: pageChannel(page) });
   }
 
   private async guard<T>(fn: () => Promise<T>): Promise<T> {
@@ -107,7 +107,7 @@ export class ChatController {
       if (r.status === 'fulfilled') rows.push(...r.value);
       else
         errors.push({
-          channel: chatChannelOf(page.pageId),
+          channel: pageChannel(page),
           pageId: page.pageId,
           message: r.reason instanceof PancakeError ? r.reason.message : 'Không đọc được chat',
         });
@@ -136,7 +136,7 @@ export class ChatController {
       };
     });
 
-    const channels = [...new Set([...pages.map((p) => chatChannelOf(p.pageId))])].map((channel) => ({
+    const channels = [...new Set([...pages.map(pageChannel)])].map((channel) => ({
       channel,
       count: items.filter((c) => c.channel === channel).length,
     }));
@@ -200,7 +200,7 @@ export class ChatController {
       create: {
         id,
         pageId: page.pageId,
-        channel: chatChannelOf(page.pageId),
+        channel: pageChannel(page),
         lastMessageAt,
         lastFromBuyer: true,
         notifiedAt: lastMessageAt,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chatPagesFromEnv, pageOfConversation } from './chat-pages.js';
+import { chatPagesFromEnv, pageChannel, pageOfConversation } from './chat-pages.js';
 
 describe('chatPagesFromEnv', () => {
   it('reads several pages and the single-page variables', () => {
@@ -19,6 +19,19 @@ describe('chatPagesFromEnv', () => {
       chatPagesFromEnv({ PANCAKE_CHAT_PAGES: 'spo_1=a;junk;=x;spo_2=', PANCAKE_CHAT_PAGE_ID: 'spo_1', PANCAKE_CHAT_TOKEN: 'b' }),
     ).toEqual([{ pageId: 'spo_1', token: 'a' }]);
     expect(chatPagesFromEnv({})).toEqual([]);
+  });
+});
+
+describe('explicit channel', () => {
+  it('reads channel:pageId and falls back to the id prefix', () => {
+    const pages = chatPagesFromEnv({ PANCAKE_CHAT_PAGES: 'facebook:sugami.vn=tokB;spo_1=tokA;zz:odd=tokC' });
+    expect(pages).toEqual([
+      { pageId: 'sugami.vn', token: 'tokB', channel: 'facebook' },
+      { pageId: 'spo_1', token: 'tokA' },
+      { pageId: 'zz:odd', token: 'tokC' },
+    ]);
+    expect(pageChannel(pages[0]!)).toBe('facebook');
+    expect(pageChannel(pages[1]!)).toBe('shopee');
   });
 });
 

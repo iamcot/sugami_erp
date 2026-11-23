@@ -1,4 +1,4 @@
-import { chatPagesFromEnv, PancakeChatClient, type ChatConversation } from '@sugami/channels-pancake';
+import { chatPagesFromEnv, PancakeChatClient, type ChatConversation, pageChannel } from '@sugami/channels-pancake';
 import type { PrismaClient } from '@sugami/db';
 import { applyChatRead, CHAT_LOOKBACK_DAYS } from '@sugami/sync';
 import { type Activity, recordActivity, reportError } from './activity.js';
@@ -48,7 +48,11 @@ export async function chatPass(db: PrismaClient, log: (msg: string) => void = co
   const failures: string[] = [];
   for (const page of pages) {
     try {
-      const rows = await new PancakeChatClient({ pageId: page.pageId, pageAccessToken: page.token }).listConversations({
+      const rows = await new PancakeChatClient({
+        pageId: page.pageId,
+        pageAccessToken: page.token,
+        channel: pageChannel(page),
+      }).listConversations({
         since,
         until,
       });

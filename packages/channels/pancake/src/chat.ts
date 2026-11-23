@@ -57,6 +57,8 @@ export interface ChatMessage {
 
 export interface PancakeChatClientOptions {
   pageId: string;
+  /** Channel of the page when its id does not show it. */
+  channel?: ChatChannel;
   pageAccessToken: string;
   fetch?: typeof fetch;
   apiBase?: string;
@@ -81,7 +83,7 @@ export function parseChatTime(s: unknown): Date {
 
 type Raw = Record<string, unknown>;
 
-export function toConversation(raw: Raw, pageId: string): ChatConversation {
+export function toConversation(raw: Raw, pageId: string, channel?: ChatChannel): ChatConversation {
   const from = (raw.from ?? {}) as Raw;
   const tags = Array.isArray(raw.tags) ? raw.tags : [];
   const assignees = Array.isArray(raw.assignee_ids) ? raw.assignee_ids : [];
@@ -89,7 +91,7 @@ export function toConversation(raw: Raw, pageId: string): ChatConversation {
   return {
     id: str(raw.id),
     pageId,
-    channel: chatChannelOf(pageId),
+    channel: channel ?? chatChannelOf(pageId),
     kind: str(raw.type) || 'INBOX',
     customerName: str(from.name) || str(from.username),
     customerId: from.id ? str(from.id) : null,
@@ -235,7 +237,7 @@ export class PancakeChatClient {
       const rows = res.conversations ?? [];
       const before = out.size;
       for (const r of rows) {
-        const c = toConversation(r, this.opts.pageId);
+        const c = toConversation(r, this.opts.pageId, this.opts.channel);
         if (c.id) out.set(c.id, c);
       }
       // An empty page, or one with nothing new (Pancake repeats the last page), ends the walk.
