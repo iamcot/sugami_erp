@@ -101,7 +101,7 @@ export function NotificationBell() {
       </button>
       {open && (
         <>
-          <div className="absolute right-0 top-full z-30 mt-2 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+          <div className="popover absolute right-0 top-full z-30 mt-2 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
             <div className="border-b border-slate-100 px-4 py-2.5 text-sm font-medium dark:border-slate-800">
               Thông báo
             </div>

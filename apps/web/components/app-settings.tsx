@@ -42,13 +42,24 @@ export function AppSettings() {
   const standalone = isStandalone();
   const ios = isIos();
 
-  useEffect(() => {
-    setCanInstall(Boolean(installEvent));
+  /** What this device really has (not what we assume after a click): re-read after every action and on return to the app. */
+  const refresh = () =>
     currentSubscription().then(
       (s) => setSubscribed(Boolean(s)),
       () => setSubscribed(false),
     );
+  useEffect(() => {
+    setCanInstall(Boolean(installEvent));
+    void refresh();
+    const onVisible = () => document.visibilityState === 'visible' && void refresh();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
   }, []);
+  const blocked = typeof Notification !== 'undefined' && Notification.permission === 'denied';
 
   const run = async (fn: () => Promise<string | void>) => {
     setBusy(true);
@@ -85,6 +96,17 @@ export function AppSettings() {
           thông báo.
         </p>
       )}
+      {pushSupported() && blocked && (
+        <p className="px-3 py-2 text-xs text-rose-600">
+          Thông báo đang bị chặn cho Sugami. Mở cài đặt trình duyệt hoặc cài đặt ứng dụng của máy để cho phép,
+          rồi quay lại đây.
+        </p>
+      )}
+      {pushSupported() && subscribed !== null && (
+        <p className="px-3 pt-2 text-xs text-slate-500">
+          Thông báo trên máy này: <b>{subscribed ? 'đang bật' : 'chưa bật'}</b>
+        </p>
+      )}
       {pushSupported() && subscribed === false && (
         <button
           className={item}
@@ -92,7 +114,7 @@ export function AppSettings() {
           onClick={() =>
             run(async () => {
               await enablePush();
-              setSubscribed(true);
+              await refresh();
               return 'Đã bật thông báo trên thiết bị này.';
             })
           }
@@ -120,7 +142,7 @@ export function AppSettings() {
             onClick={() =>
               run(async () => {
                 await disablePush();
-                setSubscribed(false);
+                await refresh();
               })
             }
           >

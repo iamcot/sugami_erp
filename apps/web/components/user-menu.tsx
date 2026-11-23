@@ -50,7 +50,7 @@ export function UserMenu() {
         <span className="hidden max-w-32 truncate text-sm font-medium md:block">{me?.name}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-11 z-20 w-56 rounded-xl border text-slate-900 dark:text-slate-100 border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+        <div className="popover absolute right-0 top-11 z-20 w-56 rounded-xl border text-slate-900 dark:text-slate-100 border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
           <div className="px-3 py-2">
             <p className="truncate text-sm font-medium">{me?.name}</p>
             <p className="truncate text-xs text-slate-500">{me?.email}</p>
