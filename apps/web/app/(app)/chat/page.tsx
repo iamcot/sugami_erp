@@ -388,7 +388,8 @@ function ChatList() {
           Không đọc được chat {CHANNEL_LABEL[e.channel] ?? e.channel}: {e.message}
         </p>
       ))}
-      <div className="glass mb-4 rounded-xl">
+      {/* z-20: the glass blur makes its own layer, so without it the list below would cover the open menus */}
+      <div className="glass relative z-20 mb-4 rounded-xl">
         {/* filters: same bar as Đơn hàng */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-300/50 bg-white/30 px-3 py-2 dark:border-white/10 dark:bg-black/10">
           <span className="hud-label text-slate-500">Lọc</span>
