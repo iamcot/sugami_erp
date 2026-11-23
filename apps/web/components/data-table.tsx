@@ -186,7 +186,7 @@ export function DataTable<T>({
                       'font-semibold [&>td:first-child]:shadow-[inset_3px_0_0_var(--accent-600)]',
                     isSelected?.(r)
                       ? 'bg-gradient-to-r from-brand-500/20 to-brand-500/5'
-                      : 'hover:relative hover:z-[1] hover:bg-white/90 hover:shadow-[0_0_0_1px_rgb(var(--accent-rgb)/0.35),0_6px_18px_rgba(60,80,140,0.16)] dark:hover:bg-white/[0.07]',
+                      : 'even:bg-slate-500/[0.06] hover:relative hover:z-[1] hover:bg-white/90 dark:even:bg-white/[0.03] hover:shadow-[0_0_0_1px_rgb(var(--accent-rgb)/0.35),0_6px_18px_rgba(60,80,140,0.16)] dark:hover:bg-white/[0.07]',
                     onRowClick && 'cursor-pointer',
                   )}
                   onClick={onRowClick ? () => onRowClick(r) : undefined}
@@ -202,7 +202,7 @@ export function DataTable<T>({
                         c.sticky &&
                           (isSelected?.(r)
                             ? 'bg-brand-50 dark:bg-[#0f2230]'
-                            : 'bg-[#f7f9fc] group-hover:bg-white dark:bg-[#0b1322] dark:group-hover:bg-[#121c2e]') +
+                            : 'bg-[#f7f9fc] group-even:bg-[#eef1f6] group-hover:bg-white dark:bg-[#0b1322] dark:group-even:bg-[#0f1828] dark:group-hover:bg-[#121c2e]') +
                             ' sticky right-0' +
                             (covering
                               ? ' border-l border-slate-300 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.25)] dark:border-slate-600'

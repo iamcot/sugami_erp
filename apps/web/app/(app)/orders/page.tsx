@@ -230,9 +230,9 @@ const columns: Column<OrderRow>[] = [
   {
     key: 'items',
     header: 'Sản phẩm',
-    className: 'min-w-56',
+    className: 'min-w-80',
     render: (o) => (
-      <div className="max-w-sm">
+      <div className="max-w-md">
         {o.items.slice(0, 2).map((i, n) => (
           <p key={`${i.sku}-${n}`} className="line-clamp-1">
             <span className="tabular-nums text-slate-500">{i.qty}×</span> {i.name}
