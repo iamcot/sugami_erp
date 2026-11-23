@@ -444,6 +444,7 @@ export default function PosPage() {
   const [cq, setCq] = useState('');
   // the sales toolbar lives in the site header (the slot AppShell leaves open on this page)
   const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const wide = useWide();
   useEffect(() => setSlot(document.getElementById('app-header-slot')), []);
   const [hi, setHi] = useState(0);
   const [ci, setCi] = useState(0);
@@ -703,137 +704,142 @@ export default function PosPage() {
 
   if (!loaded || !draft || !p) return <p className="text-sm text-slate-500">{msg ?? 'Đang tải…'}</p>;
 
-  return (
-    <div className="relative -mx-4 -mb-24 -mt-6 flex h-[calc(100dvh-7rem)] flex-col overflow-hidden lg:-mx-8 lg:-mb-10 lg:h-[calc(100dvh-3.5rem)]">
-      {/* top bar: recent orders, product search, open drafts */}
-      {slot &&
-        createPortal(
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="relative flex min-w-0 flex-[2] items-center gap-2 sm:w-72 sm:flex-none lg:w-96">
-              <button
-                aria-label="Đơn gần đây"
-                title="Đơn đã tạo gần đây"
-                className="rounded-md bg-brand-700 p-2 text-white hover:bg-brand-600"
-                onClick={() => setRecentOpen((o) => !o)}
-              >
-                <ListOrdered className="size-5" />
-              </button>
-              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-slate-300/80 bg-white/80 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
-                <Search className="size-4 text-slate-400" />
-                <input
-                  ref={searchRef}
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown') {
-                      e.preventDefault();
-                      setHi((h) => Math.min(h + 1, hits.length - 1));
-                    } else if (e.key === 'ArrowUp') {
-                      e.preventDefault();
-                      setHi((h) => Math.max(h - 1, 0));
-                    } else if (e.key === 'Escape') {
-                      setQ('');
-                    } else if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const exact = hits.find((h) => h.sku === q.trim() || h.barcode === q.trim());
-                      const pick = exact ?? hits[hi];
-                      if (pick) addVariant(pick);
-                    }
-                  }}
-                  placeholder="Tìm hàng (F3): mã, mã vạch, tên"
-                  className="min-w-0 flex-1 bg-transparent outline-none"
-                />
-              </label>
-              {q.trim().length > 0 && hits.length > 0 && (
-                <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-[70vh] overflow-auto rounded-md border border-slate-200 bg-white text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                  {hits.map((v, i) => (
-                    <li
-                      key={v.id}
-                      ref={(el) => {
-                        if (el && i === hi) el.scrollIntoView({ block: 'nearest' });
-                      }}
-                    >
-                      <button
-                        tabIndex={-1}
-                        className={`flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 ${i === hi ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
-                        onMouseEnter={() => setHi(i)}
-                        onClick={() => addVariant(v)}
-                      >
-                        <Thumb src={v.image} className="size-12" />
-                        <span className="min-w-0 flex-1">
-                          <span className="line-clamp-2">
-                            {v.productName}{' '}
-                            <span className="text-slate-500">{optionText(v.optionValues)}</span>
-                          </span>
-                          <span className="font-mono text-xs text-slate-500">{v.sku}</span>
-                        </span>
-                        <span className="text-right">
-                          <span className="block tabular-nums">{fmt(v.price)}</span>
-                          <span className={`text-xs ${v.available > 0 ? 'text-slate-500' : 'text-rose-600'}`}>
-                            Còn bán {fmt(v.available)}
-                            {v.reserved > 0 ? ` (tồn ${fmt(v.onHand)}, giữ ${fmt(v.reserved)})` : ''}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-              {drafts.map((d) => (
-                <div
-                  key={d.id}
-                  className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${d.id === active && !orderTab ? 'bg-brand-700 font-medium text-white' : 'bg-white/70 text-slate-700 dark:bg-white/10 dark:text-slate-200'}`}
-                >
-                  <button
-                    onClick={() => {
-                      setActive(d.id);
-                      setOrderTab(null);
-                    }}
-                    className="flex items-center gap-1"
-                  >
-                    {d.mode === 'delivery' && <Truck className="size-3.5" />} {d.label}
-                  </button>
-                  <button aria-label="Đóng" tabIndex={-1} onClick={() => void closeDraft(d.id)}>
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-              ))}
-              {orderTabs.map((code) => (
-                <div
-                  key={code}
-                  className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${orderTab === code ? 'bg-brand-700 font-medium text-white' : 'bg-white/70 text-slate-700 dark:bg-white/10 dark:text-slate-200'}`}
-                >
-                  <button onClick={() => setOrderTab(code)} className="flex items-center gap-1">
-                    <Receipt className="size-3.5" /> {code}
-                  </button>
-                  <button
-                    aria-label="Đóng"
-                    tabIndex={-1}
-                    onClick={() => {
-                      setOrderTabs((t) => t.filter((c) => c !== code));
-                      if (orderTab === code) setOrderTab(null);
-                    }}
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-              ))}
-              <button
-                className="shrink-0 rounded-md p-1.5 text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-white/10"
-                aria-label="Thêm hóa đơn"
-                onClick={() => {
-                  setOrderTab(null);
-                  void newDraft(draft.mode);
+  const toolbar = (
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 lg:flex-nowrap">
+      <div className="relative flex w-full min-w-0 items-center gap-2 lg:w-96 lg:flex-none">
+        <button
+          aria-label="Đơn gần đây"
+          title="Đơn đã tạo gần đây"
+          className="rounded-md bg-brand-700 p-2 text-white hover:bg-brand-600"
+          onClick={() => setRecentOpen((o) => !o)}
+        >
+          <ListOrdered className="size-5" />
+        </button>
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-slate-300/80 bg-white/80 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+          <Search className="size-4 text-slate-400" />
+          <input
+            ref={searchRef}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setHi((h) => Math.min(h + 1, hits.length - 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setHi((h) => Math.max(h - 1, 0));
+              } else if (e.key === 'Escape') {
+                setQ('');
+              } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const exact = hits.find((h) => h.sku === q.trim() || h.barcode === q.trim());
+                const pick = exact ?? hits[hi];
+                if (pick) addVariant(pick);
+              }
+            }}
+            placeholder="Tìm hàng (F3): mã, mã vạch, tên"
+            className="min-w-0 flex-1 bg-transparent outline-none"
+          />
+        </label>
+        {q.trim().length > 0 && hits.length > 0 && (
+          <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-[70vh] overflow-auto rounded-md border border-slate-200 bg-white text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900">
+            {hits.map((v, i) => (
+              <li
+                key={v.id}
+                ref={(el) => {
+                  if (el && i === hi) el.scrollIntoView({ block: 'nearest' });
                 }}
               >
-                <Plus className="size-5" />
-              </button>
-            </div>
-          </div>,
-          slot,
+                <button
+                  tabIndex={-1}
+                  className={`flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 ${i === hi ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+                  onMouseEnter={() => setHi(i)}
+                  onClick={() => addVariant(v)}
+                >
+                  <Thumb src={v.image} className="size-12" />
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2">
+                      {v.productName} <span className="text-slate-500">{optionText(v.optionValues)}</span>
+                    </span>
+                    <span className="font-mono text-xs text-slate-500">{v.sku}</span>
+                  </span>
+                  <span className="text-right">
+                    <span className="block tabular-nums">{fmt(v.price)}</span>
+                    <span className={`text-xs ${v.available > 0 ? 'text-slate-500' : 'text-rose-600'}`}>
+                      Còn bán {fmt(v.available)}
+                      {v.reserved > 0 ? ` (tồn ${fmt(v.onHand)}, giữ ${fmt(v.reserved)})` : ''}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
+      </div>
+      <div className="flex w-full min-w-0 items-center gap-1 overflow-x-auto lg:w-auto lg:flex-1">
+        {drafts.map((d) => (
+          <div
+            key={d.id}
+            className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${d.id === active && !orderTab ? 'bg-brand-700 font-medium text-white' : 'bg-white/70 text-slate-700 dark:bg-white/10 dark:text-slate-200'}`}
+          >
+            <button
+              onClick={() => {
+                setActive(d.id);
+                setOrderTab(null);
+              }}
+              className="flex items-center gap-1"
+            >
+              {d.mode === 'delivery' && <Truck className="size-3.5" />} {d.label}
+            </button>
+            <button aria-label="Đóng" tabIndex={-1} onClick={() => void closeDraft(d.id)}>
+              <X className="size-3.5" />
+            </button>
+          </div>
+        ))}
+        {orderTabs.map((code) => (
+          <div
+            key={code}
+            className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${orderTab === code ? 'bg-brand-700 font-medium text-white' : 'bg-white/70 text-slate-700 dark:bg-white/10 dark:text-slate-200'}`}
+          >
+            <button onClick={() => setOrderTab(code)} className="flex items-center gap-1">
+              <Receipt className="size-3.5" /> {code}
+            </button>
+            <button
+              aria-label="Đóng"
+              tabIndex={-1}
+              onClick={() => {
+                setOrderTabs((t) => t.filter((c) => c !== code));
+                if (orderTab === code) setOrderTab(null);
+              }}
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        ))}
+        <button
+          className="shrink-0 rounded-md p-1.5 text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-white/10"
+          aria-label="Thêm hóa đơn"
+          onClick={() => {
+            setOrderTab(null);
+            void newDraft(draft.mode);
+          }}
+        >
+          <Plus className="size-5" />
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="relative -mx-4 -mb-24 -mt-6 flex h-[calc(100dvh-7rem)] flex-col overflow-hidden lg:-mx-8 lg:-mb-10 lg:h-[calc(100dvh-3.5rem)]">
+      {/* top bar: recent orders, product search, open drafts. In the site header on wide screens;
+      on phones it sits at the top of the page so the search and its list get the full width. */}
+      {wide && slot ? createPortal(toolbar, slot) : null}
+      {!wide && (
+        <div className="shrink-0 border-b border-slate-200 bg-white/80 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/80">
+          {toolbar}
+        </div>
+      )}
 
       {orderTab ? (
         <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-4 dark:bg-slate-950">
@@ -1476,4 +1482,17 @@ export default function PosPage() {
       )}
     </div>
   );
+}
+
+/** True from the lg breakpoint up (where the sales toolbar fits in the site header). */
+function useWide() {
+  const [wide, setWide] = useState(true);
+  useEffect(() => {
+    const m = window.matchMedia('(min-width: 1024px)');
+    const on = () => setWide(m.matches);
+    on();
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return wide;
 }

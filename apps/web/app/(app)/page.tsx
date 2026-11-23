@@ -218,7 +218,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-3">
         <Card className="p-4 lg:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-medium">Doanh thu 14 ngày theo kênh</h2>
@@ -236,7 +236,7 @@ export default function DashboardPage() {
               for (const [code, v] of Object.entries(s.byChannel))
                 parts[channelKey(code)] = (parts[channelKey(code)] ?? 0) + v;
               return (
-                <div key={s.date} className="flex flex-1 flex-col items-center gap-2">
+                <div key={s.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
                   <div
                     className="flex w-full max-w-8 flex-col-reverse overflow-hidden rounded-sm bg-slate-200/50 dark:bg-white/5"
                     style={{ height: '10rem' }}
@@ -250,7 +250,9 @@ export default function DashboardPage() {
                       />
                     ))}
                   </div>
-                  <span className={`text-[10px] text-slate-500 sm:text-xs ${i % 2 ? 'hidden sm:block' : ''}`}>
+                  <span
+                    className={`whitespace-nowrap text-[10px] text-slate-500 sm:text-xs ${i % 2 ? 'invisible sm:visible' : ''}`}
+                  >
                     {dayLabel(s.date)}
                   </span>
                 </div>

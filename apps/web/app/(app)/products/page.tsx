@@ -391,7 +391,7 @@ function ProductsList() {
           <option value="no_pancake">Chưa kết nối Pancake</option>
           <option value="on_market">Đã kết nối sàn TMĐT</option>
         </select>
-        <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm md:ml-auto md:max-w-xs dark:border-slate-800 dark:bg-slate-900">
+        <label className="flex h-9 w-full min-w-0 shrink-0 items-center md:flex-1 gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm md:ml-auto md:max-w-xs dark:border-slate-800 dark:bg-slate-900">
           <Search className="size-4 shrink-0 text-slate-400" />
           <input
             value={search}
