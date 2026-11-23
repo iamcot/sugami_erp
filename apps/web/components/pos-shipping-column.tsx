@@ -293,9 +293,6 @@ export function PosShippingColumn({
           {r.available && r.packDeadline ? ` · Đóng hàng trước ${whenText(r.packDeadline)}` : ''}
         </span>
         {r.available && r.info && <span className="block text-xs text-slate-500">{r.info}</span>}
-        {r.available && r.tracking.length > 0 && (
-          <span className="block text-xs text-slate-500">Theo dõi: {r.tracking.join(', ')}</span>
-        )}
       </span>
       <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
         {formatVnd(r.price)}
@@ -530,7 +527,7 @@ export function PosShippingColumn({
                               ? `+${formatVnd(x.price)}${x.kind === 'unit' ? ' / đơn vị' : ''}`
                               : 'miễn phí';
                       return (
-                        <div key={x.id} className="space-y-1">
+                        <div key={x.id} className="relative space-y-1">
                           <label className="flex items-start gap-2 text-sm">
                             <input
                               type="checkbox"
@@ -553,7 +550,7 @@ export function PosShippingColumn({
                               {x.name}
                               {priceText && <span className="ml-2 text-xs text-slate-500">{priceText}</span>}
                               {x.description && (
-                                <span className="relative ml-1.5 inline-block align-middle">
+                                <span className="ml-1.5 inline-block align-middle">
                                   <button
                                     type="button"
                                     aria-label={`Chú thích: ${x.name}`}
@@ -567,7 +564,7 @@ export function PosShippingColumn({
                                     <Info className="size-4" />
                                   </button>
                                   {infoOpen === x.id && (
-                                    <span className="absolute left-0 top-6 z-20 block w-64 rounded-md border border-slate-200 bg-white p-2.5 text-xs font-normal text-slate-600 shadow-lg dark:border-white/15 dark:bg-slate-800 dark:text-slate-200">
+                                    <span className="absolute inset-x-0 top-full z-20 mt-1 block rounded-md border border-slate-200 bg-white p-2.5 text-xs font-normal text-slate-600 shadow-lg dark:border-white/15 dark:bg-slate-800 dark:text-slate-200">
                                       {x.description}
                                     </span>
                                   )}
