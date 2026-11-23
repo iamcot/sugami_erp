@@ -74,6 +74,18 @@ describe('applyAhamoveStatus', () => {
       data: { shippingStatus: 'Ahamove: tài xế đang đến lấy hàng', trackingUrl: 'https://t/x' },
     });
   });
+  it('keeps recording the stage while the order is still packing', async () => {
+    const { db, update } = fakeDb({
+      ...shipped,
+      status: 'packing',
+      shippingStatus: 'Ahamove: đang tìm tài xế',
+    });
+    await applyAhamoveStatus(db, 'AB', { status: 'ACCEPTED' });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'o1' },
+      data: { shippingStatus: 'Ahamove: tài xế đang đến lấy hàng' },
+    });
+  });
   it('flags a cancelled trip for the seller instead of changing the order', async () => {
     const { db, update } = fakeDb(shipped);
     await applyAhamoveStatus(db, 'AB', { status: 'CANCELLED', cancel_comment: 'Không có tài xế' });

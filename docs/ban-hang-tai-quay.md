@@ -46,7 +46,7 @@ Từ 23/11 báo giá và gọi AhaMove nằm trong nút **Tạo vận đơn** c�
 Trong ngăn **Giao cho ĐVVC** của đơn giao hàng (bước Đang đóng gói), nếu đã cấu hình Ahamove sẽ có khối **Gọi tài xế Ahamove**:
 
 1. **Xem giá**: Sugami gửi điểm lấy (shop) và điểm giao (địa chỉ đơn) cho `POST /v3/orders/estimates`, hiện giá từng dịch vụ của thành phố (rẻ nhất lên đầu; dịch vụ Ahamove từ chối, ví dụ ngoài vùng, hiện lý do).
-2. **Gọi**: chọn một dịch vụ → `POST /v3/orders` (COD = tiền còn phải thu của đơn). Thành công thì đơn tự **Giao cho ĐVVC** (trừ tồn như thường), lưu đối tác `Ahamove`, mã vận đơn = mã chuyến Ahamove, link theo dõi tài xế và phí ship thật. Nếu bước giao cho ĐVVC lỗi sau khi đã gọi, Sugami hủy chuyến vừa đặt. Lệnh tạo chuyến không bao giờ tự thử lại (tránh gọi hai tài xế).
+2. **Gọi**: chọn một dịch vụ → `POST /v3/orders` (COD = tiền còn phải thu của đơn). Thành công thì đơn **vẫn ở Đang đóng gói**, lưu đối tác `Ahamove`, mã vận đơn = mã chuyến Ahamove, link theo dõi tài xế và phí ship thật. Khi Ahamove báo tài xế đã lấy hàng (`IN PROCESS`) đơn mới tự **Giao cho ĐVVC** (trừ tồn). Hủy chuyến lúc còn đóng gói thì xóa chuyến khỏi đơn để gọi lại. Lệnh tạo chuyến không bao giờ tự thử lại (tránh gọi hai tài xế).
 3. **Trạng thái**: webhook `POST /webhooks/ahamove` (header `apikey` = `AHAMOVE_WEBHOOK_SECRET`) hoặc nút **Cập nhật trạng thái** ở chi tiết đơn cập nhật dòng "Trạng thái giao". Ahamove báo giao xong (`COMPLETED`) thì đơn tự sang **Đã giao**; Ahamove hủy (không có tài xế...) thì chỉ ghi chú ở trạng thái giao để chủ shop gọi lại hoặc đổi cách giao, không tự đổi đơn.
 4. **Hủy chuyến**: nút ở chi tiết đơn (`DELETE /v3/orders/{id}`), chỉ hủy được trước khi tài xế lấy hàng.
 

@@ -31,7 +31,8 @@ export function ahamoveConfigured(): boolean {
 let client: AhamoveClient | null | undefined;
 function getClient(): AhamoveClient {
   if (client === undefined) client = ahamoveFromEnv();
-  if (!client || !pickupFromEnv()) throw new PosError('Chưa cấu hình Ahamove (xem docs/ban-hang-tai-quay.md)');
+  if (!client || !pickupFromEnv())
+    throw new PosError('Chưa cấu hình Ahamove (xem docs/ban-hang-tai-quay.md)');
   return client;
 }
 /** For tests. */
@@ -106,7 +107,11 @@ export async function quoteOrder(db: PrismaClient, code: string): Promise<QuoteR
   try {
     const list = await services(c);
     if (!list.length) throw new PosError('Ahamove chưa có dịch vụ nào ở khu vực này');
-    const quotes = await c.quote(pickupFromEnv()!, dropoffOf(o), list.map((s) => s.id));
+    const quotes = await c.quote(
+      pickupFromEnv()!,
+      dropoffOf(o),
+      list.map((s) => s.id),
+    );
     const names = new Map(list.map((s) => [s.id, s.name]));
     return quotes
       .map((q) => ({ ...q, name: names.get(q.serviceId) ?? q.serviceId }))
@@ -116,14 +121,12 @@ export async function quoteOrder(db: PrismaClient, code: string): Promise<QuoteR
   }
 }
 
-/**
- * Book the driver, then hand the parcel over ("Giao cho ĐVVC": stock leaves, carrier/tracking saved).
- * The hand-over is checked first; if it still fails after booking, the booking is cancelled again.
- */
-export async function bookOrder(db: PrismaClient, code: string, serviceId: string, userId?: string) {
+export async function bookOrder(db: PrismaClient, code: string, serviceId: string, _userId?: string) {
   const o = await loadOrder(db, code);
   if (!posActions(fulfillmentOf(o), o.status).some((a) => a.key === 'ship'))
-    throw new PosError('Đơn chưa ở bước Đang đóng gói nên chưa giao cho ĐVVC được', 409);
+    throw new PosError('Đơn chưa ở bước Đang đóng gói nên chưa gọi Ahamove được', 409);
+  if (o.carrier === AHAMOVE && o.trackingNo)
+    throw new PosError('Đơn này đã có chuyến Ahamove, hủy chuyến cũ trước', 409);
   const c = getClient();
   let booked: Awaited<ReturnType<AhamoveClient['createOrder']>>;
   try {
@@ -137,15 +140,11 @@ export async function bookOrder(db: PrismaClient, code: string, serviceId: strin
   } catch (err) {
     return explain(err);
   }
-  try {
-    await runPosAction(db, code, 'ship', userId, { carrier: AHAMOVE, trackingNo: booked.orderId });
-  } catch (err) {
-    await c.cancelOrder(booked.orderId, 'Shop đổi ý').catch(() => undefined);
-    throw err;
-  }
   await db.order.update({
     where: { code },
     data: {
+      carrier: AHAMOVE,
+      trackingNo: booked.orderId,
       trackingUrl: booked.sharedLink,
       shippingStatus: ahamoveStatusText(booked.status),
       ...(booked.fee > 0 ? { shippingFee: BigInt(booked.fee) } : {}),
@@ -155,18 +154,34 @@ export async function bookOrder(db: PrismaClient, code: string, serviceId: strin
 }
 
 /** Moves a Sugami order along with what Ahamove reports; safe to call repeatedly with the same data. */
-export async function applyAhamoveStatus(db: PrismaClient, ahamoveOrderId: string, st: AhamoveOrder) {
+export async function applyAhamoveStatus(
+  db: PrismaClient,
+  ahamoveOrderId: string,
+  st: AhamoveOrder,
+  userId?: string,
+) {
   const o = await db.order.findFirst({ where: { carrier: AHAMOVE, trackingNo: ahamoveOrderId } });
   if (!o) return { matched: false as const };
   const text = ahamoveStatusText(st.status, st.sub_status);
   const stage = ahamoveStage(st.status);
+  const open = o.status === 'packing' || o.status === 'shipped';
   const data: Record<string, unknown> = {};
-  if (o.shippingStatus !== text && o.status === 'shipped') data.shippingStatus = text;
-  if (stage === 'cancelled' && o.status === 'shipped')
-    data.shippingStatus = `${text}${st.cancel_comment ? ` (${st.cancel_comment})` : ''}: gọi lại hoặc đổi cách giao`.slice(0, 255);
+  if (o.shippingStatus !== text && open) data.shippingStatus = text;
+  if (stage === 'cancelled' && open)
+    data.shippingStatus =
+      `${text}${st.cancel_comment ? ` (${st.cancel_comment})` : ''}: gọi lại hoặc đổi cách giao`.slice(
+        0,
+        255,
+      );
   if (st.shared_link && !o.trackingUrl) data.trackingUrl = st.shared_link;
   if (Object.keys(data).length) await db.order.update({ where: { id: o.id }, data });
-  if (stage === 'delivered' && o.status === 'shipped' && !/hoàn hàng/.test(text))
+  const returning = /hoàn hàng/.test(text);
+  // the driver has the parcel: hand it over now (stock leaves)
+  if ((stage === 'delivering' || stage === 'delivered') && o.status === 'packing')
+    await runPosAction(db, o.code, 'ship', userId, { carrier: AHAMOVE, trackingNo: ahamoveOrderId }).catch(
+      () => undefined,
+    );
+  if (stage === 'delivered' && !returning && (o.status === 'packing' || o.status === 'shipped'))
     await runPosAction(db, o.code, 'deliver').catch(() => undefined);
   return { matched: true as const, code: o.code, stage };
 }
@@ -178,7 +193,11 @@ export async function refreshOrder(db: PrismaClient, code: string) {
   try {
     const st = await getClient().getOrder(o.trackingNo);
     await applyAhamoveStatus(db, o.trackingNo, st);
-    return { status: st.status ?? null, driver: st.supplier_name ?? null, text: ahamoveStatusText(st.status, st.sub_status) };
+    return {
+      status: st.status ?? null,
+      driver: st.supplier_name ?? null,
+      text: ahamoveStatusText(st.status, st.sub_status),
+    };
   } catch (err) {
     return explain(err);
   }
@@ -193,9 +212,13 @@ export async function cancelTrip(db: PrismaClient, code: string, reason: string)
   } catch (err) {
     return explain(err);
   }
+  // still packing: free the order so another trip can be booked; already handed over: keep the record
   await db.order.update({
     where: { code },
-    data: { shippingStatus: 'Ahamove: đã hủy chuyến (hoàn hàng hoặc gọi lại)' },
+    data:
+      o.status === 'packing'
+        ? { carrier: null, trackingNo: null, trackingUrl: null, shippingStatus: null }
+        : { shippingStatus: 'Ahamove: đã hủy chuyến (hoàn hàng hoặc gọi lại)' },
   });
   return { ok: true };
 }

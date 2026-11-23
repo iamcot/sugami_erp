@@ -33,7 +33,7 @@ Chi tiết đơn → Tạo vận đơn → API (báo phí, tạo, hủy, in) ─
 
 AhaMove không có trong Allingo nên được gọi **thẳng API AhaMove** (`apps/api/src/pos/ahamove.ts`, `packages/channels/ahamove`, nhóm `AHAMOVE_*` trong `.env`, xem `docs/ban-hang-tai-quay.md`). Bảng giá của *Tạo vận đơn* gom cả hai nguồn: AhaMove nằm ở tab **Giao nhanh** cùng Grab, Lalamove của Allingo; nhãn Rẻ nhất / Nhanh nhất tính chung. Một nguồn lỗi chỉ hiện cảnh báo, không che nguồn kia.
 
-Chọn dòng AhaMove thì khác Allingo ở chỗ: tài xế được gọi ngay và đơn sang *Đang giao* (trừ tồn) luôn, không có bước chờ hãng lấy hàng; trạng thái theo webhook `/webhooks/ahamove` hoặc nút *Cập nhật trạng thái* trong thẻ vận chuyển. Chuyến AhaMove nằm trên chính đơn (`carrier`, `tracking_no`, `tracking_url`), không có dòng `shipments`.
+Chọn dòng AhaMove thì khác Allingo ở chỗ: tài xế được gọi ngay nhưng đơn vẫn ở *Đang đóng gói* (chuyến lưu trên đơn). Khi AhaMove báo tài xế đã lấy hàng (`IN PROCESS`) đơn mới sang *Đang giao* và trừ tồn; hủy chuyến lúc đang đóng gói thì đơn được giải phóng để gọi lại; trạng thái theo webhook `/webhooks/ahamove` hoặc nút *Cập nhật trạng thái* trong thẻ vận chuyển. Chuyến AhaMove nằm trên chính đơn (`carrier`, `tracking_no`, `tracking_url`), không có dòng `shipments`.
 
 ## Cài đặt (làm một lần)
 
