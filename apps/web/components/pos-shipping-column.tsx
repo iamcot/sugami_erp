@@ -568,50 +568,6 @@ export function PosShippingColumn({
                   })}
                 </section>
               )}
-
-              <section className="space-y-2 px-4 py-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-slate-600 dark:text-slate-300">Hạn đóng hàng</span>
-                  <span className="text-right font-medium">
-                    {fastCard
-                      ? scheduleAt
-                        ? whenText(scheduleAt)
-                        : 'Ngay bây giờ'
-                      : chosen.packDeadline
-                        ? whenText(chosen.packDeadline)
-                        : 'Chưa đặt mốc lấy hàng'}
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-slate-600 dark:text-slate-300">Phí giao hàng</span>
-                  <span className="text-base font-semibold tabular-nums">{formatVnd(fee)}</span>
-                </div>
-                {chosen.breakdown.length > 1 &&
-                  chosen.breakdown.map((b) => (
-                    <div key={b.name} className="flex justify-between pl-3 text-xs text-slate-500">
-                      <span>{b.name}</span>
-                      <span className="tabular-nums">{formatVnd(b.value)}</span>
-                    </div>
-                  ))}
-                {chosen.details && (
-                  <details className="pt-1 text-xs text-slate-500">
-                    <summary className="cursor-pointer text-brand-700">
-                      Điều khoản và biểu phí của dịch vụ
-                    </summary>
-                    <p className="mt-2 whitespace-pre-line">{chosen.details.trim()}</p>
-                  </details>
-                )}
-                {addedFee > 0 && (
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-slate-600 dark:text-slate-300">
-                      Khách cần trả (đã cộng phí ship)
-                    </span>
-                    <span className="text-base font-semibold tabular-nums">
-                      {formatVnd(input.total + addedFee)}
-                    </span>
-                  </div>
-                )}
-              </section>
             </div>
           </div>
         )}
@@ -667,6 +623,49 @@ export function PosShippingColumn({
       </div>
 
       <div className="shrink-0 space-y-2 border-t border-slate-200 p-3 dark:border-slate-800">
+        {chosen && (
+          <section className="max-h-56 space-y-2 overflow-auto rounded-lg border border-brand-500/40 px-4 py-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-slate-600 dark:text-slate-300">Hạn đóng hàng</span>
+              <span className="text-right font-medium">
+                {fastCard
+                  ? scheduleAt
+                    ? whenText(scheduleAt)
+                    : 'Ngay bây giờ'
+                  : chosen.packDeadline
+                    ? whenText(chosen.packDeadline)
+                    : 'Chưa đặt mốc lấy hàng'}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-slate-600 dark:text-slate-300">Phí giao hàng</span>
+              <span className="text-base font-semibold tabular-nums">{formatVnd(fee)}</span>
+            </div>
+            {chosen.breakdown.length > 1 &&
+              chosen.breakdown.map((b) => (
+                <div key={b.name} className="flex justify-between pl-3 text-xs text-slate-500">
+                  <span>{b.name}</span>
+                  <span className="tabular-nums">{formatVnd(b.value)}</span>
+                </div>
+              ))}
+            {chosen.details && (
+              <details className="pt-1 text-xs text-slate-500">
+                <summary className="cursor-pointer text-brand-700">
+                  Điều khoản và biểu phí của dịch vụ
+                </summary>
+                <p className="mt-2 whitespace-pre-line">{chosen.details.trim()}</p>
+              </details>
+            )}
+            {addedFee > 0 && (
+              <div className="flex items-baseline justify-between">
+                <span className="text-slate-600 dark:text-slate-300">Khách cần trả (đã cộng phí ship)</span>
+                <span className="text-base font-semibold tabular-nums">
+                  {formatVnd(input.total + addedFee)}
+                </span>
+              </div>
+            )}
+          </section>
+        )}
         {message}
         <Button
           className="h-12 w-full text-base"
