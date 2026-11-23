@@ -169,3 +169,15 @@ body {
   border-top-color: var(--glass-edge);
   box-shadow: var(--glass-shadow);
 }
+
+/* Hand-built tables (not DataTable) get the same HUD header as DataTable. */
+thead.text-xs:not(.sticky):where(.bg-slate-50, .bg-white, .text-left, .border-b) {
+  background: rgb(var(--accent-rgb) / 0.05);
+}
+thead.text-xs th {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}

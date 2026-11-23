@@ -8,7 +8,7 @@ import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
 import { ListingsDrawer } from '@/components/listings-drawer';
 import { PancakeIcon, ShopeeIcon, TikTokIcon } from '@/components/platform-icons';
-import { Badge, Button, Card, PageHeader } from '@/components/ui';
+import { Badge, Button, Card, PageHeader, Tabs } from '@/components/ui';
 import { api } from '@/lib/api';
 import type { InventoryResponse } from '@/lib/inventory';
 import { useQueryState } from '@/lib/use-query-state';
@@ -377,20 +377,11 @@ function ProductsList() {
         />
       )}
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center">
-        <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-          {VIEWS.map(([v, label]) => (
-            <button
-              key={v}
-              onClick={() => setQs({ view: v, page: '1' })}
-              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${qs.view === v ? 'bg-white shadow-sm dark:bg-slate-900' : 'text-slate-600 dark:text-slate-400'}`}
-            >
-              {label}
-              {counts[v] !== undefined && (
-                <span className="ml-1.5 text-xs text-slate-400">{counts[v].toLocaleString('vi-VN')}</span>
-              )}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          items={VIEWS.map(([v, label]) => ({ id: v, label, count: counts[v] }))}
+          value={qs.view}
+          onChange={(v) => setQs({ view: v, page: '1' })}
+        />
         <select
           value={qs.link}
           onChange={(e) => setQs({ link: e.target.value, page: '1' })}

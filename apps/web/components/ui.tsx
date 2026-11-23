@@ -100,3 +100,39 @@ export function Kpi({ label, value, sub }: { label: ReactNode; value: ReactNode;
     </div>
   );
 }
+
+/** Status/view tabs above a list: one segmented glass strip, optional count after each label. */
+export function Tabs<T extends string>({
+  items,
+  value,
+  onChange,
+  className,
+}: {
+  items: { id: T; label: ReactNode; count?: number }[];
+  value: T;
+  onChange: (id: T) => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn('glass flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg p-1', className)}>
+      {items.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => onChange(t.id)}
+          className={cn(
+            'whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium',
+            value === t.id
+              ? 'bg-white text-slate-900 shadow-sm dark:bg-white/10 dark:text-white'
+              : 'text-slate-600 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-white/5',
+          )}
+        >
+          {t.label}
+          {t.count !== undefined && (
+            <span className="ml-1.5 font-mono text-xs text-slate-400">{t.count.toLocaleString('vi-VN')}</span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}

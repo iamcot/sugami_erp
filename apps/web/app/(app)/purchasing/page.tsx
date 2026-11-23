@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Field, inputCls } from '@/components/product-form-parts';
-import { Badge, Button, Card, PageHeader } from '@/components/ui';
+import { Badge, Button, Card, PageHeader, Tabs } from '@/components/ui';
 import { api } from '@/lib/api';
 import { type PoStatus, STATUS_LABEL, STATUS_TONE } from '@/lib/purchasing';
 
@@ -86,17 +86,7 @@ export default function PurchasingPage() {
         }
       />
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
-      <div className="mb-3 flex gap-1 overflow-x-auto">
-        {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setStatus(f.id)}
-            className={`whitespace-nowrap rounded-full px-3 py-1 text-sm ${status === f.id ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <Tabs className="mb-3" items={FILTERS} value={status} onChange={setStatus} />
       <Card className="mb-6 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-900">

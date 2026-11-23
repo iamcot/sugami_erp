@@ -2,7 +2,7 @@
 
 import { formatVnd } from '@sugami/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Kpi, PageHeader } from '@/components/ui';
+import { Card, Kpi, PageHeader, Tabs } from '@/components/ui';
 import { api } from '@/lib/api';
 
 type By = 'month' | 'channel' | 'product' | 'sku';
@@ -105,17 +105,7 @@ export default function ReportsPage() {
         description={`${range[0].split('-').reverse().join('/')} – ${range[1].split('-').reverse().join('/')} · không tính đơn hủy/hoàn`}
       />
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="flex gap-1">
-          {PRESETS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPreset(p.id)}
-              className={`whitespace-nowrap rounded-full px-3 py-1 text-sm ${preset === p.id ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <Tabs items={PRESETS} value={preset} onChange={setPreset} />
       </div>
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
