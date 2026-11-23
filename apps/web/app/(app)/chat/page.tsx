@@ -219,8 +219,8 @@ function Thread({
   }, [conv.id, reload, refreshKey]);
 
   return (
-    <Card className="flex h-[70vh] flex-col overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-slate-200/70 px-4 py-3 dark:border-slate-700/60">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center gap-2 border-b border-slate-200/70 px-4 py-3 dark:border-slate-700/60">
         <button
           type="button"
           onClick={onBack}
@@ -248,7 +248,7 @@ function Thread({
           const el = e.currentTarget;
           stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
         }}
-        className="flex-1 overflow-y-auto px-4 py-3"
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
       >
         <div ref={content} className="space-y-2">
           {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -281,7 +281,7 @@ function Thread({
         </div>
       </div>
       {conv.kind === 'INBOX' ? (
-        <div className="space-y-2 border-t border-slate-200/70 px-4 py-3 dark:border-slate-700/60">
+        <div className="shrink-0 space-y-2 border-t border-slate-200/70 px-4 py-3 dark:border-slate-700/60">
           {sendError && <p className="text-sm text-rose-600">{sendError}</p>}
           <div className="flex items-end gap-2 rounded-xl border border-slate-200 bg-white/80 py-2 pl-3 pr-2 focus-within:border-brand-500 dark:border-slate-700 dark:bg-white/5">
             <textarea
@@ -320,7 +320,7 @@ function Thread({
           </p>
         </div>
       ) : (
-        <p className="border-t border-slate-200/70 px-4 py-2 text-xs text-slate-500 dark:border-slate-700/60">
+        <p className="shrink-0 border-t border-slate-200/70 px-4 py-2 text-xs text-slate-500 dark:border-slate-700/60">
           Đánh giá và bình luận chỉ xem, trả lời làm trên sàn hoặc Facebook.
         </p>
       )}
@@ -416,31 +416,35 @@ function ChatList() {
 
   const reset = { page: '1', c: '' };
 
+  // The page itself does not scroll: the chat fills the screen under the header (and above the bottom nav on
+  // phones), the list and the messages scroll inside, and the reply box stays at the bottom edge.
   return (
-    <>
-      <PageHeader
-        title="Chat"
-        description={
-          s ? `${s.inbox} chat · ${s.rating} đánh giá trong ${qs.days} ngày qua` : 'Đọc từ Pancake'
-        }
-        actions={
-          <div className="flex items-center gap-3">
-            <span className="hidden text-xs text-slate-500 sm:inline">
-              Tự động tải lại sau <b className="tabular-nums">{Math.max(countdown, 0)}</b> giây
-            </span>
-            <Button variant="secondary" onClick={() => setReload((n) => n + 1)} disabled={loading}>
-              <RefreshCw className={cn('size-4', loading && 'animate-spin')} /> Tải lại
-            </Button>
-          </div>
-        }
-      />
+    <div className="-mb-[calc(6rem+env(safe-area-inset-bottom))] flex h-[calc(100dvh_-_8.75rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] flex-col lg:-mb-10 lg:h-[calc(100dvh_-_6.5rem)]">
+      <div className={cn('shrink-0', selected && 'hidden lg:block')}>
+        <PageHeader
+          title="Chat"
+          description={
+            s ? `${s.inbox} chat · ${s.rating} đánh giá trong ${qs.days} ngày qua` : 'Đọc từ Pancake'
+          }
+          actions={
+            <div className="flex items-center gap-3">
+              <span className="hidden text-xs text-slate-500 sm:inline">
+                Tự động tải lại sau <b className="tabular-nums">{Math.max(countdown, 0)}</b> giây
+              </span>
+              <Button variant="secondary" onClick={() => setReload((n) => n + 1)} disabled={loading}>
+                <RefreshCw className={cn('size-4', loading && 'animate-spin')} /> Tải lại
+              </Button>
+            </div>
+          }
+        />
+      </div>
       {res?.errors.map((e) => (
         <p key={e.channel} className="mb-2 text-sm text-rose-600">
           Không đọc được chat {CHANNEL_LABEL[e.channel] ?? e.channel}: {e.message}
         </p>
       ))}
       {/* z-20: the glass blur makes its own layer, so without it the list below would cover the open menus */}
-      <div className="glass relative z-20 mb-4 rounded-xl">
+      <div className={cn('glass relative z-20 mb-4 shrink-0 rounded-xl', selected && 'hidden lg:block')}>
         {/* filters: same bar as Đơn hàng */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-300/50 bg-white/30 px-3 py-2 dark:border-white/10 dark:bg-black/10">
           <span className="hud-label text-slate-500">Lọc</span>
@@ -493,7 +497,7 @@ function ChatList() {
           </label>
         </div>
         {/* channel tabs: same as Đơn hàng; the number is chats that need attention */}
-        <div className="flex overflow-x-auto">
+        <div className="flex overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {[
             { channel: '', attention: res?.channels.reduce((n, c) => n + c.attention, 0) ?? 0 },
             ...(res?.channels ?? []),
@@ -502,7 +506,7 @@ function ChatList() {
               key={ch.channel}
               onClick={() => setQs({ channel: ch.channel, ...reset })}
               className={cn(
-                '-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium',
+                'flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium',
                 qs.channel === ch.channel
                   ? 'border-brand-600 bg-gradient-to-t from-brand-500/10 to-transparent text-brand-700 dark:text-brand-500'
                   : 'border-transparent text-slate-600 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-white/5',
@@ -520,9 +524,9 @@ function ChatList() {
         </div>
       </div>
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div className={cn(selected && 'hidden lg:block')}>
-          <Card className="divide-y divide-slate-200/70 overflow-hidden dark:divide-slate-700/60">
+      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <div className={cn('flex min-h-0 flex-col', selected && 'hidden lg:flex')}>
+          <Card className="min-h-0 flex-1 divide-y divide-slate-200/70 overflow-y-auto dark:divide-slate-700/60">
             {loading && !res && <p className="p-4 text-sm text-slate-500">Đang tải…</p>}
             {res && !res.data.length && (
               <p className="p-4 text-sm text-slate-500">Không có hội thoại nào khớp bộ lọc.</p>
@@ -595,7 +599,7 @@ function ChatList() {
             ))}
           </Card>
           {res && pages > 1 && (
-            <div className="mt-3 flex items-center justify-between text-sm">
+            <div className="mt-3 flex shrink-0 items-center justify-between text-sm">
               <Button
                 variant="secondary"
                 disabled={Number(qs.page) <= 1}
@@ -616,7 +620,7 @@ function ChatList() {
             </div>
           )}
         </div>
-        <div className={cn(!selected && 'hidden lg:block')}>
+        <div className={cn('min-h-0', !selected && 'hidden lg:block')}>
           {selected ? (
             <Thread conv={selected} refreshKey={reload} onBack={() => setQs({ c: '' })} onReview={review} />
           ) : (
@@ -626,7 +630,7 @@ function ChatList() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
