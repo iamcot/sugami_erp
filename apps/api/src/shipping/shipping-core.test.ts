@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { buildInquiry, groupOf, guessMinutes, orderWeight, pickBox, toQuoteRows } from './shipping-core.js';
+import {
+  buildInquiry,
+  groupOf,
+  addonExtras,
+  guessMinutes,
+  orderWeight,
+  serviceProblem,
+  pickBox,
+  toQuoteRows,
+} from './shipping-core.js';
 import { DEFAULT_SHIPPING } from './shipping-settings.js';
 
 const q = (partner: string, price: number, minutes: number | null, available = true) => ({
@@ -173,5 +182,34 @@ describe('pickup times', () => {
 describe('guessMinutes with day texts', () => {
   it('reads "1-2 ngày" as days even when minutes are reported', () => {
     expect(guessMinutes({ etaMinutes: 30, serviceName: 'X', etaText: 'Dự kiến 1-2 ngày' })).toBe(2880);
+  });
+});
+
+describe('Allingo service limits and add-ons', () => {
+  const box = { lengthCm: 20, widthCm: 15, heightCm: 10 };
+  it('refuses a parcel over the weight or without COD support', () => {
+    const svc = { limits: { max_weight_kg: 20 }, supports_cod: false };
+    expect(serviceProblem(svc, { grams: 25_000, box, codAmount: 0 })).toMatch(/20 kg/);
+    expect(serviceProblem(svc, { grams: 500, box, codAmount: 1000 })).toMatch(/COD/);
+    expect(serviceProblem(svc, { grams: 500, box, codAmount: 0 })).toBeNull();
+  });
+  it('checks sides regardless of orientation', () => {
+    const svc = { limits: { max_length_cm: 25, max_width_cm: 25, max_height_cm: 20 }, supports_cod: true };
+    expect(
+      serviceProblem(svc, { grams: 500, box: { lengthCm: 10, widthCm: 24, heightCm: 20 }, codAmount: 0 }),
+    ).toBeNull();
+    expect(
+      serviceProblem(svc, { grams: 500, box: { lengthCm: 30, widthCm: 10, heightCm: 10 }, codAmount: 0 }),
+    ).toMatch(/kích thước/);
+  });
+  it('lists only add-ons that can be sent by key', () => {
+    const r = addonExtras({
+      addons: [
+        { key: 'TRY_ON', name: 'Allow try-on', price: 0, carrier_option: false },
+        { key: null, name: 'Station delivery', price: null, carrier_option: true },
+      ],
+    });
+    expect(r.map((x) => x.id)).toEqual(['TRY_ON']);
+    expect(r[0]!.name).toBe('Cho thử hàng');
   });
 });

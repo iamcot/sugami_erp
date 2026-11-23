@@ -8,6 +8,7 @@ import { RateLimiter } from '@sugami/channels-core';
 import type {
   AllingoOrder,
   AllingoPartner,
+  AllingoService,
   AllingoTimelineEvent,
   InquiryRequest,
   InquiryResponse,
@@ -211,6 +212,14 @@ export class AllingoClient {
 
   async partners(): Promise<AllingoPartner[]> {
     const r = await this.call<{ data?: AllingoPartner[] }>('GET', '/partners');
+    return r.data ?? [];
+  }
+
+  async services(partnerId: string): Promise<AllingoService[]> {
+    const r = await this.call<{ data?: AllingoService[] }>(
+      'GET',
+      `/partners/${encodeURIComponent(partnerId)}/services`,
+    );
     return r.data ?? [];
   }
 

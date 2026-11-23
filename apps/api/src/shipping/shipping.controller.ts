@@ -20,7 +20,7 @@ const Choices = z.object({
     .max(20),
 });
 const Parcel = z.object({
-  ahamoveRequests: Choices.optional(),
+  extraChoices: Choices.optional(),
   boxKey: z.string().trim().max(20).optional(),
   weightGrams: z.number().int().min(1).max(100_000).optional(),
   lengthCm: z.number().int().min(1).max(200).optional(),

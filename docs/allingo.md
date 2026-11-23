@@ -96,3 +96,9 @@ Chạy thử webhook không cần Allingo: `curl` tới `/api/webhooks/allingo` 
 - Cột chọn hãng hiện mô tả, điều khoản, giới hạn tải trọng/COD, quãng đường, thời gian ước tính và các dòng cấu thành phí của từng dịch vụ AhaMove (lấy từ `GET /services` và `POST /orders/estimates`).
 - Dịch vụ mở rộng (`requests[]`: SMS, dễ vỡ, giao tận tay, bagá, hỗ trợ tài xế, quay lại điểm lấy, tiền tip...) hiện ở thẻ hãng đã chọn: tick để bật, chọn mức (tier) hoặc số lượng; giá được tính lại sau mỗi lần chọn và gửi kèm khi tạo chuyến. Bỏ qua các mục bảo hiểm, phí cầu đường/phà và thu hộ COD vì Sugami xử lý COD riêng.
 - **Chưa kiểm chứng:** dạng body gửi extras (`_id`, `tier_code`, `num`) theo trí nhớ về tài liệu; cần thử trên staging (`AHAMOVE_PROBE_RAW=1 pnpm ahamove:probe`) trước khi dùng thật.
+
+## Dịch vụ, giới hạn và addon của Allingo (đã probe thật)
+
+- `GET /partners/:id/services` trả từng dịch vụ kèm `limits` (tải trọng, kích thước), `supports_cod`, `supports_insurance` và `addons` (có `key`, `price`, `price_type` flat, `carrier_option`). Sugami nạp danh sách này (cache 1 giờ): dịch vụ không nhận được hàng/COD bị tô khả dụng = không kèm lý do; addon có `key` (không phải `carrier_option`) hiện ở mục "Dịch vụ mở rộng" của thẻ hãng, gửi qua `addon_keys` khi tạo vận đơn.
+- Môi trường TEST: chỉ Simulator có giá khi báo giá; Simulator **không hỗ trợ COD**. `estimated_source` của Simulator là `service_config` (số cố định), nên "5 phút" và "1-2 ngày" tự mâu thuẫn.
+- Giá addon trong danh mục: GHN, SPX miễn phí; VNPost và Viettel Post "đồng kiểm" 16.200 đ và 16.500 đ; Lalamove chưa có giá. **Chưa kiểm chứng:** cộng phí addon vào giá báo giá do Sugami tự tính từ danh mục, chưa so với phí thật trên đơn Allingo.

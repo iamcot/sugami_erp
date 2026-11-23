@@ -79,6 +79,8 @@ export interface OrderRequest extends InquiryRequest {
   external_reference?: string;
   fulfillment_type?: 'immediate' | 'scheduled';
   schedule_at?: string;
+  /** Add-ons switched on (keys from GET /addons that the service lists). */
+  addon_keys?: string[];
 }
 
 export interface AllingoDelivery {
@@ -114,6 +116,26 @@ export interface AllingoTimelineEvent {
   scan_location?: { name?: string | null; city?: string | null } | null;
   note?: string | null;
   source?: string | null;
+}
+
+/** One service of a carrier, from GET /partners/:id/services. */
+export interface AllingoService {
+  id: string;
+  name: string;
+  description: string | null;
+  partner?: { id: string; name: string };
+  type: 'standard' | 'on_demand' | string;
+  limits: Record<string, number | null>;
+  supports_cod: boolean;
+  supports_insurance: boolean;
+  addons: {
+    ref: string;
+    key: string | null;
+    name: string;
+    price: number | null;
+    price_type: string | null;
+    carrier_option: boolean;
+  }[];
 }
 
 export interface AllingoPartner {

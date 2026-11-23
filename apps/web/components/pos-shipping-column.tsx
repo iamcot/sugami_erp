@@ -62,7 +62,7 @@ export interface ShipSelection {
   addFeeToOrder: boolean;
   scheduleAt?: string;
   /** Ahamove extras switched on for the chosen service. */
-  ahamoveRequests?: { id: string; tierCode?: string; num?: number }[];
+  extraChoices?: { id: string; tierCode?: string; num?: number }[];
   partnerName: string;
 }
 
@@ -169,8 +169,15 @@ export function PosShippingColumn({
     ? { weightGrams: customOk.g, lengthCm: customOk.l, widthCm: customOk.w, heightCm: customOk.h }
     : {};
   const requests = Object.entries(extraPicks).map(([id, c]) => ({ id, ...c }));
-  const ahamoveRequests = extrasFor && requests.length ? { serviceId: extrasFor, requests } : undefined;
-  const key = JSON.stringify([input, boxKey, tick, customBody, ahamoveRequests]);
+  const extraChoices = extrasFor && requests.length ? { serviceId: extrasFor, requests } : undefined;
+  // only Ahamove re-prices on a choice; Allingo add-ons have a listed price added here
+  const key = JSON.stringify([
+    input,
+    boxKey,
+    tick,
+    customBody,
+    extrasFor?.startsWith('ahamove:') ? extraChoices : null,
+  ]);
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -184,7 +191,7 @@ export function PosShippingColumn({
           total: input.total,
           boxKey,
           ...customBody,
-          ...(ahamoveRequests ? { ahamoveRequests } : {}),
+          ...(extraChoices ? { extraChoices } : {}),
           addFeeToOrder: false,
         },
       })
@@ -255,7 +262,11 @@ export function PosShippingColumn({
   const scheduleBad =
     fastCard && schedule === 'custom' && (!customAt || new Date(customAt).getTime() < Date.now());
   const ahamove = chosen?.partnerId === 'ahamove';
-  const fee = chosen?.price ?? 0;
+  const addonsFee =
+    chosen && chosen.serviceId === extrasFor && !chosen.serviceId.startsWith('ahamove:')
+      ? chosen.extras.reduce((sum, x) => sum + (extraPicks[x.id] ? x.price : 0), 0)
+      : 0;
+  const fee = (chosen?.price ?? 0) + addonsFee;
   const addedFee = addFee && !ahamove ? fee : 0;
 
   const row = (r: Quote) => (
@@ -686,12 +697,12 @@ export function PosShippingColumn({
               chosen &&
               onConfirm({
                 serviceId: chosen.serviceId,
-                quotedPrice: chosen.price,
+                quotedPrice: fee,
                 boxKey,
                 ...customBody,
                 addFeeToOrder: addFee && !ahamove,
                 scheduleAt,
-                ...(chosen.serviceId === extrasFor && requests.length ? { ahamoveRequests: requests } : {}),
+                ...(chosen.serviceId === extrasFor && requests.length ? { extraChoices: requests } : {}),
                 partnerName: chosen.partnerName,
               })
             }

@@ -256,3 +256,59 @@ export function applyCarrierSettings(
       r.packDeadline = nextPickup(carriers[r.partnerId]?.pickupTimes ?? [], now)?.toISOString() ?? null;
   return out;
 }
+
+/** Vietnamese names of Allingo add-ons (GET /addons is English). */
+const ADDON_VI: Record<string, { name: string; description: string }> = {
+  DOOR_TO_DOOR: { name: 'Giao tận tay', description: 'Tài xế đưa hàng tận tay người nhận' },
+  SMS: { name: 'SMS báo khách', description: 'Nhắn SMS cho người nhận khi tài xế tới' },
+  ROUND_TRIP: { name: 'Khứ hồi', description: 'Tài xế chờ rồi quay lại điểm lấy hàng' },
+  IS_FRAGILE: { name: 'Hàng dễ vỡ', description: 'Tài xế xử lý cẩn thận' },
+  THERMAL_BAG: { name: 'Túi giữ nhiệt', description: 'Cho hàng cần giữ nhiệt' },
+  LARGE_THERMAL_BAG: { name: 'Túi giữ nhiệt lớn', description: 'Túi 40×40 cm cho đơn lớn' },
+  ALLOW_INSPECTION: {
+    name: 'Cho xem hàng (đồng kiểm)',
+    description: 'Người nhận được mở kiểm hàng trước khi nhận',
+  },
+  TRY_ON: { name: 'Cho thử hàng', description: 'Người nhận được thử hàng trước khi nhận (gồm đồng kiểm)' },
+  PARTIAL_DELIVERY: {
+    name: 'Giao một phần',
+    description: 'Người nhận giữ một phần hàng và trả tiền phần đó, phần còn lại hoàn về shop',
+  },
+};
+
+/** What the shop may switch on for an Allingo service: the add-ons it lists that can be sent by key. */
+export function addonExtras(svc: {
+  addons: { key: string | null; name: string; price: number | null; carrier_option: boolean }[];
+}) {
+  return svc.addons
+    .filter((a) => a.key && !a.carrier_option)
+    .map((a) => ({
+      id: a.key!,
+      name: ADDON_VI[a.key!]?.name ?? a.name,
+      description: ADDON_VI[a.key!]?.description ?? null,
+      kind: 'bool' as const,
+      price: a.price ?? 0,
+      maxInput: null,
+      tiers: [],
+    }));
+}
+
+/** Why a service cannot take this parcel (its published limits and COD support), or null. */
+export function serviceProblem(
+  svc: { limits: Record<string, number | null>; supports_cod: boolean },
+  parcel: { grams: number; box: { lengthCm: number; widthCm: number; heightCm: number }; codAmount: number },
+): string | null {
+  const kg = parcel.grams / 1000;
+  const l = svc.limits;
+  if (l.max_weight_kg != null && kg > l.max_weight_kg) return `Quá tải trọng ${l.max_weight_kg} kg`;
+  if (l.min_weight_kg != null && kg < l.min_weight_kg) return `Dưới tải tối thiểu ${l.min_weight_kg} kg`;
+  const sides = [parcel.box.lengthCm, parcel.box.widthCm, parcel.box.heightCm].sort((a, b) => b - a);
+  const caps = [l.max_length_cm, l.max_width_cm, l.max_height_cm]
+    .filter((x): x is number => x != null)
+    .sort((a, b) => b - a);
+  if (caps.length === 3 && sides.some((v, i) => v > caps[i]!)) return 'Quá kích thước cho phép của dịch vụ';
+  if (l.max_total_dimension_cm != null && sides.reduce((a, b) => a + b, 0) > l.max_total_dimension_cm)
+    return 'Quá tổng kích thước cho phép của dịch vụ';
+  if (parcel.codAmount > 0 && !svc.supports_cod) return 'Dịch vụ không hỗ trợ thu hộ COD';
+  return null;
+}

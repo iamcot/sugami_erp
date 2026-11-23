@@ -12,6 +12,7 @@ import {
   effectiveStatus,
   phaseOf,
   type AllingoQuote,
+  type AllingoService,
 } from '@sugami/carriers-allingo';
 import type { Prisma } from '@sugami/db';
 import { refreshShipment } from '@sugami/sync';
@@ -28,12 +29,14 @@ import { runPosAction } from '../pos/pos-orders.js';
 import { PosError } from '../pos/pos-orders.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  addonExtras,
   applyCarrierSettings,
   buildInquiry,
   nextPickup,
   orderWeight,
   pickBox,
   pickupProblem,
+  serviceProblem,
   toQuoteRows,
   type ParcelInput,
   type ReceiverInput,
@@ -57,7 +60,7 @@ export interface ParcelOverride {
   /** Book for a later time (ISO); omitted = find a driver now. */
   scheduleAt?: string;
   /** Ahamove extras the seller switched on (the service they apply to, and the choices). */
-  ahamoveRequests?: { serviceId?: string; requests: { id: string; tierCode?: string; num?: number }[] };
+  extraChoices?: { serviceId?: string; requests: { id: string; tierCode?: string; num?: number }[] };
 }
 
 /** A sale still on the counter screen, priced before the order exists. */
@@ -139,6 +142,19 @@ export class ShippingService {
     } catch (err) {
       this.fail(err);
     }
+  }
+
+  private catalogCache: { at: number; map: Map<string, AllingoService> } | null = null;
+
+  /** Every Allingo service with its limits, COD support and add-ons, by service id (cached for an hour). */
+  private async serviceCatalog(): Promise<Map<string, AllingoService>> {
+    if (this.catalogCache && Date.now() - this.catalogCache.at < 3_600_000) return this.catalogCache.map;
+    const client = this.client();
+    const map = new Map<string, AllingoService>();
+    for (const p of await client.partners())
+      for (const s of await client.services(p.id).catch(() => [] as AllingoService[])) map.set(s.id, s);
+    this.catalogCache = { at: Date.now(), map };
+    return map;
   }
 
   private iconCache: { at: number; map: Record<string, string> } | null = null;
@@ -285,7 +301,7 @@ export class ShippingService {
     const order = await this.loadOrder(code);
     this.checkShippable(order);
     const settings = await loadShippingSettings(this.prisma.client);
-    return this.quoteFor(settings, this.receiver(order), this.parcel(order, settings, o), o.ahamoveRequests);
+    return this.quoteFor(settings, this.receiver(order), this.parcel(order, settings, o), o.extraChoices);
   }
 
   /** Fee quotes for a sale still on the counter screen: the order is created only when the seller confirms. */
@@ -310,7 +326,7 @@ export class ShippingService {
       settings,
       { name: r.name, phone: r.phone, address: r.address, ward: r.ward ?? null, province: r.area ?? null },
       parcel,
-      body.ahamoveRequests,
+      body.extraChoices,
     );
   }
 
@@ -322,10 +338,10 @@ export class ShippingService {
     settings: ShippingSettings,
     to: ReceiverInput,
     parcel: ParcelInput & { unknownWeights: number },
-    ahamoveRequests?: ParcelOverride['ahamoveRequests'],
+    extraChoices?: ParcelOverride['extraChoices'],
   ) {
-    const extrasChoice = ahamoveRequests?.serviceId
-      ? { [ahamoveRequests.serviceId.replace(AHAMOVE_PREFIX, '')]: ahamoveRequests.requests }
+    const extrasChoice = extraChoices?.serviceId
+      ? { [extraChoices.serviceId.replace(AHAMOVE_PREFIX, '')]: extraChoices.requests }
       : {};
     const allingoOn = this.status().configured;
     const ahamoveOn = ahamoveConfigured();
@@ -342,17 +358,29 @@ export class ShippingService {
       const inquiry = buildInquiry(settings.pickup, to, parcel);
       // ask per delivery mode: the filter is how Allingo tells normal carriers from driver-direct ones
       const modes = ['standard', 'on_demand'] as const;
+      // the service list (limits, COD support, add-ons) is optional: without it quotes still show
+      const catalog = await this.serviceCatalog().catch(() => new Map<string, AllingoService>());
+      const annotate = (q: AllingoQuote): AllingoQuote => {
+        const svc = catalog.get(q.service_id);
+        if (!svc) return q;
+        const problem = serviceProblem(svc, parcel);
+        return {
+          ...q,
+          extras: addonExtras(svc),
+          ...(problem && q.available !== false ? { available: false, error_code: problem } : {}),
+        };
+      };
       const parts = await Promise.allSettled(modes.map((type) => client.quote({ ...inquiry, type })));
       if (parts.every((x) => x.status === 'fulfilled')) {
         const seen = new Set<string>();
         return parts.flatMap((x, i) =>
           (x.status === 'fulfilled' ? (x.value.quotes ?? []) : [])
             .filter((q) => !seen.has(q.service_id) && seen.add(q.service_id))
-            .map((q) => ({ ...q, mode: modes[i] })),
+            .map((q) => ({ ...annotate(q), mode: modes[i] })),
         );
       }
       // the filter was refused: one plain request, modes guessed from the carrier
-      return (await client.quote(inquiry)).quotes ?? [];
+      return ((await client.quote(inquiry)).quotes ?? []).map(annotate);
     };
     const fromAhamove = async (): Promise<AllingoQuote[]> =>
       (
@@ -466,7 +494,7 @@ export class ShippingService {
           body.serviceId.slice(AHAMOVE_PREFIX.length),
           userId,
           scheduleAt,
-          body.ahamoveRequests?.requests ?? [],
+          body.extraChoices?.requests ?? [],
         );
         // a driver is looked for now, or at the booked time: that is the packing deadline
         await db.order.update({ where: { code }, data: { shipByAt: scheduleAt ?? new Date() } });
@@ -483,6 +511,14 @@ export class ShippingService {
     const addedFee = body.addFeeToOrder ? body.quotedPrice : 0;
     const parcel = this.parcel(order, settings, body, addedFee);
     const inquiry = buildInquiry(settings.pickup, this.receiver(order), parcel);
+    // add-ons the seller ticked, only those the service really lists
+    const wanted = body.extraChoices?.requests.map((r) => r.id) ?? [];
+    const listed = wanted.length
+      ? addonExtras(
+          (await this.serviceCatalog().catch(() => new Map())).get(body.serviceId) ?? { addons: [] },
+        )
+      : [];
+    const addonKeys = wanted.filter((k) => listed.some((x) => x.id === k));
 
     // a service name is needed to show the row: ask for the quote again is not needed, the id is enough here
     const pending = order.shipments.find(
@@ -490,7 +526,9 @@ export class ShippingService {
     );
     const total = await db.shipment.count({ where: { orderId: order.id } });
     const key = pending?.idempotencyKey ?? `ship-${order.code}-${total + 1}`;
-    const partnerCode = body.serviceId.split('-')[0] ?? 'allingo';
+    // service ids are random strings; the carrier comes from the service list (fixed again from Allingo's reply)
+    const partnerCode =
+      (await this.serviceCatalog().catch(() => null))?.get(body.serviceId)?.partner?.id ?? 'allingo';
     const row =
       pending ??
       (await db.shipment.create({
@@ -522,6 +560,7 @@ export class ShippingService {
           ...inquiry,
           service_id: body.serviceId,
           estimated_price: body.quotedPrice,
+          ...(addonKeys.length ? { addon_keys: addonKeys } : {}),
           deliverable_payment_method: parcel.codAmount > 0 ? 'cod' : 'prepaid',
           external_reference: order.code.slice(0, 64),
           ...(scheduleAt
