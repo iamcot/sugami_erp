@@ -54,13 +54,104 @@ export interface AhamoveQuote {
   /** Total fee in VND, discounts and VAT included. */
   fee: number;
   distanceKm: number | null;
+  /** Driving time of the route in minutes (Ahamove's own figure). */
+  durationMinutes: number | null;
+  /** Fee lines as Ahamove itemises them (distance, surcharge, discount...). */
+  breakdown: { name: string; value: number }[];
   /** Set when Ahamove refused this service (out of area, over COD limit...). */
   error?: string;
+}
+
+/** An extra a service can carry ("Gửi SMS cho người nhận", "Giao hàng tận tay", tip...). */
+export interface AhamoveExtra {
+  id: string;
+  name: string;
+  description: string | null;
+  /** bool = on/off, tier = pick a level, unit = a count (tip). */
+  kind: 'bool' | 'tier' | 'unit';
+  /** VND (per unit for kind unit); a value below 1 is a share of the distance fee. */
+  price: number;
+  maxInput: number | null;
+  tiers: { code: string; name: string; description: string | null; price: number }[];
+}
+
+/** What the seller chose for a trip. */
+export interface AhamoveRequestChoice {
+  id: string;
+  tierCode?: string;
+  num?: number;
+}
+
+const requestBody = (r: AhamoveRequestChoice) => ({
+  _id: r.id,
+  ...(r.tierCode ? { tier_code: r.tierCode } : {}),
+  ...(r.num ? { num: r.num } : {}),
+});
+
+interface RawRequest {
+  _id: string;
+  enable?: boolean;
+  type?: string;
+  name_vi_vn?: string;
+  name?: string;
+  description_vi_vn?: string;
+  description?: string;
+  price?: number;
+  max_input?: number;
+  tier_list?: {
+    code: string;
+    name_vi_vn?: string;
+    description_vi_vn?: string;
+    price?: number;
+    selectable?: boolean;
+  }[];
+}
+
+/** Requests of a service a seller can switch on. Tolls, ferries, insurance and COD are priced by Ahamove itself. */
+const SKIP_EXTRA = /(TOLL|FERRY|INSURANCE|COLLECT-COD|HI-COD)$/;
+function extrasOf(list: RawRequest[] | undefined): AhamoveExtra[] {
+  const out: AhamoveExtra[] = [];
+  for (const r of list ?? []) {
+    if (r.enable === false || SKIP_EXTRA.test(r._id)) continue;
+    const kind =
+      r.type === 'TIER'
+        ? 'tier'
+        : r.type === 'PER_UNIT'
+          ? 'unit'
+          : r.type === 'BOOLEAN' || r.type === 'COMMISSION_DISTANCE_PERCENTAGE'
+            ? 'bool'
+            : null;
+    if (!kind) continue;
+    out.push({
+      id: r._id,
+      name: (r.name_vi_vn ?? r.name ?? r._id).trim(),
+      description: (r.description_vi_vn ?? r.description)?.trim() || null,
+      kind,
+      price: r.price ?? 0,
+      maxInput: r.max_input ?? null,
+      tiers: (r.tier_list ?? [])
+        .filter((t) => t.selectable !== false && (t.price ?? 0) >= 0)
+        .map((t) => ({
+          code: t.code,
+          name: t.name_vi_vn ?? t.code,
+          description: t.description_vi_vn ?? null,
+          price: t.price ?? 0,
+        })),
+    });
+  }
+  return out;
 }
 
 export interface AhamoveService {
   id: string;
   name: string;
+  /** One line about the service ("Lấy hàng ngay, giao hỏa tốc"). */
+  summary: string | null;
+  /** Full terms: lead time, fee table, COD fee, size and weight limits. */
+  details: string | null;
+  maxCod: number | null;
+  maxKg: number | null;
+  extras: AhamoveExtra[];
 }
 
 export interface AhamoveOrder {
@@ -178,31 +269,67 @@ export class AhamoveClient {
 
   /** Services available in a city (id like `SGN-BIKE`) with their Vietnamese names. */
   async services(cityId: string): Promise<AhamoveService[]> {
-    const list = await this.call<{ _id: string; name?: string; name_vi_vn?: string }[]>(
-      'GET',
-      `/services?city_id=${encodeURIComponent(cityId)}&delivery_type=INSTANT`,
-    );
-    return list.map((s) => ({ id: s._id, name: s.name_vi_vn ?? s.name ?? s._id }));
+    const list = await this.call<
+      {
+        _id: string;
+        name?: string;
+        name_vi_vn?: string;
+        description_vi_vn?: string;
+        fee_description_vi_vn?: string;
+        max_cod?: number;
+        requests?: RawRequest[];
+      }[]
+    >('GET', `/services?city_id=${encodeURIComponent(cityId)}&delivery_type=INSTANT`);
+    return list.map((s) => {
+      const details = s.fee_description_vi_vn?.trim() || null;
+      const kg = details ? /Trọng lượng tiêu chuẩn:\s*(\d+)\s*kg/i.exec(details)?.[1] : undefined;
+      return {
+        id: s._id,
+        name: s.name_vi_vn ?? s.name ?? s._id,
+        // the Vietnamese text sometimes repeats itself: keep the first sentence
+        summary: s.description_vi_vn?.split('. ')[0]?.trim() || null,
+        details,
+        maxCod: s.max_cod ?? null,
+        maxKg: kg ? Number(kg) : null,
+        extras: extrasOf(s.requests),
+      };
+    });
   }
 
   /** Price of each service for one pickup and one drop-off. Services Ahamove refuses come back with `error`. */
-  async quote(pickup: AhamoveStop, dropoff: AhamoveStop, serviceIds: string[]): Promise<AhamoveQuote[]> {
+  async quote(
+    pickup: AhamoveStop,
+    dropoff: AhamoveStop,
+    serviceIds: string[],
+    /** Extras chosen, by service id (only the service the seller picked has any). */
+    chosen: Record<string, AhamoveRequestChoice[]> = {},
+  ): Promise<AhamoveQuote[]> {
     const res = await this.call<
       {
         service_id: string;
-        data?: { total_price?: number; total_fee?: number; distance?: number };
+        data?: {
+          total_price?: number;
+          total_fee?: number;
+          distance?: number;
+          duration?: number;
+          user_price_details?: { details?: { name?: string; value?: number }[] };
+        };
         error?: unknown;
       }[]
     >('POST', '/orders/estimates', {
       order_time: 0,
       path: [pickup, dropoff],
-      services: serviceIds.map((_id) => ({ _id, requests: [] })),
+      services: serviceIds.map((_id) => ({ _id, requests: (chosen[_id] ?? []).map(requestBody) })),
       payment_method: 'CASH',
     });
     return res.map((q) => ({
       serviceId: q.service_id,
       fee: Math.round(q.data?.total_price ?? q.data?.total_fee ?? 0),
       distanceKm: q.data?.distance ?? null,
+      durationMinutes: q.data?.duration ? Math.round(q.data.duration / 60) : null,
+      breakdown: (q.data?.user_price_details?.details ?? [])
+        .filter((d) => d.name && typeof d.value === 'number')
+        .map((d) => ({ name: d.name!, value: Math.round(d.value!) })),
       ...(q.data ? {} : { error: 'Không báo giá được' }),
     }));
   }
@@ -217,6 +344,7 @@ export class AhamoveClient {
     dropoff: AhamoveStop;
     payment: 'CASH' | 'BALANCE';
     note?: string;
+    requests?: AhamoveRequestChoice[];
     /** Unix seconds for a booking made for later; omitted = find a driver now. */
     orderTime?: number;
   }): Promise<{ orderId: string; status: string; sharedLink: string | null; fee: number }> {
@@ -229,7 +357,7 @@ export class AhamoveClient {
       order_time: input.orderTime ?? 0,
       path: [input.pickup, input.dropoff],
       service_id: input.serviceId,
-      requests: [],
+      requests: (input.requests ?? []).map(requestBody),
       payment_method: input.payment,
       ...(input.note ? { remarks: input.note } : {}),
     });

@@ -4,6 +4,8 @@ import {
   ahamoveStage,
   ahamoveStatusText,
   type AhamoveClient,
+  type AhamoveExtra,
+  type AhamoveRequestChoice,
   type AhamoveOrder,
   type AhamoveQuote,
   type AhamoveService,
@@ -109,10 +111,19 @@ export function dropoffOf(o: LoadedOrder): AhamoveStop {
 
 export interface QuoteRow extends AhamoveQuote {
   name: string;
+  summary: string | null;
+  details: string | null;
+  maxCod: number | null;
+  maxKg: number | null;
+  extras: AhamoveExtra[];
 }
 
 /** Prices of every Ahamove service for a trip from the shop to `dropoff`, cheapest first (refused ones last). */
-export async function quoteStops(dropoff: AhamoveStop, chosen: string[] = []): Promise<QuoteRow[]> {
+export async function quoteStops(
+  dropoff: AhamoveStop,
+  chosen: string[] = [],
+  extras: Record<string, AhamoveRequestChoice[]> = {},
+): Promise<QuoteRow[]> {
   const c = getClient();
   try {
     const list = await services(c, chosen);
@@ -121,10 +132,22 @@ export async function quoteStops(dropoff: AhamoveStop, chosen: string[] = []): P
       pickupFromEnv()!,
       dropoff,
       list.map((s) => s.id),
+      extras,
     );
-    const names = new Map(list.map((s) => [s.id, s.name]));
+    const byId = new Map(list.map((s) => [s.id, s]));
     return quotes
-      .map((q) => ({ ...q, name: names.get(q.serviceId) ?? q.serviceId }))
+      .map((q) => {
+        const s = byId.get(q.serviceId);
+        return {
+          ...q,
+          name: s?.name ?? q.serviceId,
+          summary: s?.summary ?? null,
+          details: s?.details ?? null,
+          maxCod: s?.maxCod ?? null,
+          maxKg: s?.maxKg ?? null,
+          extras: s?.extras ?? [],
+        };
+      })
       .sort((a, b) => Number(!!a.error) - Number(!!b.error) || a.fee - b.fee);
   } catch (err) {
     return explain(err);
@@ -163,6 +186,7 @@ export async function bookOrder(
   serviceId: string,
   _userId?: string,
   scheduleAt?: Date | null,
+  requests: AhamoveRequestChoice[] = [],
 ) {
   const o = await loadOrder(db, code);
   if (!posActions(fulfillmentOf(o), o.status).some((a) => a.key === 'ship'))
@@ -178,6 +202,7 @@ export async function bookOrder(
       dropoff: dropoffOf(o),
       payment: process.env.AHAMOVE_PAYMENT === 'BALANCE' ? 'BALANCE' : 'CASH',
       note: o.code,
+      ...(requests.length ? { requests } : {}),
       ...(scheduleAt ? { orderTime: Math.floor(scheduleAt.getTime() / 1000) } : {}),
     });
   } catch (err) {

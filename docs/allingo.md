@@ -90,3 +90,9 @@ Chạy thử webhook không cần Allingo: `curl` tới `/api/webhooks/allingo` 
 - Dịch vụ AhaMove hiện trong bảng giá chọn ở Cài đặt → Vận chuyển (không tick = hiện hết, hoặc theo `AHAMOVE_SERVICES`).
 - Logo hãng: đặt PNG vuông `apps/web/public/carriers/<mã hãng>.png`; thiếu thì hiện ô màu với chữ cái đầu.
 - **Hãng giao thường và hạn đóng hàng:** Allingo không trả giờ lấy hàng của hãng, nên cấu hình ở Cài đặt → Vận chuyển: tick các hãng quen (tab Giao thường chỉ hiện các hãng đó) và nhập mốc lấy hàng từng hãng (giờ Việt Nam, ví dụ SPX `10:00, 16:00`). Đặt hãng xong, *Hạn bàn giao* của đơn = mốc lấy sắp tới; hãng giao nhanh thì hạn là giờ hẹn (hoặc ngay lúc đặt).
+
+## AhaMove: thông tin và dịch vụ mở rộng
+
+- Cột chọn hãng hiện mô tả, điều khoản, giới hạn tải trọng/COD, quãng đường, thời gian ước tính và các dòng cấu thành phí của từng dịch vụ AhaMove (lấy từ `GET /services` và `POST /orders/estimates`).
+- Dịch vụ mở rộng (`requests[]`: SMS, dễ vỡ, giao tận tay, bagá, hỗ trợ tài xế, quay lại điểm lấy, tiền tip...) hiện ở thẻ hãng đã chọn: tick để bật, chọn mức (tier) hoặc số lượng; giá được tính lại sau mỗi lần chọn và gửi kèm khi tạo chuyến. Bỏ qua các mục bảo hiểm, phí cầu đường/phà và thu hộ COD vì Sugami xử lý COD riêng.
+- **Chưa kiểm chứng:** dạng body gửi extras (`_id`, `tier_code`, `num`) theo trí nhớ về tài liệu; cần thử trên staging (`AHAMOVE_PROBE_RAW=1 pnpm ahamove:probe`) trước khi dùng thật.

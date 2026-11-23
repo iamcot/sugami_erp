@@ -56,6 +56,8 @@ export interface ParcelOverride {
   addFeeToOrder?: boolean;
   /** Book for a later time (ISO); omitted = find a driver now. */
   scheduleAt?: string;
+  /** Ahamove extras the seller switched on (the service they apply to, and the choices). */
+  ahamoveRequests?: { serviceId?: string; requests: { id: string; tierCode?: string; num?: number }[] };
 }
 
 /** A sale still on the counter screen, priced before the order exists. */
@@ -266,7 +268,7 @@ export class ShippingService {
     const order = await this.loadOrder(code);
     this.checkShippable(order);
     const settings = await loadShippingSettings(this.prisma.client);
-    return this.quoteFor(settings, this.receiver(order), this.parcel(order, settings, o));
+    return this.quoteFor(settings, this.receiver(order), this.parcel(order, settings, o), o.ahamoveRequests);
   }
 
   /** Fee quotes for a sale still on the counter screen: the order is created only when the seller confirms. */
@@ -291,6 +293,7 @@ export class ShippingService {
       settings,
       { name: r.name, phone: r.phone, address: r.address, ward: r.ward ?? null, province: r.area ?? null },
       parcel,
+      body.ahamoveRequests,
     );
   }
 
@@ -302,7 +305,11 @@ export class ShippingService {
     settings: ShippingSettings,
     to: ReceiverInput,
     parcel: ParcelInput & { unknownWeights: number },
+    ahamoveRequests?: ParcelOverride['ahamoveRequests'],
   ) {
+    const extrasChoice = ahamoveRequests?.serviceId
+      ? { [ahamoveRequests.serviceId.replace(AHAMOVE_PREFIX, '')]: ahamoveRequests.requests }
+      : {};
     const allingoOn = this.status().configured;
     const ahamoveOn = ahamoveConfigured();
     if (!allingoOn && !ahamoveOn)
@@ -341,15 +348,33 @@ export class ShippingService {
             province: to.province,
           }),
           settings.ahamoveServices,
+          extrasChoice,
         )
-      ).map((q) => ({
-        service_id: `${AHAMOVE_PREFIX}${q.serviceId}`,
-        service_name: q.name,
-        partner: { id: 'ahamove', name: 'AhaMove' },
-        price: q.fee,
-        available: !q.error,
-        error_code: q.error ?? null,
-      }));
+      ).map((q) => {
+        // limits Ahamove publishes for the service: refuse here with a clear reason instead of at booking
+        const limit =
+          q.maxKg && parcel.grams / 1000 > q.maxKg
+            ? `Quá tải trọng ${q.maxKg} kg`
+            : q.maxCod && parcel.codAmount > q.maxCod
+              ? 'COD vượt mức tối đa của dịch vụ'
+              : null;
+        return {
+          service_id: `${AHAMOVE_PREFIX}${q.serviceId}`,
+          service_name: q.name,
+          partner: { id: 'ahamove', name: 'AhaMove' },
+          price: q.fee,
+          available: !q.error && !limit,
+          error_code: q.error ?? limit,
+          estimated_minutes: q.durationMinutes,
+          estimated_delivery_range: q.durationMinutes
+            ? `~${q.durationMinutes} phút${q.distanceKm ? ` (${q.distanceKm.toLocaleString('vi-VN')} km)` : ''}`
+            : null,
+          info: q.summary,
+          details: q.details,
+          breakdown: q.breakdown,
+          extras: q.extras,
+        };
+      });
 
     const [a, h] = await Promise.allSettled([
       allingoOn ? fromAllingo() : Promise.resolve<AllingoQuote[]>([]),
@@ -418,7 +443,14 @@ export class ShippingService {
     if (body.serviceId.startsWith(AHAMOVE_PREFIX)) {
       // Ahamove is booked directly; the order moves on when the driver has the parcel, see pos/ahamove.ts
       try {
-        await bookOrder(db, code, body.serviceId.slice(AHAMOVE_PREFIX.length), userId, scheduleAt);
+        await bookOrder(
+          db,
+          code,
+          body.serviceId.slice(AHAMOVE_PREFIX.length),
+          userId,
+          scheduleAt,
+          body.ahamoveRequests?.requests ?? [],
+        );
         // a driver is looked for now, or at the booked time: that is the packing deadline
         await db.order.update({ where: { code }, data: { shipByAt: scheduleAt ?? new Date() } });
       } catch (err) {

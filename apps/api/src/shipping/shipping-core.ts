@@ -97,6 +97,12 @@ export interface QuoteRow {
   fastest: boolean;
   /** ISO time to have the parcel packed by: the carrier's next pickup, when the shop set pickup times. */
   packDeadline: string | null;
+  /** A line about the service, its full terms, and the fee lines, when the carrier gives them. */
+  info: string | null;
+  details: string | null;
+  breakdown: { name: string; value: number }[];
+  /** Optional extras of the service (Ahamove: SMS, fragile, tip...). */
+  extras: unknown[];
 }
 
 /** Quotes as table rows: grouped, cheapest first, with "rẻ nhất" and "nhanh nhất" marked inside each group. */
@@ -117,6 +123,10 @@ export function toQuoteRows(quotes: AllingoQuote[]): QuoteRow[] {
     cheapest: false,
     fastest: false,
     packDeadline: null,
+    info: q.info ?? null,
+    details: q.details ?? null,
+    breakdown: q.breakdown ?? [],
+    extras: q.extras ?? [],
   }));
   for (const r of rows) {
     r.sortMinutes = guessMinutes(r);

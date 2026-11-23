@@ -23,6 +23,19 @@ interface Quote {
   cheapest: boolean;
   fastest: boolean;
   packDeadline: string | null;
+  info: string | null;
+  details: string | null;
+  breakdown: { name: string; value: number }[];
+  extras: Extra[];
+}
+interface Extra {
+  id: string;
+  name: string;
+  description: string | null;
+  kind: 'bool' | 'tier' | 'unit';
+  price: number;
+  maxInput: number | null;
+  tiers: { code: string; name: string; description: string | null; price: number }[];
 }
 interface QuoteResult {
   data: Quote[];
@@ -46,6 +59,8 @@ export interface ShipSelection {
   heightCm?: number;
   addFeeToOrder: boolean;
   scheduleAt?: string;
+  /** Ahamove extras switched on for the chosen service. */
+  ahamoveRequests?: { id: string; tierCode?: string; num?: number }[];
   partnerName: string;
 }
 
@@ -125,6 +140,9 @@ export function PosShippingColumn({
   const [tab, setTab] = useState<'standard' | 'fast'>('standard');
   const [sort, setSort] = useState<'price' | 'time'>('price');
   const [picked, setPicked] = useState<string | null>(null);
+  // Ahamove extras switched on: id → choice (tier code or count); belongs to the service in `extrasFor`
+  const [extraPicks, setExtraPicks] = useState<Record<string, { tierCode?: string; num?: number }>>({});
+  const [extrasFor, setExtrasFor] = useState<string | null>(null);
   /** The seller pressed X: show the whole list even though a carrier is chosen. */
   const [listOpen, setListOpen] = useState(false);
   const [schedule, setSchedule] = useState<Schedule>('now');
@@ -148,7 +166,9 @@ export function PosShippingColumn({
   const customBody = customOk
     ? { weightGrams: customOk.g, lengthCm: customOk.l, widthCm: customOk.w, heightCm: customOk.h }
     : {};
-  const key = JSON.stringify([input, boxKey, tick, customBody]);
+  const requests = Object.entries(extraPicks).map(([id, c]) => ({ id, ...c }));
+  const ahamoveRequests = extrasFor && requests.length ? { serviceId: extrasFor, requests } : undefined;
+  const key = JSON.stringify([input, boxKey, tick, customBody, ahamoveRequests]);
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -162,6 +182,7 @@ export function PosShippingColumn({
           total: input.total,
           boxKey,
           ...customBody,
+          ...(ahamoveRequests ? { ahamoveRequests } : {}),
           addFeeToOrder: false,
         },
       })
@@ -191,6 +212,21 @@ export function PosShippingColumn({
   const chosen =
     all.find((r) => r.serviceId === picked && r.available) ?? (listOpen ? null : picked ? null : auto);
   const showList = !chosen;
+  useEffect(() => {
+    // switching service drops the extras picked for the previous one
+    const id = chosen?.serviceId ?? null;
+    if (id !== extrasFor) {
+      setExtraPicks({});
+      setExtrasFor(id);
+    }
+  }, [chosen?.serviceId, extrasFor]);
+  const setPick = (id: string, c: { tierCode?: string; num?: number } | null) =>
+    setExtraPicks((p) => {
+      const n = { ...p };
+      if (c) n[id] = c;
+      else delete n[id];
+      return n;
+    });
 
   const rows = all.filter((r) => r.group === tab);
   const sorted = [...rows].sort(
@@ -239,6 +275,7 @@ export function PosShippingColumn({
           {r.available ? (eta(r) ? `Dự kiến ${eta(r)}` : ' ') : (r.unavailableReason ?? 'Không khả dụng')}
           {r.available && r.packDeadline ? ` · Đóng hàng trước ${whenText(r.packDeadline)}` : ''}
         </span>
+        {r.available && r.info && <span className="block text-xs text-slate-500">{r.info}</span>}
       </span>
       <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
         {formatVnd(r.price)}
@@ -455,6 +492,83 @@ export function PosShippingColumn({
                 </section>
               )}
 
+              {chosen.extras.length > 0 && (
+                <section className="space-y-2 px-4 py-4">
+                  <p className="text-slate-600 dark:text-slate-300">Dịch vụ mở rộng</p>
+                  {chosen.extras.map((x) => {
+                    const on = extraPicks[x.id];
+                    const priceText =
+                      x.kind === 'tier'
+                        ? ''
+                        : x.price > 0 && x.price < 1
+                          ? `${Math.round(x.price * 100)}% phí quãng đường`
+                          : x.price > 0
+                            ? `+${formatVnd(x.price)}${x.kind === 'unit' ? ' / đơn vị' : ''}`
+                            : 'miễn phí';
+                    return (
+                      <div key={x.id} className="space-y-1">
+                        <label className="flex items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={!!on}
+                            onChange={(e) =>
+                              setPick(
+                                x.id,
+                                e.target.checked
+                                  ? x.kind === 'tier'
+                                    ? { tierCode: x.tiers[0]?.code }
+                                    : x.kind === 'unit'
+                                      ? { num: 1 }
+                                      : {}
+                                  : null,
+                              )
+                            }
+                          />
+                          <span className="min-w-0 flex-1">
+                            {x.name}
+                            {priceText && <span className="ml-2 text-xs text-slate-500">{priceText}</span>}
+                            {x.description && (
+                              <span className="block text-xs text-slate-500">{x.description}</span>
+                            )}
+                          </span>
+                        </label>
+                        {on && x.kind === 'tier' && (
+                          <select
+                            className="ml-6 w-[calc(100%-1.5rem)] border-b border-slate-300 bg-transparent py-1 text-sm dark:border-slate-700"
+                            value={on.tierCode}
+                            onChange={(e) => setPick(x.id, { tierCode: e.target.value })}
+                          >
+                            {x.tiers.map((t) => (
+                              <option key={t.code} value={t.code}>
+                                {t.name} (+{formatVnd(t.price)})
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        {on && x.kind === 'unit' && (
+                          <input
+                            type="number"
+                            min={1}
+                            max={x.maxInput ?? 100}
+                            className="ml-6 w-24 border-b border-slate-300 bg-transparent py-1 text-sm outline-none dark:border-slate-700"
+                            value={on.num ?? 1}
+                            onChange={(e) =>
+                              setPick(x.id, {
+                                num: Math.min(
+                                  x.maxInput ?? 100,
+                                  Math.max(1, Math.floor(Number(e.target.value)) || 1),
+                                ),
+                              })
+                            }
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </section>
+              )}
+
               <section className="space-y-2 px-4 py-4">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-slate-600 dark:text-slate-300">Hạn đóng hàng</span>
@@ -472,6 +586,21 @@ export function PosShippingColumn({
                   <span className="text-slate-600 dark:text-slate-300">Phí giao hàng</span>
                   <span className="text-base font-semibold tabular-nums">{formatVnd(fee)}</span>
                 </div>
+                {chosen.breakdown.length > 1 &&
+                  chosen.breakdown.map((b) => (
+                    <div key={b.name} className="flex justify-between pl-3 text-xs text-slate-500">
+                      <span>{b.name}</span>
+                      <span className="tabular-nums">{formatVnd(b.value)}</span>
+                    </div>
+                  ))}
+                {chosen.details && (
+                  <details className="pt-1 text-xs text-slate-500">
+                    <summary className="cursor-pointer text-brand-700">
+                      Điều khoản và biểu phí của dịch vụ
+                    </summary>
+                    <p className="mt-2 whitespace-pre-line">{chosen.details.trim()}</p>
+                  </details>
+                )}
                 {addedFee > 0 && (
                   <div className="flex items-baseline justify-between">
                     <span className="text-slate-600 dark:text-slate-300">
@@ -551,6 +680,7 @@ export function PosShippingColumn({
               ...customBody,
               addFeeToOrder: addFee && !ahamove,
               scheduleAt,
+              ...(chosen.serviceId === extrasFor && requests.length ? { ahamoveRequests: requests } : {}),
               partnerName: chosen.partnerName,
             })
           }

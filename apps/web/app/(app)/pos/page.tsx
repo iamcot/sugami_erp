@@ -554,6 +554,7 @@ export default function PosPage() {
           heightCm: sel.heightCm,
           addFeeToOrder: sel.addFeeToOrder,
           ...(sel.scheduleAt ? { scheduleAt: sel.scheduleAt } : {}),
+          ...(sel.ahamoveRequests?.length ? { ahamoveRequests: { requests: sel.ahamoveRequests } } : {}),
         },
       });
       setShipOnOpen(null);

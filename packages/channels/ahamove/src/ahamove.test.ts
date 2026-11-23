@@ -43,7 +43,7 @@ describe('AhamoveClient', () => {
       { json: [] },
     ]);
     const c = mk(f);
-    expect(await c.services('SGN')).toEqual([{ id: 'SGN-BIKE', name: 'Siêu tốc' }]);
+    expect(await c.services('SGN')).toMatchObject([{ id: 'SGN-BIKE', name: 'Siêu tốc' }]);
     await c.services('SGN');
     expect(calls[0]).toMatchObject({
       url: 'https://partner-apistg.ahamove.com/v3/accounts/token',
@@ -88,7 +88,7 @@ describe('AhamoveClient', () => {
       },
     ]);
     const q = await mk(f).quote(stop, stop, ['SGN-BIKE', 'SGN-TRUCK']);
-    expect(q[0]).toEqual({ serviceId: 'SGN-BIKE', fee: 14000, distanceKm: 3.2 });
+    expect(q[0]).toMatchObject({ serviceId: 'SGN-BIKE', fee: 14000, distanceKm: 3.2 });
     expect(q[1]!.error).toBeTruthy();
   });
 

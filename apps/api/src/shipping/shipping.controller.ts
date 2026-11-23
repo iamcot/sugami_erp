@@ -7,7 +7,20 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { ShippingService } from './shipping.service.js';
 import { loadShippingSettings, saveShippingSettings, ShippingSettings } from './shipping-settings.js';
 
+const Choices = z.object({
+  serviceId: z.string().trim().max(80).optional(),
+  requests: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(80),
+        tierCode: z.string().trim().max(40).optional(),
+        num: z.number().int().min(1).max(100).optional(),
+      }),
+    )
+    .max(20),
+});
 const Parcel = z.object({
+  ahamoveRequests: Choices.optional(),
   boxKey: z.string().trim().max(20).optional(),
   weightGrams: z.number().int().min(1).max(100_000).optional(),
   lengthCm: z.number().int().min(1).max(200).optional(),

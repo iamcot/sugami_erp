@@ -56,6 +56,12 @@ export interface AllingoQuote {
   currency?: string;
   /** Set by Sugami, not by Allingo: the `type` filter this quote was requested with. */
   mode?: 'standard' | 'on_demand';
+  /** Also Sugami's: short note, full terms and fee lines, for carriers that give them (Ahamove). */
+  info?: string | null;
+  details?: string | null;
+  breakdown?: { name: string; value: number }[];
+  /** Optional extras of the service (Ahamove); the shape is the carrier's own. */
+  extras?: unknown[];
 }
 
 export interface InquiryResponse {
