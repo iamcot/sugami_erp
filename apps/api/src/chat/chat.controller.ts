@@ -1,7 +1,10 @@
 import {
+  Body,
   Controller,
   Get,
+  HttpCode,
   Param,
+  Post,
   Query,
   ServiceUnavailableException,
   UnprocessableEntityException,
@@ -27,12 +30,14 @@ const ListQuery = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(30),
 });
 
+const SendBody = z.object({ text: z.string().trim().min(1).max(2000) });
+
 /** Pancake is read at most this often per time range; the filters work on the cached list. */
 const CACHE_MS = 20_000;
 
 /**
- * Shop chat (Shopee) read from Pancake's Pages API. Read-only: nothing is stored in Sugami and nothing is
- * sent to buyers. Needs a page access token from Pancake → Settings → Tool of the Shopee page.
+ * Shop chat (Shopee) through Pancake's Pages API. Nothing is stored in Sugami; the only write is a reply the
+ * user types and confirms. Needs a page access token from Pancake → Settings → Tool of the Shopee page.
  */
 @Controller('chat')
 export class ChatController {
@@ -98,6 +103,22 @@ export class ChatController {
     return this.guard(async () => {
       const rows = await this.client().listMessages(id);
       return { data: rows.map((m) => ({ ...m, at: m.at.toISOString() })) };
+    });
+  }
+
+  /** Reply to a buyer's chat. Reaches a real buyer, so only chats (not ratings) and never retried. */
+  @Post('conversations/:id/messages')
+  @HttpCode(200)
+  @RequirePermissions('orders.write')
+  send(@Param('id') id: string, @Body() raw: unknown) {
+    if (!/^[\w.@-]{1,128}$/.test(id)) throw new UnprocessableEntityException('Mã hội thoại không hợp lệ');
+    if (id.includes('_rating_') || id.includes('_comment_'))
+      throw new UnprocessableEntityException('Chỉ trả lời được chat, không trả lời được đánh giá ở đây');
+    const { text } = parseInput(SendBody, raw ?? {});
+    return this.guard(async () => {
+      const sent = await this.client().sendMessage(id, text);
+      this.cache.clear();
+      return { ok: true, id: sent.id };
     });
   }
 }

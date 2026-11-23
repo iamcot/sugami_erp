@@ -146,21 +146,38 @@ export class PancakeChatClient {
   }
 
   private async get<T>(path: string, query: Record<string, string | number | undefined> = {}): Promise<T> {
+    return this.request<T>('GET', path, query);
+  }
+
+  private async request<T>(
+    method: 'GET' | 'POST',
+    path: string,
+    query: Record<string, string | number | undefined> = {},
+    body?: unknown,
+  ): Promise<T> {
     const url = this.buildUrl(path, query);
-    const label = `Pancake chat GET ${path}`;
+    const label = `Pancake chat ${method} ${path}`;
     for (let attempt = 0; ; attempt++) {
       await this.limiter.take();
       let res: Response;
       try {
         this.requestCount++;
-        res = await this.fetchImpl(url, { headers: { Accept: 'application/json' } });
+        res = await this.fetchImpl(url, {
+          method,
+          headers: {
+            Accept: 'application/json',
+            ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+          },
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
       } catch {
-        const delay = this.retryDelaysMs[attempt];
+        const delay = method === 'GET' ? this.retryDelaysMs[attempt] : undefined;
         if (delay === undefined) throw new PancakeError(`${label} failed (network)`, 0);
         await this.sleep(delay);
         continue;
       }
-      if ((res.status === 429 || res.status >= 500) && attempt < this.retryDelaysMs.length) {
+      // A POST is never retried after the server may have received it: the buyer could get the text twice.
+      if (method === 'GET' && (res.status === 429 || res.status >= 500) && attempt < this.retryDelaysMs.length) {
         await this.sleep(this.retryDelaysMs[attempt]!);
         continue;
       }
@@ -219,5 +236,19 @@ export class PancakeChatClient {
     return (res.messages ?? [])
       .map((m) => toMessage(m, this.opts.pageId))
       .sort((a, b) => a.at.getTime() - b.at.getTime());
+  }
+
+  /**
+   * Send a text message to the buyer of an INBOX conversation. This reaches a real person and cannot be
+   * taken back, and it is not retried. Returns Pancake's id of the new message when it gives one.
+   */
+  async sendMessage(conversationId: string, text: string): Promise<{ id: string | null }> {
+    const res = await this.request<{ id?: unknown }>(
+      'POST',
+      `/conversations/${encodeURIComponent(conversationId)}/messages`,
+      {},
+      { action: 'reply_inbox', message: text },
+    );
+    return { id: res.id ? str(res.id) : null };
   }
 }

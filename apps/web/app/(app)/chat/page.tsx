@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@sugami/ui';
-import { ArrowLeft, MessageCircle, RefreshCw, Search, Star } from 'lucide-react';
+import { ArrowLeft, MessageCircle, RefreshCw, Search, Send, Star } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -61,10 +61,40 @@ const ATTACHMENT_LABEL: Record<string, string> = {
 function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
   const [msgs, setMsgs] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const [draft, setDraft] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraft('');
+    setConfirming(false);
+    setSendError(null);
+  }, [conv.id]);
+
+  const send = async () => {
+    setSending(true);
+    setSendError(null);
+    try {
+      await api(`/chat/conversations/${encodeURIComponent(conv.id)}/messages`, {
+        method: 'POST',
+        json: { text: draft.trim() },
+      });
+      setDraft('');
+      setConfirming(false);
+      setReload((n) => n + 1);
+    } catch (e) {
+      setSendError((e as Error).message);
+      setConfirming(false);
+    } finally {
+      setSending(false);
+    }
+  };
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setMsgs(null);
+    if (reload === 0) setMsgs(null);
     setError(null);
     api<{ data: Message[] }>(`/chat/conversations/${encodeURIComponent(conv.id)}/messages`, {
       signal: ctrl.signal,
@@ -74,7 +104,7 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
         if (e.name !== 'AbortError') setError(e.message);
       });
     return () => ctrl.abort();
-  }, [conv.id]);
+  }, [conv.id, reload]);
 
   return (
     <Card className="flex h-[70vh] flex-col overflow-hidden">
@@ -124,9 +154,45 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
           </div>
         ))}
       </div>
-      <p className="border-t border-slate-200/70 px-4 py-2 text-xs text-slate-500 dark:border-slate-700/60">
-        Chỉ xem. Trả lời khách hiện làm trong Pancake hoặc Shopee.
-      </p>
+      {conv.kind === 'INBOX' ? (
+        <div className="space-y-2 border-t border-slate-200/70 px-4 py-3 dark:border-slate-700/60">
+          {sendError && <p className="text-sm text-rose-600">{sendError}</p>}
+          <textarea
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setConfirming(false);
+            }}
+            maxLength={2000}
+            rows={2}
+            placeholder="Nhập tin trả lời khách…"
+            className="w-full resize-none rounded-lg border border-slate-200 bg-white/80 px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-white/5"
+          />
+          <div className="flex items-center justify-end gap-2">
+            {confirming ? (
+              <>
+                <span className="mr-auto text-sm text-slate-600 dark:text-slate-300">
+                  Gửi tin này cho <b>{conv.customerName || 'khách'}</b>? Không thu hồi được.
+                </span>
+                <Button variant="ghost" onClick={() => setConfirming(false)} disabled={sending}>
+                  Hủy
+                </Button>
+                <Button onClick={send} disabled={sending}>
+                  <Send className="size-4" /> {sending ? 'Đang gửi…' : 'Xác nhận gửi'}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setConfirming(true)} disabled={!draft.trim()}>
+                <Send className="size-4" /> Gửi
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="border-t border-slate-200/70 px-4 py-2 text-xs text-slate-500 dark:border-slate-700/60">
+          Đánh giá chỉ xem. Trả lời đánh giá làm trong Shopee.
+        </p>
+      )}
     </Card>
   );
 }

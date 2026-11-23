@@ -60,7 +60,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Quyết định đã chốt
 
-- 2026-11-23: Chat Shopee đọc qua Pancake Pages API bằng **polling theo yêu cầu**, không bật webhook vì webhook tính 2 trang trong gói cước (docs/pancake.md). Gửi tin trả lời chưa làm, chờ chủ shop chỉ định hội thoại thử.
+- 2026-11-23: Chat Shopee đọc qua Pancake Pages API bằng **polling theo yêu cầu**, không bật webhook vì webhook tính 2 trang trong gói cước (docs/pancake.md). Ô trả lời đã làm nhưng đường gửi của Pancake chưa kiểm chứng, chủ shop thử bằng hội thoại của chính mình.
 - 2026-11-23: Đơn **hoàn hàng** từ sàn: khi Pancake báo hàng đã về shop, Sugami **tự cộng lại tồn** (giống sàn) và tính là đã xử lý; nếu hàng lỗi/mất thì bấm *Báo hàng lỗi/mất* trong đơn để trừ ra (phiếu `damage`). Đơn hoàn cũ còn giữ tồn vẫn "chờ xử lý": *Nhập lại kho* hoặc *Không nhập kho*. Menu chỉ đếm đơn hoàn chưa xử lý.
 - 2026-11-23: Giao diện **kính sáng** (D16): bố cục kiểu Gmail, góc vuông, khối kính trong mờ viền sáng, số liệu font mono; menu trái chia nhóm Đơn hàng / Kho / Nền tảng; icon sàn hình thoi có logo. Màu nhấn mặc định **xanh ngọc**, đổi được trong Cài đặt → Giao diện (xanh ngọc / xanh da trời / tím pastel, kính sáng / kính tối), lưu theo từng máy.
 - 2026-11-22: P4-P2 làm **Shopee VN + TikTok trước**, Shopee MY/PH để sau; chỉ bật tự đẩy tồn (P4-P3) sau khi Sugami đã tự nhận đơn từ Pancake (nếu không sẽ ghi đè tồn cũ lên tồn Pancake đã trừ đơn mới).
@@ -237,7 +237,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | P5-05 | Checklist chuyển đổi | ⬜ | | |
 | P5-06 | Xuất & lưu trữ toàn bộ dữ liệu KiotViet | ⬜ | | |
 | P5-07 | 30 ngày vận hành không KiotViet, gỡ adapter khỏi lịch chạy | ⬜ | | |
-| 2026-11-23 | Chat Shopee (chỉ đọc): menu **Chat** `/chat` đọc hội thoại + tin nhắn từ Pancake Pages API (page access token, không phải key POS), lọc loại (chat/đánh giá), chưa đọc, chờ trả lời, khoảng 1–30 ngày, tìm tên/nội dung; cần `PANCAKE_CHAT_PAGE_ID`, `PANCAKE_CHAT_TOKEN` trong `.env`; không bật webhook (tốn 2 trang gói cước); chưa gửi tin trả lời | claude/project-thread-9h7izs |
+| 2026-11-23 | Chat Shopee (chỉ đọc): menu **Chat** `/chat` đọc hội thoại + tin nhắn từ Pancake Pages API (page access token, không phải key POS), lọc loại (chat/đánh giá), chưa đọc, chờ trả lời, khoảng 1–30 ngày, tìm tên/nội dung; cần `PANCAKE_CHAT_PAGE_ID`, `PANCAKE_CHAT_TOKEN` trong `.env`; không bật webhook (tốn 2 trang gói cước); có ô trả lời (xác nhận trước khi gửi, chưa kiểm chứng với Shopee thật) | claude/project-thread-9h7izs |
 | 2026-11-23 | P4/P6: trang Sản phẩm gom kho + liên kết Pancake/Shopee/TikTok (nhãn đã nối/tổng biến thể, drawer tin đăng, xác nhận tay tin Pancake không nói rõ sản phẩm), tự nối dòng đơn chưa có SKU qua tin đăng đã nối, hạn bàn giao đơn POS, đổi thứ tự menu, lịch sử hiện tên biến thể | main |
 | 2026-11-23 | P1-21: thẻ "Sức khỏe shop" trên Tổng quan (đơn Pancake cập nhật, tồn âm, dòng đơn chưa nối, tin đăng chưa nối, biến thể chưa có trên Pancake, tự đẩy tồn, thiếu giá vốn/ảnh), mỗi dòng bấm tới chỗ sửa | main |
 | 2026-11-23 | P1-09: tạo sản phẩm (trang /products/new: thuộc tính, ma trận biến thể, mã SP tự tăng), sửa sản phẩm/biến thể ngay trên trang chi tiết, thêm biến thể; API `POST /products`, `PATCH /products/:code`, `PATCH /variants/:sku`, `POST /products/:code/variants` (test MySQL viết nhưng chưa chạy) | main |

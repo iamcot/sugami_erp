@@ -125,4 +125,22 @@ describe('PancakeChatClient', () => {
     expect((err as Error).message).not.toContain('secret-token');
     expect((err as PancakeError).errorCode).toBe(102);
   });
+
+  it('sends a text with reply_inbox and never retries the write', async () => {
+    let calls = 0;
+    const { client } = makeClient((url) => {
+      calls++;
+      expect(url.pathname).toBe('/api/public_api/v1/pages/spo_1/conversations/spo_1_100/messages');
+      return json({ success: true, id: 'm_1' });
+    });
+    await expect(client.sendMessage('spo_1_100', 'Dạ shop còn hàng ạ')).resolves.toEqual({ id: 'm_1' });
+    expect(calls).toBe(1);
+
+    const failing = makeClient(() => json({}, 502));
+    await expect(failing.client.sendMessage('x', 'hi')).rejects.toBeInstanceOf(PancakeError);
+    expect(failing.fetchMock).toHaveBeenCalledTimes(1);
+    const init = (failing.fetchMock.mock.calls as unknown as [string, { method: string; body: string }][])[0]![1];
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({ action: 'reply_inbox', message: 'hi' });
+  });
 });

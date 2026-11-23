@@ -142,6 +142,7 @@ Chat nằm ở **Pages API** (`https://pages.fm/api/public_api/v1/pages/<page_id
 - `GET /conversations/<id>/messages` trả 20 tin mới nhất, `current_count` để lấy tin cũ hơn. Người gửi là shop khi `from.id` trùng page id. Nội dung là HTML nhỏ; có tin tự động của Shopee (`shopee_faq_messages`).
 - Tài liệu không ghi giới hạn tần suất; 40 lần gọi liên tiếp không bị chặn. Client tự giới hạn 2 lần/giây.
 - **Webhook có**, nhưng bật cho một trang tính **2 trang** trong gói cước (gói Standard chỉ 3 trang) nên **không dùng**: Sugami đọc theo yêu cầu khi mở menu Chat (cache 20 giây).
-- Chưa thử: gửi tin trả lời (tin đến khách thật), ảnh trong chat, token còn dùng được sau khi hết dùng thử không.
+- Trả lời khách: `POST /pages/<page_id>/conversations/<id>/messages` với `{action: "reply_inbox", message}`. Tài liệu Pancake ghi endpoint này ở `pages.fm/api/v1` dùng *user* access_token; Sugami thử dùng đường `public_api/v1` với page token cho thống nhất, **chưa kiểm chứng** (cần gửi thử một tin thật). Không tự thử lại khi lỗi để khách không nhận trùng tin.
+- Chưa thử: ảnh trong chat, cửa sổ thời gian được phép trả lời của Shopee, token còn dùng được sau khi hết dùng thử không.
 
-Cấu hình: `PANCAKE_CHAT_PAGE_ID`, `PANCAKE_CHAT_TOKEN` trong `.env` (không commit). Mã: `packages/channels/pancake/src/chat.ts`, API `GET /chat/conversations`, `GET /chat/conversations/:id/messages` (quyền `orders.read`), trang `/chat` với bộ lọc loại, chưa đọc, chờ trả lời, khoảng ngày, tìm theo tên/nội dung.
+Cấu hình: `PANCAKE_CHAT_PAGE_ID`, `PANCAKE_CHAT_TOKEN` trong `.env` (không commit). Mã: `packages/channels/pancake/src/chat.ts`, API `GET /chat/conversations`, `GET /chat/conversations/:id/messages` (quyền `orders.read`), ô trả lời (có bước xác nhận, chỉ cho chat, quyền `orders.write`, `POST /chat/conversations/:id/messages`), trang `/chat` với bộ lọc loại, chưa đọc, chờ trả lời, khoảng ngày, tìm theo tên/nội dung.
