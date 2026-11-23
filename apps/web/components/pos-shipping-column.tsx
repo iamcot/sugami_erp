@@ -28,6 +28,7 @@ interface Quote {
   details: string | null;
   breakdown: { name: string; value: number }[];
   extras: Extra[];
+  tracking: string[];
 }
 interface Extra {
   id: string;
@@ -280,6 +281,9 @@ export function PosShippingColumn({
           {r.available && r.packDeadline ? ` · Đóng hàng trước ${whenText(r.packDeadline)}` : ''}
         </span>
         {r.available && r.info && <span className="block text-xs text-slate-500">{r.info}</span>}
+        {r.available && r.tracking.length > 0 && (
+          <span className="block text-xs text-slate-500">Theo dõi: {r.tracking.join(', ')}</span>
+        )}
       </span>
       <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
         {formatVnd(r.price)}

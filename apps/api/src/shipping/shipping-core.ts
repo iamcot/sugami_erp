@@ -110,6 +110,8 @@ export interface QuoteRow {
   breakdown: { name: string; value: number }[];
   /** Optional extras of the service (Ahamove: SMS, fragile, tip...). */
   extras: unknown[];
+  /** What the carrier lets the seller follow: route, driver position, link, driver details. */
+  tracking: string[];
 }
 
 /** Quotes as table rows: grouped, cheapest first, with "rẻ nhất" and "nhanh nhất" marked inside each group. */
@@ -134,6 +136,12 @@ export function toQuoteRows(quotes: AllingoQuote[]): QuoteRow[] {
     details: q.details ?? null,
     breakdown: q.breakdown ?? [],
     extras: q.extras ?? [],
+    tracking: [
+      q.tracking?.track_link ? 'link theo dõi' : '',
+      q.tracking?.driver_location ? 'vị trí tài xế' : '',
+      q.tracking?.live_route ? 'lộ trình' : '',
+      q.tracking?.driver_info ? 'thông tin tài xế' : '',
+    ].filter(Boolean),
   }));
   for (const r of rows) {
     r.sortMinutes = guessMinutes(r);

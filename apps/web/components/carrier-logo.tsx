@@ -1,6 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+
+/** Allingo's own logos by carrier id, fetched once for the whole page. */
+let iconsPromise: Promise<Record<string, string>> | null = null;
+function loadIcons() {
+  iconsPromise ??= api<{ data: Record<string, string> }>('/shipping/partner-icons')
+    .then((r) => r.data)
+    .catch(() => {
+      iconsPromise = null;
+      return {};
+    });
+  return iconsPromise;
+}
 
 /** Brand colours of the carriers; anything else gets the neutral grey. */
 const BRAND: Record<string, string> = {
@@ -48,14 +61,22 @@ export function CarrierLogo({
   className?: string;
 }) {
   const [missing, setMissing] = useState(false);
+  const [icon, setIcon] = useState<string | null>(null);
   const key = id.toLowerCase();
+  useEffect(() => {
+    let on = true;
+    void loadIcons().then((m) => on && setIcon(m[key] ?? null));
+    return () => {
+      on = false;
+    };
+  }, [key]);
   if (!missing)
     return (
       <img
-        src={`/carriers/${encodeURIComponent(fileOf(key))}.png`}
+        src={icon ?? `/carriers/${encodeURIComponent(fileOf(key))}.png`}
         alt={name ?? id}
         className={`${className} shrink-0 rounded-md bg-white object-contain p-0.5 ring-1 ring-slate-200 dark:ring-white/10`}
-        onError={() => setMissing(true)}
+        onError={() => (icon ? setIcon(null) : setMissing(true))}
       />
     );
   const initials = (name ?? id)

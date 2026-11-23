@@ -51,6 +51,9 @@ export interface AllingoQuote {
   estimated_delivery_at?: string | null;
   estimated_delivery_range?: string | null;
   estimated_minutes?: number | null;
+  /** 'carrier' = the carrier's own estimate; 'service_config' = a fixed figure set for the service. */
+  estimated_source?: string | null;
+  tracking?: { live_route?: boolean; driver_location?: boolean; track_link?: boolean; driver_info?: boolean };
   available?: boolean;
   error_code?: string | null;
   currency?: string;
@@ -116,7 +119,8 @@ export interface AllingoTimelineEvent {
 export interface AllingoPartner {
   id: string;
   name: string;
-  service_type?: string;
+  service_type?: string | null;
+  icon_url?: string | null;
 }
 
 export interface AllingoWebhookEvent {

@@ -141,6 +141,23 @@ export class ShippingService {
     }
   }
 
+  private iconCache: { at: number; map: Record<string, string> } | null = null;
+
+  /** Allingo's own logo of each carrier, by carrier id (cached for an hour). */
+  async partnerIcons(): Promise<Record<string, string>> {
+    if (!this.status().configured) return {};
+    if (this.iconCache && Date.now() - this.iconCache.at < 3_600_000) return this.iconCache.map;
+    try {
+      const list = await this.client().partners();
+      const map: Record<string, string> = {};
+      for (const p of list) if (p.icon_url) map[p.id.toLowerCase()] = p.icon_url;
+      this.iconCache = { at: Date.now(), map };
+      return map;
+    } catch (err) {
+      this.fail(err);
+    }
+  }
+
   status() {
     const appId = process.env.ALLINGO_APP_ID ?? '';
     return {
