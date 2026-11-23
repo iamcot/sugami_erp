@@ -1,4 +1,4 @@
-import { applyMovements, Prisma, type PrismaClient, withLedgerTx } from '@sugami/db';
+import { applyMovements, Prisma, type PrismaClient, touchLastPurchase, withLedgerTx } from '@sugami/db';
 import { toSearchKey } from '@sugami/shared';
 import { fulfillmentOf, holdsStock, posActions, SHIPPING_TEXT } from './pos-flow.js';
 import type { PosPayload } from './pos-schema.js';
@@ -157,6 +157,7 @@ export async function createPosOrder(
   const now = new Date();
   const at = p.orderedAt ? new Date(p.orderedAt) : now;
   if (at.getTime() > now.getTime() + 5 * 60_000) throw new PosError('Thời gian bán không được ở tương lai');
+  if (customerId) await touchLastPurchase(db, customerId, at);
   const retail = mode === 'retail';
   for (let attempt = 0; ; attempt++) {
     const code = await nextCode(db);

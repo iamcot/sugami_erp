@@ -1,7 +1,14 @@
 import type { ExternalOrder, ExternalProduct } from '@sugami/channels-core';
 import { toSearchKey } from '@sugami/shared';
 import { learnSkuMap, lineKey, loadSkuMap, pairLines } from './sku-map.js';
-import { applyMovements, type MovementInput, Prisma, type PrismaClient, withLedgerTx } from '@sugami/db';
+import {
+  applyMovements,
+  type MovementInput,
+  Prisma,
+  type PrismaClient,
+  touchLastPurchase,
+  withLedgerTx,
+} from '@sugami/db';
 
 export const PANCAKE_ORDER_CURSOR = 'pancake:orders';
 
@@ -227,6 +234,7 @@ export async function syncPancakeOrders(
       customerByKey.set(key, id);
     }
     summary.customers.linked++;
+    if (!opts.dryRun) await touchLastPurchase(db, id, o.orderedAt);
     return id;
   };
 
