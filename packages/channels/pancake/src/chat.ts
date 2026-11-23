@@ -31,8 +31,10 @@ export interface ChatConversation {
   pageId: string;
   channel: ChatChannel;
   kind: ChatKind | string;
-  /** Marketplace user name (Shopee username). */
+  /** Name shown for the buyer (marketplace nickname, or the Facebook display name). */
   customerName: string;
+  /** Marketplace login/nickname; Sugami keys marketplace customers by it ("shopee:<nickname>"). */
+  buyerUsername: string;
   customerId: string | null;
   snippet: string;
   /** Anyone on the shop's side has opened it. */
@@ -104,6 +106,7 @@ export function toConversation(raw: Raw, pageId: string, channel?: ChatChannel):
     channel: channel ?? chatChannelOf(pageId),
     kind: str(raw.type) || 'INBOX',
     customerName: str(from.name) || str(from.username),
+    buyerUsername: str(from.username),
     customerId: from.id ? str(from.id) : null,
     snippet: str(raw.snippet),
     seen: raw.seen === true,

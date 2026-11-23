@@ -3,6 +3,7 @@
 import { cn } from '@sugami/ui';
 import { ArrowLeft, CheckCheck, CornerDownLeft, RefreshCw, Search, Star } from 'lucide-react';
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useDetail } from '@/components/detail-drawer';
 import { FilterMenu } from '@/components/filter-menu';
 import { PlatformDiamond } from '@/components/platform-icons';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
@@ -20,6 +21,8 @@ interface Conversation {
   lastSentByShop: boolean | null;
   /** The buyer wrote last and nobody marked it checked. */
   needsAttention: boolean;
+  /** The Sugami customer this buyer is, when found (by marketplace nickname, Facebook id, or a unique name). */
+  customer: { id: string; code: string | null; name: string | null; orders: number; by: string } | null;
   tags: string[];
   updatedAt: string;
 }
@@ -129,11 +132,13 @@ function Thread({
   refreshKey,
   onBack,
   onReview,
+  onOpenCustomer,
 }: {
   conv: Conversation;
   refreshKey: number;
   onBack: () => void;
   onReview: (c: Conversation) => void;
+  onOpenCustomer: (customer: NonNullable<Conversation['customer']>) => void;
 }) {
   const [msgs, setMsgs] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -231,8 +236,28 @@ function Thread({
         </button>
         <PlatformDiamond platform={conv.channel} className="size-6" />
         <div className="min-w-0">
-          <p className="truncate font-semibold">{conv.customerName || '(không tên)'}</p>
-          <p className="font-mono text-[11px] text-slate-500">{conv.id}</p>
+          {conv.customer ? (
+            <button
+              type="button"
+              onClick={() => onOpenCustomer(conv.customer!)}
+              title="Mở thông tin khách hàng"
+              className="block max-w-full truncate text-left font-semibold text-brand-700 hover:underline dark:text-brand-500"
+            >
+              {conv.customerName || conv.customer.name || '(không tên)'}
+            </button>
+          ) : (
+            <p className="truncate font-semibold">{conv.customerName || '(không tên)'}</p>
+          )}
+          <p className="truncate text-[11px] text-slate-500">
+            {conv.customer ? (
+              <>
+                Khách hàng trong hệ thống · {conv.customer.orders} đơn
+                {conv.customer.by === 'name' ? ' (khớp theo tên)' : ''}
+              </>
+            ) : (
+              'Chưa có trong danh sách khách hàng'
+            )}
+          </p>
         </div>
         {conv.kind === 'RATING' && <Badge tone="warn">Đánh giá</Badge>}
         {conv.kind === 'COMMENT' && <Badge>Bình luận</Badge>}
@@ -329,6 +354,7 @@ function Thread({
 }
 
 function ChatList() {
+  const { open: openDetail } = useDetail();
   const [qs, setQs] = useQueryState({
     channel: '',
     kind: '',
@@ -622,7 +648,13 @@ function ChatList() {
         </div>
         <div className={cn('min-h-0', !selected && 'hidden lg:block')}>
           {selected ? (
-            <Thread conv={selected} refreshKey={reload} onBack={() => setQs({ c: '' })} onReview={review} />
+            <Thread
+              conv={selected}
+              refreshKey={reload}
+              onBack={() => setQs({ c: '' })}
+              onReview={review}
+              onOpenCustomer={(c) => openDetail('customer', c.code ?? c.id)}
+            />
           ) : (
             <Card className="flex h-48 items-center justify-center text-sm text-slate-500">
               Chọn một hội thoại để xem tin nhắn.

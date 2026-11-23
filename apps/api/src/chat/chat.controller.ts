@@ -25,6 +25,7 @@ import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { parseInput } from '../common/validation.js';
+import { matchCustomers } from './chat-customers.js';
 import { type ChatItem, chatSummary, filterConversations } from './chat-filter.js';
 
 const ListQuery = z.object({
@@ -151,16 +152,20 @@ export class ChatController {
       q: q.q,
     });
     const start = (q.page - 1) * q.pageSize;
+    const pageRows = filtered.slice(start, start + q.pageSize);
+    // Which Sugami customer each buyer is, so the chat can open their customer card.
+    const customers = await matchCustomers(this.prisma.client, pageRows).catch(() => new Map());
     return {
       summary: chatSummary(inChannel),
       channels,
       errors,
       total: filtered.length,
-      data: filtered.slice(start, start + q.pageSize).map((c) => ({
+      data: pageRows.map((c) => ({
         ...c,
         updatedAt: c.updatedAt.toISOString(),
         createdAt: c.createdAt.toISOString(),
         reviewedAt: c.reviewedAt?.toISOString() ?? null,
+        customer: customers.get(c.id) ?? null,
       })),
     };
   }

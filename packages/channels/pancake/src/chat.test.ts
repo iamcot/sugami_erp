@@ -66,6 +66,7 @@ describe('chat mapping', () => {
       id: 'spo_1_100',
       kind: 'INBOX',
       customerName: 'buyer_a',
+      buyerUsername: 'buyer_a',
       seen: false,
       lastSentByShop: false,
       tags: ['Hỏi hàng'],

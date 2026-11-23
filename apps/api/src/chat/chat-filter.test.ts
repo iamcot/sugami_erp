@@ -9,6 +9,7 @@ const c = (over: Partial<ChatItem>): ChatItem => ({
   channel: 'shopee',
   kind: 'INBOX',
   customerName: 'buyer',
+  buyerUsername: 'buyer',
   customerId: null,
   snippet: '',
   seen: true,

@@ -155,3 +155,12 @@ Tự tải lại 60 giây chỉ chạy khi đang mở trang. Để báo cả khi
 - **Cần xem:** chat mà khách nhắn cuối và chưa ai bấm **Đã kiểm tra**. Số này hiện trên menu Chat (`GET /chat/counts`, đọc từ bảng, không gọi Pancake) và có chip lọc "Cần xem" trên trang. Shop trả lời (từ Sugami, Pancake hay sàn) thì tự hết.
 - **Đã kiểm tra** (từng khách, `POST /chat/conversations/:id/review`): tắt cảnh báo của chat đó cho tới khi khách nhắn tiếp sau thời điểm bấm; khách nhắn lại thì cảnh báo bật lại và báo mới.
 - Chỉ tính chat, không tính đánh giá sao.
+
+### Khớp người chat với khách hàng trong Sugami
+
+Trong khung chat, tên người chat bấm được khi tìm thấy khách trong Sugami; bấm mở thẻ khách hàng ở ngăn bên (có lịch sử đơn). API `GET /chat/conversations` trả thêm `customer` (id, mã, tên, số đơn, cách khớp) cho các chat đang hiện. Cách khớp, theo thứ tự:
+
+1. **Shopee/TikTok:** khách tạo từ đơn có khóa `<kênh>:<nickname viết thường>` (xem đồng bộ đơn); nickname trong chat (`from.username`) chính là nickname đó nên khớp chính xác.
+2. **Facebook:** khách có ô Facebook chứa id người dùng của chat; nếu không thì khách **duy nhất** trùng tên (so tên không phân biệt hoa thường và dấu). Hai khách trùng tên thì không khớp, vì gắn nhầm hồ sơ tệ hơn không gắn. Khớp theo tên có ghi chú "(khớp theo tên)".
+
+Khách chưa có đơn nào (chưa mua) hoặc nickname chưa từng xuất hiện trong đơn thì hiện "Chưa có trong danh sách khách hàng".
