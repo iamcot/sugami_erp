@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chatPagesFromEnv, pageChannel, pageOfConversation } from './chat-pages.js';
+import { chatPagesFromEnv, pageChannel, pageIdFromToken, pageOfConversation } from './chat-pages.js';
+
+// Synthetic tokens in Pancake's shape: header.payload.signature, payload = {"id": ...}
+const jwt = (id: unknown) =>
+  `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({ id })).toString('base64url')}.sig`;
 
 describe('chatPagesFromEnv', () => {
   it('reads several pages and the single-page variables', () => {
@@ -32,6 +36,24 @@ describe('explicit channel', () => {
     ]);
     expect(pageChannel(pages[0]!)).toBe('facebook');
     expect(pageChannel(pages[1]!)).toBe('shopee');
+  });
+});
+
+describe('page id from the token', () => {
+  it('reads the id claim', () => {
+    expect(pageIdFromToken(jwt('spo_9'))).toBe('spo_9');
+    expect(pageIdFromToken(jwt(123456))).toBe('123456');
+    expect(pageIdFromToken('not-a-jwt')).toBeNull();
+    expect(pageIdFromToken(jwt({ x: 1 }))).toBeNull();
+  });
+  it('wins over a typed name, and a bare token is enough', () => {
+    const pages = chatPagesFromEnv({
+      PANCAKE_CHAT_PAGES: `facebook:sugami.vn=${jwt('107594801414483')};${jwt('tts_5')}`,
+    });
+    expect(pages.map((p) => [p.pageId, pageChannel(p)])).toEqual([
+      ['107594801414483', 'facebook'],
+      ['tts_5', 'tiktok'],
+    ]);
   });
 });
 
