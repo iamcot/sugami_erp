@@ -38,6 +38,7 @@ describe('chat mapping', () => {
     expect(chatChannelOf('spo_6875667')).toBe('shopee');
     expect(chatChannelOf('256469571178082')).toBe('facebook');
     expect(chatChannelOf('wa_84328290781')).toBe('whatsapp');
+    expect(chatChannelOf('tts_7494949569066076732')).toBe('tiktok');
     expect(chatChannelOf('zl_1')).toBe('other');
   });
 

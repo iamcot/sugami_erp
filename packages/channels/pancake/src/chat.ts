@@ -20,7 +20,7 @@ export type ChatChannel = 'shopee' | 'tiktok' | 'facebook' | 'whatsapp' | 'other
 export function chatChannelOf(pageId: string): ChatChannel {
   if (pageId.startsWith('spo_')) return 'shopee';
   if (pageId.startsWith('wa_')) return 'whatsapp';
-  if (/^tt/i.test(pageId)) return 'tiktok';
+  if (pageId.startsWith('tts_')) return 'tiktok';
   if (/^\d+$/.test(pageId)) return 'facebook';
   return 'other';
 }

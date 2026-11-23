@@ -13,14 +13,19 @@ import {
   CHAT_MAX_RANGE_DAYS,
   chatChannelOf,
   type ChatConversation,
+  type ChatPageConfig,
+  chatPagesFromEnv,
   PancakeChatClient,
   PancakeError,
+  pageOfConversation,
 } from '@sugami/channels-pancake';
+import { CHAT_LOOKBACK_DAYS, needsAttention } from '@sugami/sync';
 import { z } from 'zod';
-import { RequirePermissions } from '../auth/decorators.js';
+import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
+import type { AuthUser } from '../auth/auth.types.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { parseInput } from '../common/validation.js';
-import { chatSummary, filterConversations } from './chat-filter.js';
-import { type ChatPageConfig, chatPagesFromEnv, pageOfConversation } from './chat-pages.js';
+import { type ChatItem, chatSummary, filterConversations } from './chat-filter.js';
 
 const ListQuery = z.object({
   channel: z.string().trim().max(20).default(''),
@@ -34,6 +39,11 @@ const ListQuery = z.object({
 });
 
 const SendBody = z.object({ text: z.string().trim().min(1).max(2000) });
+const ReviewBody = z.object({
+  /** The conversation's last-message time as the page showed it: alerts stay off until the buyer writes after it. */
+  at: z.iso.datetime(),
+  reviewed: z.boolean().default(true),
+});
 
 /** Pancake is read at most this often per time range; the filters work on the cached list. */
 const CACHE_MS = 20_000;
@@ -44,6 +54,8 @@ const CACHE_MS = 20_000;
  */
 @Controller('chat')
 export class ChatController {
+  constructor(private readonly prisma: PrismaService) {}
+
   private cache = new Map<string, { at: number; rows: ChatConversation[] }>();
 
   private pages(): ChatPageConfig[] {
@@ -102,13 +114,34 @@ export class ChatController {
     });
     if (errors.length === pages.length) throw new UnprocessableEntityException(`Pancake từ chối: ${errors[0]!.message}`);
     rows.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    const reviews = new Map(
+      (
+        await this.prisma.client.chatConversation.findMany({
+          where: { id: { in: rows.map((c) => c.id) }, reviewedAt: { not: null } },
+          select: { id: true, reviewedAt: true },
+        })
+      ).map((s) => [s.id, s.reviewedAt] as const),
+    );
+    const items: ChatItem[] = rows.map((c) => {
+      const reviewedAt = reviews.get(c.id) ?? null;
+      return {
+        ...c,
+        reviewedAt,
+        needsAttention: needsAttention({
+          kind: c.kind,
+          lastFromBuyer: c.lastSentByShop === false,
+          lastMessageAt: c.updatedAt,
+          reviewedAt,
+        }),
+      };
+    });
 
     const channels = [...new Set([...pages.map((p) => chatChannelOf(p.pageId))])].map((channel) => ({
       channel,
-      count: rows.filter((c) => c.channel === channel).length,
+      count: items.filter((c) => c.channel === channel).length,
     }));
     // Chips for kind/unread/waiting count inside the chosen channel only.
-    const inChannel = q.channel ? rows.filter((c) => c.channel === q.channel) : rows;
+    const inChannel = q.channel ? items.filter((c) => c.channel === q.channel) : items;
     const filtered = filterConversations(inChannel, {
       channel: q.channel,
       kind: q.kind,
@@ -126,8 +159,56 @@ export class ChatController {
         ...c,
         updatedAt: c.updatedAt.toISOString(),
         createdAt: c.createdAt.toISOString(),
+        reviewedAt: c.reviewedAt?.toISOString() ?? null,
       })),
     };
+  }
+
+  /**
+   * Menu number: chats waiting for the shop's answer and not checked. Read from what the background job
+   * stored, so it costs no Pancake call and works while the chat page is closed.
+   */
+  @Get('counts')
+  @RequirePermissions('orders.read')
+  async counts() {
+    const rows = await this.prisma.client.chatConversation.findMany({
+      where: {
+        lastFromBuyer: true,
+        lastMessageAt: { gt: new Date(Date.now() - CHAT_LOOKBACK_DAYS * 86_400_000) },
+      },
+      select: { channel: true, lastFromBuyer: true, lastMessageAt: true, reviewedAt: true },
+    });
+    const waiting = rows.filter((r) => needsAttention(r));
+    const byChannel: Record<string, number> = {};
+    for (const r of waiting) byChannel[r.channel] = (byChannel[r.channel] ?? 0) + 1;
+    return { attention: waiting.length, byChannel };
+  }
+
+  /** "Đã kiểm tra": silence this chat until the buyer writes again (or undo with reviewed=false). */
+  @Post('conversations/:id/review')
+  @HttpCode(200)
+  @RequirePermissions('orders.read')
+  async review(@Param('id') id: string, @Body() raw: unknown, @CurrentUser() user: AuthUser) {
+    if (!/^[\w.@-]{1,128}$/.test(id)) throw new UnprocessableEntityException('Mã hội thoại không hợp lệ');
+    const { at, reviewed } = parseInput(ReviewBody, raw ?? {});
+    const page = this.pageFor(id);
+    const lastMessageAt = new Date(at);
+    const data = reviewed ? { reviewedAt: lastMessageAt, reviewedBy: user.id } : { reviewedAt: null, reviewedBy: null };
+    await this.prisma.client.chatConversation.upsert({
+      where: { id },
+      // The job may not have seen this chat yet: keep the minimum it needs to carry the mark.
+      create: {
+        id,
+        pageId: page.pageId,
+        channel: chatChannelOf(page.pageId),
+        lastMessageAt,
+        lastFromBuyer: true,
+        notifiedAt: lastMessageAt,
+        ...data,
+      },
+      update: data,
+    });
+    return { ok: true };
   }
 
   private pageFor(conversationId: string): ChatPageConfig {

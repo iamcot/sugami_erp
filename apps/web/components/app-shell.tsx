@@ -32,7 +32,7 @@ import { PlatformDiamond } from './platform-icons';
 import { PwaBootstrap } from './app-settings';
 import { UserMenu } from './user-menu';
 
-type CountKey = 'waiting' | 'shipping' | 'returnPending' | 'shopee' | 'tiktok' | 'low' | 'negative';
+type CountKey = 'chat' | 'waiting' | 'shipping' | 'returnPending' | 'shopee' | 'tiktok' | 'low' | 'negative';
 type NavItem = { href: string; label: string; icon?: LucideIcon; platform?: string; count?: CountKey };
 type Counts = Partial<Record<CountKey, number>>;
 
@@ -40,7 +40,7 @@ const navTop: NavItem[] = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/reports', label: 'Báo cáo', icon: BarChart3 },
   { href: '/customers', label: 'Khách hàng', icon: Users },
-  { href: '/chat', label: 'Chat', icon: MessageCircle },
+  { href: '/chat', label: 'Chat', icon: MessageCircle, count: 'chat' },
 ];
 
 const navSections: { title: string; items: NavItem[] }[] = [
@@ -150,6 +150,10 @@ function useNavCounts(pathname: string): Counts {
           })),
         () => {},
       );
+      api<{ attention: number }>('/chat/counts').then(
+        (r) => setC((p) => ({ ...p, chat: r.attention })),
+        () => {},
+      );
       api<{ total: number; totals: { negative: number } }>('/inventory?view=low&pageSize=1').then(
         (r) => setC((p) => ({ ...p, low: r.total, negative: r.totals.negative })),
         () => {},
@@ -174,7 +178,7 @@ function useNavCounts(pathname: string): Counts {
 }
 
 /** Urgent counts (things to act on) are filled; informational ones are plain text. */
-const URGENT: CountKey[] = ['waiting', 'returnPending', 'negative'];
+const URGENT: CountKey[] = ['chat', 'waiting', 'returnPending', 'negative'];
 
 function SideNav() {
   const pathname = usePathname();

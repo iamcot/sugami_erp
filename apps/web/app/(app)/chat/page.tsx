@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@sugami/ui';
-import { ArrowLeft, CornerDownLeft, RefreshCw, Search, Star } from 'lucide-react';
+import { ArrowLeft, CheckCheck, CornerDownLeft, RefreshCw, Search, Star } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { PlatformDiamond } from '@/components/platform-icons';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
@@ -17,6 +17,8 @@ interface Conversation {
   snippet: string;
   seen: boolean;
   lastSentByShop: boolean | null;
+  /** The buyer wrote last and nobody marked it checked. */
+  needsAttention: boolean;
   tags: string[];
   updatedAt: string;
 }
@@ -72,7 +74,17 @@ const ATTACHMENT_LABEL: Record<string, string> = {
   product: '[Sản phẩm]',
 };
 
-function Thread({ conv, refreshKey, onBack }: { conv: Conversation; refreshKey: number; onBack: () => void }) {
+function Thread({
+  conv,
+  refreshKey,
+  onBack,
+  onReview,
+}: {
+  conv: Conversation;
+  refreshKey: number;
+  onBack: () => void;
+  onReview: (c: Conversation) => void;
+}) {
   const [msgs, setMsgs] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
@@ -150,6 +162,11 @@ function Thread({ conv, refreshKey, onBack }: { conv: Conversation; refreshKey: 
           <p className="font-mono text-[11px] text-slate-500">{conv.id}</p>
         </div>
         {conv.kind === 'RATING' && <Badge tone="warn">Đánh giá</Badge>}
+        {conv.needsAttention && (
+          <Button variant="secondary" className="ml-auto" onClick={() => onReview(conv)}>
+            <CheckCheck className="size-4" /> Đã kiểm tra
+          </Button>
+        )}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
         {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -288,6 +305,25 @@ function ChatList() {
     return () => ctrl.abort();
   }, [qs.channel, qs.kind, qs.filter, qs.q, qs.days, qs.page, reload]);
 
+  // "Đã kiểm tra": silences this chat until the buyer writes again. Shown as done at once, then saved.
+  const review = (c: Conversation) => {
+    setRes((r) =>
+      r
+        ? {
+            ...r,
+            summary: { ...r.summary, waiting: Math.max(0, r.summary.waiting - (c.needsAttention ? 1 : 0)) },
+            data: r.data.map((x) => (x.id === c.id ? { ...x, needsAttention: false } : x)),
+          }
+        : r,
+    );
+    api(`/chat/conversations/${encodeURIComponent(c.id)}/review`, { method: 'POST', json: { at: c.updatedAt } }).catch(
+      (e: Error) => {
+        setError(e.message);
+        setReload((n) => n + 1);
+      },
+    );
+  };
+
   const selected = res?.data.find((c) => c.id === qs.c) ?? null;
   const s = res?.summary;
   const pages = res ? Math.max(1, Math.ceil(res.total / PAGE_SIZE)) : 1;
@@ -362,7 +398,7 @@ function ChatList() {
         {chip('Đánh giá', qs.kind === 'RATING', () => setQs({ kind: 'RATING', filter: '', ...reset }), s?.rating)}
         {chip('Chưa đọc', qs.filter === 'unread', () => setQs({ kind: '', filter: 'unread', ...reset }), s?.unread)}
         {chip(
-          'Chờ trả lời',
+          'Cần xem',
           qs.filter === 'waiting',
           () => setQs({ kind: '', filter: 'waiting', ...reset }),
           s?.waiting,
@@ -393,21 +429,34 @@ function ChatList() {
               <p className="p-4 text-sm text-slate-500">Không có hội thoại nào khớp bộ lọc.</p>
             )}
             {res?.data.map((c) => (
-              <button
+              <div
                 key={c.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setQs({ c: c.id })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setQs({ c: c.id });
+                  }
+                }}
                 className={cn(
-                  'flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-white/60 dark:hover:bg-white/5',
+                  'flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition hover:bg-white/60 dark:hover:bg-white/5',
                   c.id === qs.c && 'bg-brand-500/10',
                 )}
               >
                 <PlatformDiamond platform={c.channel} className="mt-0.5 size-5" />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    <span className={cn('truncate', !c.seen && 'font-semibold')}>{c.customerName || '(không tên)'}</span>
+                    <span className={cn('truncate', (c.needsAttention || !c.seen) && 'font-semibold')}>
+                      {c.customerName || '(không tên)'}
+                    </span>
                     {c.kind === 'RATING' && <Star className="size-3.5 shrink-0 text-amber-500" aria-label="Đánh giá" />}
-                    {!c.seen && <span className="size-2 shrink-0 rounded-full bg-brand-500" aria-label="Chưa đọc" />}
+                    {c.needsAttention ? (
+                      <Badge tone="warn">Cần xem</Badge>
+                    ) : (
+                      !c.seen && <span className="size-2 shrink-0 rounded-full bg-brand-500" aria-label="Chưa đọc" />
+                    )}
                   </span>
                   <span className="block truncate text-sm text-slate-600 dark:text-slate-400">
                     {c.lastSentByShop ? 'Shop: ' : ''}
@@ -421,10 +470,23 @@ function ChatList() {
                     </span>
                   )}
                 </span>
-                <span className="shrink-0 whitespace-nowrap text-xs text-slate-500">
-                  {formatRelativeDateTime(c.updatedAt)}
+                <span className="flex shrink-0 flex-col items-end gap-1">
+                  <span className="whitespace-nowrap text-xs text-slate-500">{formatRelativeDateTime(c.updatedAt)}</span>
+                  {c.needsAttention && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        review(c);
+                      }}
+                      title="Đã kiểm tra: tắt cảnh báo cho đến khi khách nhắn tiếp"
+                      className="inline-flex items-center gap-1 rounded-md border border-slate-300/80 bg-white/70 px-1.5 py-0.5 text-[11px] text-slate-600 hover:bg-white dark:border-slate-700 dark:bg-white/5 dark:text-slate-300"
+                    >
+                      <CheckCheck className="size-3" /> Đã kiểm tra
+                    </button>
+                  )}
                 </span>
-              </button>
+              </div>
             ))}
           </Card>
           {res && pages > 1 && (
@@ -443,7 +505,7 @@ function ChatList() {
         </div>
         <div className={cn(!selected && 'hidden lg:block')}>
           {selected ? (
-            <Thread conv={selected} refreshKey={reload} onBack={() => setQs({ c: '' })} />
+            <Thread conv={selected} refreshKey={reload} onBack={() => setQs({ c: '' })} onReview={review} />
           ) : (
             <Card className="flex h-48 items-center justify-center text-sm text-slate-500">
               Chọn một hội thoại để xem tin nhắn.

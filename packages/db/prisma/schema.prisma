@@ -930,3 +930,28 @@ model Notification {
   @@index([kind, createdAt])
   @@map("notifications")
 }
+
+/// What the shop's chat inbox looked like when the background job last read it (Pancake owns the messages;
+/// this only remembers who is waiting for an answer, what was already announced, and what was checked by hand).
+model ChatConversation {
+  /// Pancake conversation id, e.g. spo_6875667_29536412864387988
+  id            String    @id @db.VarChar(128)
+  pageId        String    @map("page_id") @db.VarChar(64)
+  /// shopee, tiktok, facebook...
+  channel       String    @db.VarChar(20)
+  customerName  String    @default("") @map("customer_name") @db.VarChar(191)
+  snippet       String    @default("") @db.VarChar(500)
+  /// Time of the last message (Pancake updated_at).
+  lastMessageAt DateTime  @map("last_message_at")
+  /// The last message is from the buyer, so the shop owes an answer.
+  lastFromBuyer Boolean   @default(false) @map("last_from_buyer")
+  /// last_message_at that was already announced (bell + push); never announce the same message twice.
+  notifiedAt    DateTime? @map("notified_at")
+  /// "Đã kiểm tra": alerts for this chat stay off until the buyer writes again after this time.
+  reviewedAt    DateTime? @map("reviewed_at")
+  reviewedBy    String?   @map("reviewed_by") @db.Char(36)
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([lastFromBuyer, lastMessageAt])
+  @@map("chat_conversations")
+}

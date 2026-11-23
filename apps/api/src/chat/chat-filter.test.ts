@@ -1,8 +1,9 @@
-import type { ChatConversation } from '@sugami/channels-pancake';
 import { describe, expect, it } from 'vitest';
-import { chatSummary, filterConversations } from './chat-filter.js';
+import { type ChatItem, chatSummary, filterConversations } from './chat-filter.js';
 
-const c = (over: Partial<ChatConversation>): ChatConversation => ({
+const c = (over: Partial<ChatItem>): ChatItem => ({
+  needsAttention: false,
+  reviewedAt: null,
   id: 'x',
   pageId: 'spo_1',
   channel: 'shopee',
@@ -21,7 +22,7 @@ const c = (over: Partial<ChatConversation>): ChatConversation => ({
 });
 
 const rows = [
-  c({ id: 'a', snippet: 'Còn hàng không shop', seen: false, lastSentByShop: false }),
+  c({ id: 'a', snippet: 'Còn hàng không shop', seen: false, lastSentByShop: false, needsAttention: true }),
   c({ id: 'b', snippet: 'Đã gửi nhé', lastSentByShop: true }),
   c({ id: 'f', channel: 'facebook', pageId: '123', snippet: 'Hello', seen: true }),
   c({ id: 'r', kind: 'RATING', snippet: '[5⭐]', seen: false, lastSentByShop: false, customerName: 'Mimi' }),
@@ -38,7 +39,7 @@ describe('filterConversations', () => {
   it('unread keeps unopened ones', () => {
     expect(filterConversations(rows, { ...base, unread: true }).map((r) => r.id)).toEqual(['a', 'r']);
   });
-  it('waiting keeps only chats whose last message is the buyer', () => {
+  it('waiting keeps only chats that need attention (buyer wrote last, not checked)', () => {
     expect(filterConversations(rows, { ...base, waiting: true }).map((r) => r.id)).toEqual(['a']);
   });
   it('searches without accents or case', () => {
