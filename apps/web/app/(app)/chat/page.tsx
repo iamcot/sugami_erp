@@ -2,7 +2,7 @@
 
 import { cn } from '@sugami/ui';
 import { ArrowLeft, CheckCheck, CornerDownLeft, RefreshCw, Search, Star } from 'lucide-react';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { FilterMenu } from '@/components/filter-menu';
 import { PlatformDiamond } from '@/components/platform-icons';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
@@ -79,7 +79,12 @@ function ChatImage({ att }: { att: Attachment }) {
   const [failed, setFailed] = useState(false);
   if (failed)
     return (
-      <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-700 underline">
+      <a
+        href={att.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-brand-700 underline"
+      >
         Không hiện được ảnh, mở liên kết
       </a>
     );
@@ -103,11 +108,18 @@ function AttachmentView({ att }: { att: Attachment }) {
   if (att.kind === 'image' && att.url) return <ChatImage att={att} />;
   if (att.kind === 'video' || att.kind === 'file')
     return att.url ? (
-      <a href={att.url} target="_blank" rel="noopener noreferrer" className="block text-sm text-brand-700 underline">
+      <a
+        href={att.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block text-sm text-brand-700 underline"
+      >
         {att.kind === 'video' ? 'Mở video' : `Tệp: ${att.text ?? 'tải về'}`}
       </a>
     ) : (
-      <p className="text-xs italic text-slate-500">{att.kind === 'video' ? '[Video]' : `[Tệp: ${att.text ?? ''}]`}</p>
+      <p className="text-xs italic text-slate-500">
+        {att.kind === 'video' ? '[Video]' : `[Tệp: ${att.text ?? ''}]`}
+      </p>
     );
   return <p className="mt-1 whitespace-pre-wrap break-words text-xs italic text-slate-500">{att.text}</p>;
 }
@@ -154,6 +166,7 @@ function Thread({
         json: { text: draft.trim() },
       });
       setDraft('');
+      stick.current = true;
       setReload((n) => n + 1);
       box.current?.focus();
     } catch (e) {
@@ -164,6 +177,28 @@ function Thread({
   };
 
   const shownConv = useRef<string | null>(null);
+
+  // Keep the newest message in view: jump to the bottom when a chat opens, and follow new messages and
+  // late-loading photos while the reader is at (or near) the bottom, without yanking them back if they
+  // scrolled up to read.
+  const scroller = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const stick = useRef(true);
+  const toBottom = () => {
+    const el = scroller.current;
+    if (el && stick.current) el.scrollTop = el.scrollHeight;
+  };
+  useLayoutEffect(() => {
+    stick.current = true;
+  }, [conv.id]);
+  useLayoutEffect(toBottom, [msgs]);
+  useEffect(() => {
+    const el = content.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(toBottom);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [conv.id]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -207,34 +242,43 @@ function Thread({
           </Button>
         )}
       </div>
-      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
-        {error && <p className="text-sm text-rose-600">{error}</p>}
-        {!msgs && !error && <p className="text-sm text-slate-500">Đang tải…</p>}
-        {msgs && !msgs.length && (
-          <p className="text-sm text-slate-500">
-            {conv.kind === 'RATING'
-              ? `Đánh giá của khách: ${conv.snippet || '–'}`
-              : 'Hội thoại chưa có tin nhắn.'}
-          </p>
-        )}
-        {msgs?.map((m) => (
-          <div key={m.id} className={cn('flex', m.fromShop ? 'justify-end' : 'justify-start')}>
-            <div
-              className={cn(
-                'max-w-[80%] rounded-xl px-3 py-2 text-sm',
-                m.fromShop
-                  ? 'bg-brand-500/15 text-slate-800 dark:text-slate-100'
-                  : 'border border-slate-200/80 bg-white/70 dark:border-slate-700 dark:bg-white/5',
-              )}
-            >
-              {m.text && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
-              {m.attachments.map((a, i) => (
-                <AttachmentView key={`${a.kind}-${i}`} att={a} />
-              ))}
-              <p className="mt-1 text-right text-[10px] text-slate-500">{formatRelativeDateTime(m.at)}</p>
+      <div
+        ref={scroller}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        }}
+        className="flex-1 overflow-y-auto px-4 py-3"
+      >
+        <div ref={content} className="space-y-2">
+          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {!msgs && !error && <p className="text-sm text-slate-500">Đang tải…</p>}
+          {msgs && !msgs.length && (
+            <p className="text-sm text-slate-500">
+              {conv.kind === 'RATING'
+                ? `Đánh giá của khách: ${conv.snippet || '–'}`
+                : 'Hội thoại chưa có tin nhắn.'}
+            </p>
+          )}
+          {msgs?.map((m) => (
+            <div key={m.id} className={cn('flex', m.fromShop ? 'justify-end' : 'justify-start')}>
+              <div
+                className={cn(
+                  'max-w-[80%] rounded-xl px-3 py-2 text-sm',
+                  m.fromShop
+                    ? 'bg-brand-500/15 text-slate-800 dark:text-slate-100'
+                    : 'border border-slate-200/80 bg-white/70 dark:border-slate-700 dark:bg-white/5',
+                )}
+              >
+                {m.text && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
+                {m.attachments.map((a, i) => (
+                  <AttachmentView key={`${a.kind}-${i}`} att={a} />
+                ))}
+                <p className="mt-1 text-right text-[10px] text-slate-500">{formatRelativeDateTime(m.at)}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
       {conv.kind === 'INBOX' ? (
         <div className="space-y-2 border-t border-slate-200/70 px-4 py-3 dark:border-slate-700/60">
@@ -264,7 +308,11 @@ function Thread({
               title="Gửi (Enter)"
               className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-500 text-white transition hover:bg-brand-600 disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-white/10 dark:disabled:text-slate-500"
             >
-              {sending ? <RefreshCw className="size-4 animate-spin" /> : <CornerDownLeft className="size-4" />}
+              {sending ? (
+                <RefreshCw className="size-4 animate-spin" />
+              ) : (
+                <CornerDownLeft className="size-4" />
+              )}
             </button>
           </div>
           <p className="text-[11px] text-slate-500">
@@ -353,12 +401,13 @@ function ChatList() {
           }
         : r,
     );
-    api(`/chat/conversations/${encodeURIComponent(c.id)}/review`, { method: 'POST', json: { at: c.updatedAt } }).catch(
-      (e: Error) => {
-        setError(e.message);
-        setReload((n) => n + 1);
-      },
-    );
+    api(`/chat/conversations/${encodeURIComponent(c.id)}/review`, {
+      method: 'POST',
+      json: { at: c.updatedAt },
+    }).catch((e: Error) => {
+      setError(e.message);
+      setReload((n) => n + 1);
+    });
   };
 
   const selected = res?.data.find((c) => c.id === qs.c) ?? null;
@@ -371,7 +420,9 @@ function ChatList() {
     <>
       <PageHeader
         title="Chat"
-        description={s ? `${s.inbox} chat · ${s.rating} đánh giá trong ${qs.days} ngày qua` : 'Đọc từ Pancake'}
+        description={
+          s ? `${s.inbox} chat · ${s.rating} đánh giá trong ${qs.days} ngày qua` : 'Đọc từ Pancake'
+        }
         actions={
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-slate-500 sm:inline">
@@ -443,28 +494,29 @@ function ChatList() {
         </div>
         {/* channel tabs: same as Đơn hàng; the number is chats that need attention */}
         <div className="flex overflow-x-auto">
-          {[{ channel: '', attention: res?.channels.reduce((n, c) => n + c.attention, 0) ?? 0 }, ...(res?.channels ?? [])].map(
-            (ch) => (
-              <button
-                key={ch.channel}
-                onClick={() => setQs({ channel: ch.channel, ...reset })}
-                className={cn(
-                  '-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium',
-                  qs.channel === ch.channel
-                    ? 'border-brand-600 bg-gradient-to-t from-brand-500/10 to-transparent text-brand-700 dark:text-brand-500'
-                    : 'border-transparent text-slate-600 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-white/5',
-                )}
-              >
-                {ch.channel ? <PlatformDiamond platform={ch.channel} className="size-[18px]" /> : null}
-                {ch.channel ? (CHANNEL_LABEL[ch.channel] ?? ch.channel) : 'Mọi kênh'}
-                {ch.attention > 0 ? (
-                  <span className="rounded-sm bg-brand-600 px-1 font-mono text-[11px] font-semibold text-white">
-                    {ch.attention}
-                  </span>
-                ) : null}
-              </button>
-            ),
-          )}
+          {[
+            { channel: '', attention: res?.channels.reduce((n, c) => n + c.attention, 0) ?? 0 },
+            ...(res?.channels ?? []),
+          ].map((ch) => (
+            <button
+              key={ch.channel}
+              onClick={() => setQs({ channel: ch.channel, ...reset })}
+              className={cn(
+                '-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium',
+                qs.channel === ch.channel
+                  ? 'border-brand-600 bg-gradient-to-t from-brand-500/10 to-transparent text-brand-700 dark:text-brand-500'
+                  : 'border-transparent text-slate-600 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-white/5',
+              )}
+            >
+              {ch.channel ? <PlatformDiamond platform={ch.channel} className="size-[18px]" /> : null}
+              {ch.channel ? (CHANNEL_LABEL[ch.channel] ?? ch.channel) : 'Mọi kênh'}
+              {ch.attention > 0 ? (
+                <span className="rounded-sm bg-brand-600 px-1 font-mono text-[11px] font-semibold text-white">
+                  {ch.attention}
+                </span>
+              ) : null}
+            </button>
+          ))}
         </div>
       </div>
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
@@ -498,11 +550,15 @@ function ChatList() {
                     <span className={cn('truncate', (c.needsAttention || !c.seen) && 'font-semibold')}>
                       {c.customerName || '(không tên)'}
                     </span>
-                    {c.kind === 'RATING' && <Star className="size-3.5 shrink-0 text-amber-500" aria-label="Đánh giá" />}
+                    {c.kind === 'RATING' && (
+                      <Star className="size-3.5 shrink-0 text-amber-500" aria-label="Đánh giá" />
+                    )}
                     {c.needsAttention ? (
                       <Badge tone="warn">Cần xem</Badge>
                     ) : (
-                      !c.seen && <span className="size-2 shrink-0 rounded-full bg-brand-500" aria-label="Chưa đọc" />
+                      !c.seen && (
+                        <span className="size-2 shrink-0 rounded-full bg-brand-500" aria-label="Chưa đọc" />
+                      )
                     )}
                   </span>
                   <span className="block truncate text-sm text-slate-600 dark:text-slate-400">
@@ -518,7 +574,9 @@ function ChatList() {
                   )}
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="whitespace-nowrap text-xs text-slate-500">{formatRelativeDateTime(c.updatedAt)}</span>
+                  <span className="whitespace-nowrap text-xs text-slate-500">
+                    {formatRelativeDateTime(c.updatedAt)}
+                  </span>
                   {c.needsAttention && (
                     <button
                       type="button"
@@ -538,13 +596,21 @@ function ChatList() {
           </Card>
           {res && pages > 1 && (
             <div className="mt-3 flex items-center justify-between text-sm">
-              <Button variant="secondary" disabled={Number(qs.page) <= 1} onClick={() => setQs({ page: String(Number(qs.page) - 1) })}>
+              <Button
+                variant="secondary"
+                disabled={Number(qs.page) <= 1}
+                onClick={() => setQs({ page: String(Number(qs.page) - 1) })}
+              >
                 Trước
               </Button>
               <span className="text-slate-500">
                 Trang {qs.page}/{pages}
               </span>
-              <Button variant="secondary" disabled={Number(qs.page) >= pages} onClick={() => setQs({ page: String(Number(qs.page) + 1) })}>
+              <Button
+                variant="secondary"
+                disabled={Number(qs.page) >= pages}
+                onClick={() => setQs({ page: String(Number(qs.page) + 1) })}
+              >
                 Sau
               </Button>
             </div>
