@@ -18,6 +18,7 @@ import type { Prisma } from '@sugami/db';
 import { refreshShipment } from '@sugami/sync';
 import {
   ahamoveConfigured,
+  pickupFromEnv,
   allServices,
   bookOrder,
   cancelTrip,
@@ -124,6 +125,12 @@ export class ShippingService {
   private cached: AllingoClient | null = null;
 
   /** All Ahamove services of the shop's city, for the picker in the settings page. */
+  /** The shop's pickup point on Ahamove trips (from .env), for the printed delivery slip. */
+  ahamovePickup() {
+    const p = pickupFromEnv();
+    return p ? { name: p.name, phone: p.mobile, address: p.address } : null;
+  }
+
   async ahamoveServices() {
     if (!ahamoveConfigured()) return [];
     try {

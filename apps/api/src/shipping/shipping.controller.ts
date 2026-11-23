@@ -76,6 +76,12 @@ export class ShippingController {
     return { data: await this.shipping.partnerIcons() };
   }
 
+  @Get('shipping/ahamove-pickup')
+  @RequirePermissions('orders.read')
+  ahamovePickup() {
+    return { data: this.shipping.ahamovePickup() };
+  }
+
   @Get('shipping/ahamove-services')
   @RequirePermissions('orders.read')
   async ahamoveServices() {

@@ -5,6 +5,7 @@ import { formatVnd } from '@sugami/shared';
 import { Copy, ExternalLink, Printer, Truck } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, Card, Tabs } from '@/components/ui';
+import { printDeliverySlip } from '@/lib/delivery-slip';
 import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
 
@@ -96,6 +97,12 @@ export function ShippingPanel({
     shippingStatus: string | null;
     shippingFee: number;
     shippingFeeCharged: number;
+    shipAddress: string | null;
+    shipPhone: string | null;
+    shipProvince: string | null;
+    internalNote: string | null;
+    orderedAt: string;
+    customer: { name: string | null } | null;
   };
   onChanged: () => void;
   /** Open the price table as soon as the order can take a waybill (right after a delivery order is made). */
@@ -127,6 +134,35 @@ export function ShippingPanel({
     }
   }, [autoOpen, list, canCreate]);
   if (!list || (!active && !ahamove && !canCreate && list.length === 0)) return null;
+
+  /** Ahamove has no printable slip in its API: Sugami prints its own, in the layout of the Ahamove portal. */
+  const printSlip = async () => {
+    setError(null);
+    try {
+      const { data: pickup } = await api<{ data: { name: string; phone: string; address: string } | null }>(
+        '/shipping/ahamove-pickup',
+      );
+      const fromNote = /^Người nhận: (.+)$/m.exec(order.internalNote ?? '')?.[1];
+      const ok = printDeliverySlip({
+        tripCode: order.trackingNo ?? order.code,
+        orderCode: order.code,
+        createdAt: order.orderedAt,
+        sender: pickup ?? { name: '', phone: '', address: '' },
+        receiver: {
+          name: fromNote ?? order.customer?.name ?? 'Khách',
+          phone: order.shipPhone ?? '',
+          address: [order.shipAddress, order.shipProvince].filter(Boolean).join(', '),
+        },
+        fee: order.shippingFee,
+        feeNote: order.shippingFeeCharged > 0 ? 'đã cộng vào thu hộ' : 'shop trả',
+        cod: order.codAmount,
+        qr: order.trackingUrl ?? order.trackingNo ?? order.code,
+      });
+      if (!ok) setError('Trình duyệt chặn cửa sổ in, hãy cho phép cửa sổ bật lên cho trang này');
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -182,6 +218,11 @@ export function ShippingPanel({
               {order.shippingStatus ?? 'Đang giao'}
             </Badge>
             <span className="flex-1" />
+            {!/đã hủy/.test(order.shippingStatus ?? '') && (
+              <Button variant="secondary" disabled={busy} onClick={() => void printSlip()}>
+                <Printer className="size-4" /> In phiếu giao
+              </Button>
+            )}
             {['packing', 'shipped'].includes(order.status) && (
               <>
                 {order.status === 'packing' && /hẹn/.test(order.shippingStatus ?? '') && (
