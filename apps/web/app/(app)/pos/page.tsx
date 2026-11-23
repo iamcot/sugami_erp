@@ -831,7 +831,7 @@ export default function PosPage() {
   );
 
   return (
-    <div className="relative -mx-4 -mb-24 -mt-6 flex h-[calc(100dvh-7rem)] flex-col overflow-hidden lg:-mx-8 lg:-mb-10 lg:h-[calc(100dvh-3.5rem)]">
+    <div className="relative -mx-4 -mb-[calc(6rem+env(safe-area-inset-bottom))] -mt-6 flex h-[calc(100dvh-7rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col overflow-hidden lg:-mx-8 lg:-mb-10 lg:h-[calc(100dvh-3.5rem-env(safe-area-inset-top))]">
       {/* top bar: recent orders, product search, open drafts. In the site header on wide screens;
       on phones it sits at the top of the page so the search and its list get the full width. */}
       {wide && slot ? createPortal(toolbar, slot) : null}
