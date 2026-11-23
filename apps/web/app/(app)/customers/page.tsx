@@ -1,8 +1,8 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { Search } from 'lucide-react';
-import { Suspense, useEffect, useState } from 'react';
+import { Search, StickyNote } from 'lucide-react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
 import { Badge, PageHeader } from '@/components/ui';
@@ -15,6 +15,7 @@ interface CustomerRow {
   name: string | null;
   phone: string | null;
   region: string | null;
+  note: string | null;
   tags: string[];
   isActive: boolean;
   lastPurchaseAt: string | null;
@@ -41,13 +42,62 @@ const SORTS = [
 const date = (s: string | null) =>
   s ? new Date(s).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '–';
 
+/** Note icon; a click shows the note in a small popup (not the row's detail drawer). */
+function NoteIcon({ note }: { note: string }) {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!pos) return;
+    const off = () => setPos(null);
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && off();
+    window.addEventListener('click', off);
+    window.addEventListener('scroll', off, true);
+    window.addEventListener('keydown', key);
+    return () => {
+      window.removeEventListener('click', off);
+      window.removeEventListener('scroll', off, true);
+      window.removeEventListener('keydown', key);
+    };
+  }, [pos]);
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        aria-label="Xem ghi chú"
+        className="shrink-0 rounded p-0.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-slate-800"
+        onClick={(e) => {
+          e.stopPropagation();
+          const r = ref.current?.getBoundingClientRect();
+          if (r) setPos(pos ? null : { x: Math.min(r.left, window.innerWidth - 280), y: r.bottom + 4 });
+        }}
+      >
+        <StickyNote className="size-4" />
+      </button>
+      {pos && (
+        <div
+          role="tooltip"
+          onClick={(e) => e.stopPropagation()}
+          style={{ left: Math.max(8, pos.x), top: pos.y }}
+          className="fixed z-50 max-h-60 w-64 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900"
+        >
+          {note}
+        </div>
+      )}
+    </>
+  );
+}
+
 const columns: Column<CustomerRow>[] = [
   {
     key: 'name',
     header: 'Khách hàng',
     render: (c) => (
       <div>
-        <p className="font-medium">{c.name ?? '(chưa có tên)'}</p>
+        <p className="flex items-center gap-1 font-medium">
+          {c.name ?? '(chưa có tên)'}
+          {c.note && <NoteIcon note={c.note} />}
+        </p>
         <p className="font-mono text-xs text-slate-500">{c.code}</p>
       </div>
     ),

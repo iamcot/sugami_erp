@@ -628,6 +628,8 @@ model Customer {
   address        Json?
   /// KiotViet customer groups ("Khách mới", "Fan cứng", ...).
   tags           Json?
+  /// Free-text note kept by the shop (never overwritten by imports).
+  note           String?   @db.Text
   isActive       Boolean   @default(true) @map("is_active")
   /// When the customer was created in KiotViet and last bought there.
   kvCreatedAt    DateTime? @map("kv_created_at")

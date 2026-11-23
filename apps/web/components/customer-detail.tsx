@@ -21,6 +21,7 @@ interface Detail {
     addressLine: string | null;
     region: string | null;
     ward: string | null;
+    note: string | null;
     tags: string[];
     isActive: boolean;
     kvCreatedAt: string | null;
@@ -76,6 +77,7 @@ interface Form {
   addressLine: string;
   region: string;
   ward: string;
+  note: string;
 }
 
 const toSaved = (c: Detail['customer']): CustomerSaved => ({
@@ -106,6 +108,7 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
           addressLine: opts?.initial?.addressLine ?? '',
           region: opts?.initial?.region ?? '',
           ward: opts?.initial?.ward ?? '',
+          note: '',
         }
       : null,
   );
@@ -131,6 +134,7 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
     addressLine: f.addressLine || null,
     region: f.region || null,
     ward: f.ward || null,
+    note: f.note || null,
   });
   const save = async () => {
     if (!edit) return;
@@ -184,6 +188,7 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
                   addressLine: c.addressLine ?? '',
                   region: c.region ?? '',
                   ward: c.ward ?? '',
+                  note: c.note ?? '',
                 })
               }
             >
@@ -235,6 +240,16 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
                 onChange={(v) => setEdit({ ...edit, region: v.province, ward: v.ward })}
               />
             </div>
+            <label className="text-xs text-slate-500 md:col-span-2">
+              Ghi chú
+              <textarea
+                value={edit.note}
+                onChange={(e) => setEdit({ ...edit, note: e.target.value })}
+                rows={4}
+                maxLength={2000}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-800 dark:bg-slate-900"
+              />
+            </label>
             {error && <p className="text-sm text-rose-600 md:col-span-2">{error}</p>}
             {dup && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 md:col-span-2 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
@@ -279,6 +294,9 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
             <Field label="Email" value={c.email} />
             <Field label="Facebook" value={c.facebook} />
             <Field label="Địa chỉ" value={[c.addressLine, c.ward, c.region].filter(Boolean).join(', ')} />
+            <div className="sm:col-span-2 lg:col-span-3">
+              <Field label="Ghi chú" value={c.note && <p className="whitespace-pre-wrap">{c.note}</p>} />
+            </div>
             <Field label="Giới tính" value={c.gender} />
             <Field label="Ngày sinh" value={c.birthday && dt(c.birthday)} />
             <Field label="Tạo trên KiotViet" value={dt(c.kvCreatedAt)} />
