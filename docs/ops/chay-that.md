@@ -44,7 +44,7 @@ pm2 chạy `scripts/backup.sh` lúc 3h sáng (tiến trình `sugami-backup`, bì
 
 - Chạy thử ngay: `bash scripts/backup.sh`, xem log `pm2 logs sugami-backup`.
 - Khôi phục: `gunzip -c file.sql.gz | mysql -u sugami -p sugami`.
-- Khi `.env` có `S3_BUCKET` + khóa S3 và máy có `aws` cli (`brew install awscli`), mỗi bản được đẩy thêm lên `S3_PREFIX/backups/`. Chưa có thì chỉ lưu trên máy: nên chép thư mục này sang ổ ngoài thỉnh thoảng.
+- Khi `.env` có `S3_BUCKET` (và `STORAGE_DRIVER=s3`), mỗi bản được đẩy thêm lên `<S3_PREFIX>backups/` qua lớp lưu trữ của Sugami (không cần `aws` cli). Cần đã chạy `bash scripts/update.sh` (nó build gói storage). Bản trên S3 không tự xóa: đặt Lifecycle rule của bucket (ví dụ xóa sau 30 ngày) ở thư mục `backups/`.
 
 ## Cập nhật khi có code mới
 

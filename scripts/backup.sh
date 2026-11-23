@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sao lưu DB MySQL: file .sql.gz vào BACKUP_DIR (mặc định ~/sugami-backups), giữ BACKUP_KEEP_DAYS ngày (mặc định 14).
-# Có S3_BUCKET + aws cli thì đẩy thêm lên S3 (prefix sugami/backups/). Chạy tay: bash scripts/backup.sh
+# Có S3_BUCKET thì đẩy thêm lên S3 (<S3_PREFIX>backups/), cần đã build gói storage (scripts/update.sh làm sẵn). Chạy tay: bash scripts/backup.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 set -a; . ./.env; set +a
@@ -24,10 +24,9 @@ mv "$OUT.tmp" "$OUT"
 [ "$(wc -c < "$OUT")" -gt 1000 ] || { echo "Backup lỗi: file quá nhỏ ($OUT)" >&2; exit 1; }
 echo "Đã sao lưu: $OUT ($(du -h "$OUT" | cut -f1))"
 
-if [ -n "${S3_BUCKET:-}" ] && command -v aws >/dev/null 2>&1; then
-  AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY:-}" AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY:-}" AWS_DEFAULT_REGION="${S3_REGION:-ap-southeast-1}" \
-    aws s3 cp "$OUT" "s3://$S3_BUCKET/${S3_PREFIX:-sugami/}backups/$(basename "$OUT")" --only-show-errors \
-    && echo "Đã đẩy lên S3" || echo "Đẩy S3 lỗi (bản trên máy vẫn còn)" >&2
+# đẩy lên S3 nếu có cấu hình (bằng lớp lưu trữ của Sugami, không cần aws cli); lỗi thì bản trên máy vẫn còn
+if [ -n "${S3_BUCKET:-}" ] && [ "${STORAGE_DRIVER:-s3}" = "s3" ]; then
+  node scripts/upload-backup.mjs "$OUT" || echo "Đẩy S3 lỗi (bản trên máy vẫn còn)" >&2
 fi
 
 find "$DIR" -name 'sugami-*.sql.gz' -mtime +"$KEEP" -delete
