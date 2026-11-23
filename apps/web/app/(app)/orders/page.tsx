@@ -13,6 +13,27 @@ import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
 import { useQueryState } from '@/lib/use-query-state';
 
+interface BulkPlan {
+  take: string[];
+  statusOnly: string[];
+  skipped: { code: string; reason: string }[];
+}
+
+function PlanGroup(p: { title: string; hint: string; codes: string[]; tone?: string }) {
+  if (!p.codes.length) return null;
+  return (
+    <div>
+      <p className={p.tone}>
+        <b className="font-semibold">
+          {p.title}: {p.codes.length} đơn
+        </b>{' '}
+        <span className="text-slate-500">({p.hint})</span>
+      </p>
+      <p className="font-mono text-xs break-words text-slate-600 dark:text-slate-400">{p.codes.join(', ')}</p>
+    </div>
+  );
+}
+
 interface OrderRow {
   id: string;
   code: string;
@@ -323,31 +344,37 @@ function OrdersList() {
   const [busy, setBusy] = useState(false);
   useEffect(() => setPicked(new Set()), [res]);
 
-  const completePicked = async () => {
-    const codes = (res?.data ?? []).filter((o) => picked.has(o.id)).map((o) => o.code);
+  const [plan, setPlan] = useState<BulkPlan | null>(null);
+  useEffect(() => setPlan(null), [picked]);
+  const pickedCodes = () => (res?.data ?? []).filter((o) => picked.has(o.id)).map((o) => o.code);
+  const previewPicked = async () => {
+    const codes = pickedCodes();
     if (!codes.length) return;
-    if (
-      !window.confirm(
-        `Chuyển ${codes.length} đơn sang Hoàn tất? Đơn bán tại quầy chưa trừ tồn sẽ trừ tồn bây giờ và tính là đã thu đủ tiền. Đơn sàn sẽ được bỏ qua.`,
-      )
-    )
-      return;
     setBusy(true);
     setBulkMsg(null);
+    try {
+      setPlan(await api<BulkPlan>('/orders/bulk/complete/preview', { method: 'POST', json: { codes } }));
+    } catch (e) {
+      setBulkMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const completePicked = async () => {
+    if (!plan) return;
+    const codes = [...plan.take, ...plan.statusOnly];
+    setBusy(true);
     try {
       const r = await api<{ done: string[]; skipped: { code: string; reason: string }[] }>(
         '/orders/bulk/complete',
         { method: 'POST', json: { codes } },
       );
       setBulkMsg(
-        `Đã hoàn tất ${r.done.length} đơn.` +
-          (r.skipped.length
-            ? ` Bỏ qua ${r.skipped.length}: ${r.skipped
-                .slice(0, 5)
-                .map((x) => `${x.code} (${x.reason})`)
-                .join(', ')}${r.skipped.length > 5 ? '…' : ''}`
-            : ''),
+        `Đã hoàn tất ${r.done.length} đơn` +
+          (plan.take.length ? `, trừ tồn ${plan.take.length} đơn.` : '.') +
+          (r.skipped.length ? ` Bỏ qua ${r.skipped.length} đơn.` : ''),
       );
+      setPlan(null);
       setReload((n) => n + 1);
     } catch (e) {
       setBulkMsg((e as Error).message);
@@ -355,6 +382,7 @@ function OrdersList() {
       setBusy(false);
     }
   };
+
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
@@ -413,7 +441,7 @@ function OrdersList() {
               <span className="text-sm font-semibold text-brand-700 dark:text-brand-500">
                 Đã chọn {picked.size}
               </span>
-              <Button className="h-8 py-0" disabled={busy} onClick={() => void completePicked()}>
+              <Button className="h-8 py-0" disabled={busy} onClick={() => void previewPicked()}>
                 <CheckCheck className="size-4" /> Hoàn tất đơn
               </Button>
               <Button variant="ghost" className="h-8 py-0" onClick={() => setPicked(new Set())}>
@@ -539,6 +567,40 @@ function OrdersList() {
           ))}
         </div>
         {error && <p className="px-4 py-2 text-sm text-rose-600">{error}</p>}
+        {plan && (
+          <div className="space-y-2 border-b border-slate-300/50 bg-brand-50/60 px-4 py-3 text-sm dark:border-white/10 dark:bg-brand-500/10">
+            <PlanGroup
+              title="Trừ tồn bây giờ"
+              hint="đơn tại quầy chưa trừ tồn, sẽ tính là đã thu đủ tiền"
+              codes={plan.take}
+              tone="text-amber-700 dark:text-amber-300"
+            />
+            <PlanGroup
+              title="Chỉ đổi trạng thái, không trừ tồn"
+              hint="tồn đã trừ trước đó, hoặc đơn từ KiotViet"
+              codes={plan.statusOnly}
+            />
+            <PlanGroup
+              title="Bỏ qua"
+              hint="đơn sàn, đơn đã hoàn tất, hủy hoặc hoàn"
+              codes={plan.skipped.map((x) => x.code)}
+              tone="text-slate-500"
+            />
+            <div className="flex gap-2 pt-1">
+              <Button
+                className="h-8 py-0"
+                disabled={busy || plan.take.length + plan.statusOnly.length === 0}
+                onClick={() => void completePicked()}
+              >
+                <CheckCheck className="size-4" /> Xác nhận hoàn tất{' '}
+                {plan.take.length + plan.statusOnly.length} đơn
+              </Button>
+              <Button variant="secondary" className="h-8 py-0" onClick={() => setPlan(null)}>
+                Hủy
+              </Button>
+            </div>
+          </div>
+        )}
         {bulkMsg && (
           <p className="border-b border-slate-300/50 bg-brand-50/60 px-4 py-2 text-sm dark:border-white/10 dark:bg-brand-500/10">
             {bulkMsg}

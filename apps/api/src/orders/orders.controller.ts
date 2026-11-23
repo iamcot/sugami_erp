@@ -15,7 +15,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { completeOrders } from './order-bulk.js';
+import { completeOrders, planComplete } from './order-bulk.js';
 import { handleReturn, ReturnError, writeOffReturn } from './order-returns.js';
 
 const STATUSES = [
@@ -172,6 +172,14 @@ export class OrdersController {
       waitingByChannel[k] = (waitingByChannel[k] ?? 0) + c._count;
     }
     return { waiting: waitingCount, shipping, returnPending, waitingByChannel };
+  }
+
+  /** What a bulk complete would do: which orders take stock, which only change status, which are skipped. */
+  @Post('bulk/complete/preview')
+  @HttpCode(200)
+  @RequirePermissions('orders.write')
+  async bulkCompletePreview(@Body() raw: unknown) {
+    return planComplete(this.prisma.client, parseInput(BulkBody, raw).codes);
   }
 
   /** Force selected orders to completed (already delivered but never moved along). */
