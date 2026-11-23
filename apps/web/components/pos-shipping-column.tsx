@@ -304,19 +304,21 @@ export function PosShippingColumn({
   );
 
   const payerSection = (
-    <div className="flex flex-nowrap items-center gap-x-4 whitespace-nowrap pt-2 text-sm">
-      <span className="text-xs text-slate-500">Ai trả phí ship</span>
-      {(
-        [
-          [false, 'Shop trả'],
-          [true, 'Khách trả (cộng vào đơn)'],
-        ] as const
-      ).map(([v, label]) => (
-        <label key={label} className="flex items-center gap-1.5">
-          <input type="radio" name="ship-payer" checked={addFee === v} onChange={() => setAddFee(v)} />
-          {label}
-        </label>
-      ))}
+    <div className="pt-2">
+      <p className="text-xs text-slate-500">Ai trả phí ship</p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+        {(
+          [
+            [false, 'Shop trả'],
+            [true, 'Khách trả (cộng vào đơn)'],
+          ] as const
+        ).map(([v, label]) => (
+          <label key={label} className="flex items-center gap-1.5">
+            <input type="radio" name="ship-payer" checked={addFee === v} onChange={() => setAddFee(v)} />
+            {label}
+          </label>
+        ))}
+      </div>
     </div>
   );
 
