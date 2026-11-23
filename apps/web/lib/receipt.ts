@@ -1,6 +1,12 @@
 /** Receipt layout (blocks) and its HTML rendering for the bill printer. */
 export type Block =
-  | { type: 'text'; text: string; align: 'left' | 'center' | 'right'; bold: boolean; size: 'sm' | 'md' | 'lg' }
+  | {
+      type: 'text';
+      text: string;
+      align: 'left' | 'center' | 'right';
+      bold: boolean;
+      size: 'sm' | 'md' | 'lg';
+    }
   | { type: 'order_info' }
   | { type: 'lines' }
   | { type: 'totals' }

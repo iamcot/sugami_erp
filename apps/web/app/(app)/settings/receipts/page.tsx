@@ -13,8 +13,7 @@ const BLOCK_LABEL: Record<Block['type'], string> = {
   totals: 'Tổng tiền, giảm giá, thanh toán',
   divider: 'Đường kẻ',
 };
-const field =
-  'rounded-md border border-slate-300 bg-transparent px-2 py-1 text-sm dark:border-slate-700';
+const field = 'rounded-md border border-slate-300 bg-transparent px-2 py-1 text-sm dark:border-slate-700';
 
 export default function ReceiptTemplatesPage() {
   const [list, setList] = useState<ReceiptTemplate[]>([]);
@@ -23,13 +22,16 @@ export default function ReceiptTemplatesPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async (keep?: string) => {
-    const r = await api<{ data: ReceiptTemplate[] }>('/receipt-templates');
-    setList(r.data);
-    const pick = r.data.find((t) => t.id === (keep ?? sel)) ?? r.data[0];
-    setSel(pick?.id ?? null);
-    setDraft(pick ? structuredClone(pick) : null);
-  }, [sel]);
+  const load = useCallback(
+    async (keep?: string) => {
+      const r = await api<{ data: ReceiptTemplate[] }>('/receipt-templates');
+      setList(r.data);
+      const pick = r.data.find((t) => t.id === (keep ?? sel)) ?? r.data[0];
+      setSel(pick?.id ?? null);
+      setDraft(pick ? structuredClone(pick) : null);
+    },
+    [sel],
+  );
   useEffect(() => {
     load().catch((e: Error) => setMsg(e.message));
   }, []);
@@ -64,7 +66,12 @@ export default function ReceiptTemplatesPage() {
   };
   const save = () =>
     run(async () => {
-      const body = { name: draft!.name, paperWidth: draft!.paperWidth, blocks: draft!.blocks, isDefault: draft!.isDefault };
+      const body = {
+        name: draft!.name,
+        paperWidth: draft!.paperWidth,
+        blocks: draft!.blocks,
+        isDefault: draft!.isDefault,
+      };
       const r = await api<ReceiptTemplate>(`/receipt-templates/${draft!.id}`, { method: 'PUT', json: body });
       setMsg('Đã lưu');
       await load(r.id);
@@ -109,7 +116,11 @@ export default function ReceiptTemplatesPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="space-y-3 p-4">
             <div className="flex flex-wrap items-center gap-3">
-              <input className={`${field} w-56`} value={draft.name} onChange={(e) => set({ name: e.target.value })} />
+              <input
+                className={`${field} w-56`}
+                value={draft.name}
+                onChange={(e) => set({ name: e.target.value })}
+              />
               <select
                 className={field}
                 value={draft.paperWidth}
@@ -119,13 +130,20 @@ export default function ReceiptTemplatesPage() {
                 <option value={58}>Khổ 58mm</option>
               </select>
               <label className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" checked={draft.isDefault} onChange={(e) => set({ isDefault: e.target.checked })} />
+                <input
+                  type="checkbox"
+                  checked={draft.isDefault}
+                  onChange={(e) => set({ isDefault: e.target.checked })}
+                />
                 Mẫu mặc định
               </label>
             </div>
             <ul className="space-y-2">
               {draft.blocks.map((b, i) => (
-                <li key={`${b.type}-${i}`} className="rounded-lg border border-slate-200 p-2 dark:border-slate-800">
+                <li
+                  key={`${b.type}-${i}`}
+                  className="rounded-lg border border-slate-200 p-2 dark:border-slate-800"
+                >
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <span>{BLOCK_LABEL[b.type]}</span>
                     <span className="flex gap-1">
@@ -135,7 +153,10 @@ export default function ReceiptTemplatesPage() {
                       <button aria-label="Xuống" onClick={() => move(i, 1)}>
                         <ArrowDown className="size-4" />
                       </button>
-                      <button aria-label="Xóa" onClick={() => set({ blocks: draft.blocks.filter((_, j) => j !== i) })}>
+                      <button
+                        aria-label="Xóa"
+                        onClick={() => set({ blocks: draft.blocks.filter((_, j) => j !== i) })}
+                      >
                         <Trash2 className="size-4 text-rose-500" />
                       </button>
                     </span>
@@ -149,18 +170,30 @@ export default function ReceiptTemplatesPage() {
                         onChange={(e) => setBlock(i, { ...b, text: e.target.value })}
                       />
                       <div className="flex flex-wrap gap-3 text-sm">
-                        <select className={field} value={b.align} onChange={(e) => setBlock(i, { ...b, align: e.target.value as typeof b.align })}>
+                        <select
+                          className={field}
+                          value={b.align}
+                          onChange={(e) => setBlock(i, { ...b, align: e.target.value as typeof b.align })}
+                        >
                           <option value="left">Trái</option>
                           <option value="center">Giữa</option>
                           <option value="right">Phải</option>
                         </select>
-                        <select className={field} value={b.size} onChange={(e) => setBlock(i, { ...b, size: e.target.value as typeof b.size })}>
+                        <select
+                          className={field}
+                          value={b.size}
+                          onChange={(e) => setBlock(i, { ...b, size: e.target.value as typeof b.size })}
+                        >
                           <option value="sm">Nhỏ</option>
                           <option value="md">Vừa</option>
                           <option value="lg">Lớn</option>
                         </select>
                         <label className="flex items-center gap-1.5">
-                          <input type="checkbox" checked={b.bold} onChange={(e) => setBlock(i, { ...b, bold: e.target.checked })} />
+                          <input
+                            type="checkbox"
+                            checked={b.bold}
+                            onChange={(e) => setBlock(i, { ...b, bold: e.target.checked })}
+                          />
                           Đậm
                         </label>
                       </div>
@@ -177,13 +210,17 @@ export default function ReceiptTemplatesPage() {
               ))}
             </div>
             <p className="text-xs text-slate-500">
-              Trong dòng chữ có thể dùng {'{{code}}'} (số hóa đơn), {'{{date}}'}, {'{{customer}}'}, {'{{total}}'}.
+              Trong dòng chữ có thể dùng {'{{code}}'} (số hóa đơn), {'{{date}}'}, {'{{customer}}'},{' '}
+              {'{{total}}'}.
             </p>
             <div className="flex gap-2">
               <Button disabled={busy} onClick={save}>
                 Lưu mẫu
               </Button>
-              <Button variant="secondary" onClick={() => printReceipt(draft, { ...SAMPLE_ORDER, orderedAt: new Date().toISOString() })}>
+              <Button
+                variant="secondary"
+                onClick={() => printReceipt(draft, { ...SAMPLE_ORDER, orderedAt: new Date().toISOString() })}
+              >
                 <Printer className="size-4" /> In thử
               </Button>
               <Button variant="ghost" disabled={busy || list.length < 2} onClick={remove}>
