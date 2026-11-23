@@ -139,6 +139,7 @@ export class ChatController {
     const channels = [...new Set([...pages.map(pageChannel)])].map((channel) => ({
       channel,
       count: items.filter((c) => c.channel === channel).length,
+      attention: items.filter((c) => c.channel === channel && c.needsAttention).length,
     }));
     // Chips for kind/unread/waiting count inside the chosen channel only.
     const inChannel = q.channel ? items.filter((c) => c.channel === q.channel) : items;

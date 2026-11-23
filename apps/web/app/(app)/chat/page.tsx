@@ -3,6 +3,7 @@
 import { cn } from '@sugami/ui';
 import { ArrowLeft, CheckCheck, CornerDownLeft, RefreshCw, Search, Star } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
+import { FilterMenu } from '@/components/filter-menu';
 import { PlatformDiamond } from '@/components/platform-icons';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -31,7 +32,7 @@ interface Summary {
   waiting: number;
 }
 interface ListResponse {
-  channels: { channel: string; count: number }[];
+  channels: { channel: string; count: number; attention: number }[];
   errors: { channel: string; message: string }[];
   summary: Summary;
   total: number;
@@ -64,10 +65,11 @@ const CHANNEL_LABEL: Record<string, string> = {
   other: 'Khác',
 };
 
+// The default (7 days) comes first: FilterMenu treats the first option as "no filter".
 const RANGES = [
+  ['7', '7 ngày qua'],
   ['1', '24 giờ qua'],
   ['3', '3 ngày qua'],
-  ['7', '7 ngày qua'],
   ['14', '14 ngày qua'],
   ['30', '30 ngày qua'],
 ] as const;
@@ -108,26 +110,6 @@ function AttachmentView({ att }: { att: Attachment }) {
       <p className="text-xs italic text-slate-500">{att.kind === 'video' ? '[Video]' : `[Tệp: ${att.text ?? ''}]`}</p>
     );
   return <p className="mt-1 whitespace-pre-wrap break-words text-xs italic text-slate-500">{att.text}</p>;
-}
-
-/** A readable count: bold on a pill, filled when it is something to act on. */
-function CountPill({ n, urgent, active }: { n: number; urgent?: boolean; active?: boolean }) {
-  return (
-    <span
-      className={cn(
-        'min-w-5 rounded-full px-1.5 text-center font-mono text-xs font-bold tabular-nums leading-5',
-        n === 0
-          ? 'bg-slate-200/70 text-slate-500 dark:bg-white/10 dark:text-slate-400'
-          : urgent
-            ? 'bg-amber-500 text-white'
-            : active
-              ? 'bg-brand-600 text-white'
-              : 'bg-slate-300/80 text-slate-800 dark:bg-white/20 dark:text-slate-100',
-      )}
-    >
-      {n}
-    </span>
-  );
 }
 
 function Thread({
@@ -383,25 +365,6 @@ function ChatList() {
   const s = res?.summary;
   const pages = res ? Math.max(1, Math.ceil(res.total / PAGE_SIZE)) : 1;
 
-  const chip = (label: string, active: boolean, onClick: () => void, count?: number, urgent?: boolean) => (
-    <button
-      key={label}
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition',
-        active
-          ? 'border-brand-500/70 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-500'
-          : 'border-slate-200 bg-white/60 text-slate-600 hover:bg-white dark:border-slate-700 dark:bg-white/5 dark:text-slate-300',
-      )}
-    >
-      {label}
-      {count !== undefined && <CountPill n={count} urgent={urgent} active={active} />}
-    </button>
-  );
-
-  const select =
-    'h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900';
   const reset = { page: '1', c: '' };
 
   return (
@@ -420,62 +383,88 @@ function ChatList() {
           </div>
         }
       />
-      {res && res.channels.length > 0 && (
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          {chip('Mọi kênh', !qs.channel, () => setQs({ channel: '', ...reset }))}
-          {res.channels.map((ch) => (
-            <button
-              key={ch.channel}
-              type="button"
-              onClick={() => setQs({ channel: ch.channel, ...reset })}
-              className={cn(
-                'inline-flex h-8 items-center gap-1.5 rounded-full border pl-1.5 pr-3 text-sm transition',
-                qs.channel === ch.channel
-                  ? 'border-brand-500/70 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-500'
-                  : 'border-slate-200 bg-white/60 text-slate-600 hover:bg-white dark:border-slate-700 dark:bg-white/5 dark:text-slate-300',
-              )}
-            >
-              <PlatformDiamond platform={ch.channel} className="size-5" />
-              {CHANNEL_LABEL[ch.channel] ?? ch.channel}
-              <CountPill n={ch.count} active={qs.channel === ch.channel} />
-            </button>
-          ))}
-        </div>
-      )}
       {res?.errors.map((e) => (
         <p key={e.channel} className="mb-2 text-sm text-rose-600">
           Không đọc được chat {CHANNEL_LABEL[e.channel] ?? e.channel}: {e.message}
         </p>
       ))}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        {chip('Tất cả', !qs.kind && !qs.filter, () => setQs({ kind: '', filter: '', ...reset }), s?.total)}
-        {chip('Chat', qs.kind === 'INBOX', () => setQs({ kind: 'INBOX', filter: '', ...reset }), s?.inbox)}
-        {chip('Đánh giá', qs.kind === 'RATING', () => setQs({ kind: 'RATING', filter: '', ...reset }), s?.rating)}
-        {s && s.comment > 0 && chip('Bình luận', qs.kind === 'COMMENT', () => setQs({ kind: 'COMMENT', filter: '', ...reset }), s.comment)}
-        {chip('Chưa đọc', qs.filter === 'unread', () => setQs({ kind: '', filter: 'unread', ...reset }), s?.unread)}
-        {chip(
-          'Cần xem',
-          qs.filter === 'waiting',
-          () => setQs({ kind: '', filter: 'waiting', ...reset }),
-          s?.waiting,
-          true,
-        )}
-        <select value={qs.days} onChange={(e) => setQs({ days: e.target.value, ...reset })} className={cn(select, 'ml-auto')}>
-          {RANGES.map(([k, label]) => (
-            <option key={k} value={k}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <label className="flex h-9 w-full min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm sm:w-64 dark:border-slate-800 dark:bg-slate-900">
-          <Search className="size-4 shrink-0 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tên khách, nội dung"
-            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
+      <div className="glass mb-4 rounded-xl">
+        {/* filters: same bar as Đơn hàng */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-300/50 bg-white/30 px-3 py-2 dark:border-white/10 dark:bg-black/10">
+          <span className="hud-label text-slate-500">Lọc</span>
+          <FilterMenu
+            label="Loại"
+            value={qs.kind}
+            options={[
+              ['', 'Tất cả'],
+              ['INBOX', `Chat${s ? ` (${s.inbox})` : ''}`],
+              ['RATING', `Đánh giá${s ? ` (${s.rating})` : ''}`],
+              ...(s && s.comment > 0 ? ([['COMMENT', `Bình luận (${s.comment})`]] as const) : []),
+            ]}
+            onChange={(v) => setQs({ kind: v, ...reset })}
           />
-        </label>
+          <FilterMenu
+            label="Trạng thái"
+            value={qs.filter}
+            options={[
+              ['', 'Tất cả'],
+              ['waiting', `Cần xem${s ? ` (${s.waiting})` : ''}`],
+              ['unread', `Chưa đọc${s ? ` (${s.unread})` : ''}`],
+            ]}
+            onChange={(v) => setQs({ filter: v, ...reset })}
+          />
+          <FilterMenu
+            label="Thời gian"
+            value={qs.days}
+            options={RANGES}
+            onChange={(v) => setQs({ days: v, ...reset })}
+          />
+          {(qs.q || qs.kind || qs.filter || qs.channel || qs.days !== '7') && (
+            <button
+              onClick={() => {
+                setSearch('');
+                setQs({ q: '', kind: '', filter: '', channel: '', days: '', ...reset });
+              }}
+              className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-500"
+            >
+              Xóa bộ lọc
+            </button>
+          )}
+          <label className="flex h-8 min-w-0 flex-1 basis-full items-center gap-2 rounded-md border border-slate-300/80 bg-white/80 px-2.5 text-sm md:ml-auto md:max-w-xs md:flex-none md:basis-80 dark:border-white/15 dark:bg-white/5">
+            <Search className="size-4 shrink-0 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tên khách, nội dung"
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
+            />
+          </label>
+        </div>
+        {/* channel tabs: same as Đơn hàng; the number is chats that need attention */}
+        <div className="flex overflow-x-auto">
+          {[{ channel: '', attention: res?.channels.reduce((n, c) => n + c.attention, 0) ?? 0 }, ...(res?.channels ?? [])].map(
+            (ch) => (
+              <button
+                key={ch.channel}
+                onClick={() => setQs({ channel: ch.channel, ...reset })}
+                className={cn(
+                  '-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium',
+                  qs.channel === ch.channel
+                    ? 'border-brand-600 bg-gradient-to-t from-brand-500/10 to-transparent text-brand-700 dark:text-brand-500'
+                    : 'border-transparent text-slate-600 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-white/5',
+                )}
+              >
+                {ch.channel ? <PlatformDiamond platform={ch.channel} className="size-[18px]" /> : null}
+                {ch.channel ? (CHANNEL_LABEL[ch.channel] ?? ch.channel) : 'Mọi kênh'}
+                {ch.attention > 0 ? (
+                  <span className="rounded-sm bg-brand-600 px-1 font-mono text-[11px] font-semibold text-white">
+                    {ch.attention}
+                  </span>
+                ) : null}
+              </button>
+            ),
+          )}
+        </div>
       </div>
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
