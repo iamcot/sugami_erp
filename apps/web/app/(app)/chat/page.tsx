@@ -63,17 +63,16 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const [draft, setDraft] = useState('');
-  const [confirming, setConfirming] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft('');
-    setConfirming(false);
     setSendError(null);
   }, [conv.id]);
 
   const send = async () => {
+    if (sending || !draft.trim()) return;
     setSending(true);
     setSendError(null);
     try {
@@ -82,11 +81,9 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
         json: { text: draft.trim() },
       });
       setDraft('');
-      setConfirming(false);
       setReload((n) => n + 1);
     } catch (e) {
       setSendError((e as Error).message);
-      setConfirming(false);
     } finally {
       setSending(false);
     }
@@ -159,9 +156,9 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
           {sendError && <p className="text-sm text-rose-600">{sendError}</p>}
           <textarea
             value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              setConfirming(false);
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void send();
             }}
             maxLength={2000}
             rows={2}
@@ -169,23 +166,10 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
             className="w-full resize-none rounded-lg border border-slate-200 bg-white/80 px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-white/5"
           />
           <div className="flex items-center justify-end gap-2">
-            {confirming ? (
-              <>
-                <span className="mr-auto text-sm text-slate-600 dark:text-slate-300">
-                  Gửi tin này cho <b>{conv.customerName || 'khách'}</b>? Không thu hồi được.
-                </span>
-                <Button variant="ghost" onClick={() => setConfirming(false)} disabled={sending}>
-                  Hủy
-                </Button>
-                <Button onClick={send} disabled={sending}>
-                  <Send className="size-4" /> {sending ? 'Đang gửi…' : 'Xác nhận gửi'}
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setConfirming(true)} disabled={!draft.trim()}>
-                <Send className="size-4" /> Gửi
-              </Button>
-            )}
+            <span className="mr-auto hidden text-xs text-slate-500 sm:inline">Ctrl/⌘ + Enter để gửi</span>
+            <Button onClick={send} disabled={sending || !draft.trim()}>
+              <Send className="size-4" /> {sending ? 'Đang gửi…' : 'Gửi'}
+            </Button>
           </div>
         </div>
       ) : (
