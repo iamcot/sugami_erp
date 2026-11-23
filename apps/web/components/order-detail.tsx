@@ -110,7 +110,16 @@ interface PosAction {
   stock: 'take' | 'give' | null;
 }
 
-export function OrderDetail({ code, embedded }: { code: string; embedded?: boolean }) {
+export function OrderDetail({
+  code,
+  embedded,
+  openShipping,
+}: {
+  code: string;
+  embedded?: boolean;
+  /** Open the Tạo vận đơn price table on arrival (a delivery order just made at the counter). */
+  openShipping?: boolean;
+}) {
   const { open } = useDetail();
   const [order, setOrder] = useState<Order | null>(null);
   const [actions, setActions] = useState<PosAction[]>([]);
@@ -296,6 +305,7 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
       )}
       <ShippingPanel
         order={order}
+        autoOpen={openShipping}
         onChanged={() =>
           void api<{ order: Order }>(`/orders/${encodeURIComponent(order.code)}`).then((r) =>
             setOrder(r.order),

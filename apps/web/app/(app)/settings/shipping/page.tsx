@@ -18,6 +18,11 @@ interface Settings {
   defaultItemGrams: number;
   defaultPayee: 'receiver' | 'sender';
   preferredStandard: string;
+  ahamoveServices: string[];
+}
+interface AhaService {
+  id: string;
+  name: string;
 }
 interface Status {
   ahamove: boolean;
@@ -42,6 +47,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function ShippingSettingsPage() {
   const [s, setS] = useState<Settings | null>(null);
   const [st, setSt] = useState<Status | null>(null);
+  const [aha, setAha] = useState<AhaService[]>([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -49,6 +55,9 @@ export default function ShippingSettingsPage() {
     api<Settings>('/shipping/settings')
       .then(setS)
       .catch((e: Error) => setMsg({ ok: false, text: e.message }));
+    api<{ data: AhaService[] }>('/shipping/ahamove-services')
+      .then((r) => setAha(r.data))
+      .catch(() => undefined);
     api<Status>('/shipping/status')
       .then(setSt)
       .catch(() => undefined);
@@ -225,6 +234,38 @@ export default function ShippingSettingsPage() {
           </Field>
         </div>
       </Card>
+
+      {st?.ahamove && (
+        <Card className="mb-4 p-4">
+          <h2 className="mb-1 font-semibold">Dịch vụ AhaMove hiện trong bảng giá</h2>
+          <p className="mb-3 text-xs text-slate-500">
+            Danh sách lấy từ AhaMove theo thành phố của shop. Không tick dịch vụ nào = hiện tất cả.
+          </p>
+          {aha.length === 0 ? (
+            <p className="text-sm text-slate-500">Chưa lấy được danh sách dịch vụ.</p>
+          ) : (
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {aha.map((a) => (
+                <label key={a.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={s.ahamoveServices.includes(a.id)}
+                    onChange={(e) =>
+                      setS({
+                        ...s,
+                        ahamoveServices: e.target.checked
+                          ? [...s.ahamoveServices, a.id]
+                          : s.ahamoveServices.filter((x) => x !== a.id),
+                      })
+                    }
+                  />
+                  {a.name} <span className="font-mono text-xs text-slate-400">{a.id}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       <div className="flex items-center gap-3">
         <Button disabled={saving} onClick={() => void save()}>

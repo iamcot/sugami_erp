@@ -1,8 +1,9 @@
 'use client';
 
+import { CarrierLogo } from '@/components/carrier-logo';
 import { formatVnd } from '@sugami/shared';
 import { Copy, ExternalLink, Printer, Truck } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, Card, Tabs } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
@@ -79,6 +80,7 @@ function eta(q: Quote): string | null {
 export function ShippingPanel({
   order,
   onChanged,
+  autoOpen = false,
 }: {
   order: {
     code: string;
@@ -93,6 +95,8 @@ export function ShippingPanel({
     shippingFee: number;
   };
   onChanged: () => void;
+  /** Open the price table as soon as the order can take a waybill (right after a delivery order is made). */
+  autoOpen?: boolean;
 }) {
   const [list, setList] = useState<Shipment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +115,13 @@ export function ShippingPanel({
   const canCreate = isDelivery && ['new', 'confirmed', 'packing'].includes(order.status) && !active;
   // an Ahamove trip is booked directly (not a Shipment row): it follows the order's own carrier fields
   const ahamove = !active && order.carrier === 'Ahamove' && order.trackingNo ? order : null;
+  const opened = useRef(false);
+  useEffect(() => {
+    if (autoOpen && list && canCreate && !opened.current) {
+      opened.current = true;
+      setCreating(true);
+    }
+  }, [autoOpen, list, canCreate]);
   if (!list || (!active && !ahamove && !canCreate && list.length === 0)) return null;
 
   const run = async (fn: () => Promise<void>) => {
@@ -143,7 +154,7 @@ export function ShippingPanel({
       {ahamove ? (
         <Card className="mb-4 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Truck className="size-4 text-slate-500" />
+            <CarrierLogo id="ahamove" name="AhaMove" className="size-7" />
             <span className="font-semibold">Ahamove</span>
             <Badge tone={order.status === 'delivered' || order.status === 'completed' ? 'success' : 'warn'}>
               {order.shippingStatus ?? 'Đang giao'}
@@ -215,7 +226,7 @@ export function ShippingPanel({
       ) : active ? (
         <Card className="mb-4 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Truck className="size-4 text-slate-500" />
+            <CarrierLogo id={active.partnerCode} name={active.partnerName} className="size-7" />
             <span className="font-semibold">
               {active.partnerName ?? active.partnerCode}
               {active.serviceName ? ` · ${active.serviceName}` : ''}
@@ -452,9 +463,7 @@ function CreateDialog({
                       : 'hover:bg-slate-50 dark:hover:bg-white/5'
                   }`}
                 >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-md bg-slate-100 text-xs font-bold uppercase text-slate-600 dark:bg-white/10 dark:text-slate-300">
-                    {r.partnerId.slice(0, 3)}
-                  </span>
+                  <CarrierLogo id={r.partnerId} name={r.partnerName} />
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-1.5 font-medium">
                       {r.partnerName} - {r.serviceName}
@@ -479,8 +488,8 @@ function CreateDialog({
         )}
         {chosen?.partnerId === 'ahamove' ? (
           <p className="mt-3 text-xs text-slate-500">
-            AhaMove: tài xế được gọi ngay và đơn chuyển sang Đang giao (trừ tồn). Tiền ship theo cách thanh
-            toán đã cài cho AhaMove.
+            AhaMove: tài xế được gọi ngay; đơn chuyển sang Đang giao (trừ tồn) khi tài xế đã lấy hàng. Tiền
+            ship theo cách thanh toán đã cài cho AhaMove.
           </p>
         ) : (
           <label className="mt-3 flex items-start gap-2 text-sm">

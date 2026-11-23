@@ -43,17 +43,28 @@ export function setAhamoveClient(c: AhamoveClient | null | undefined) {
 const SERVICES_TTL = 60 * 60_000;
 let servicesCache: { at: number; list: AhamoveService[] } | null = null;
 
-/** Services offered in the shop's city. AHAMOVE_SERVICES (comma-separated ids) narrows the list. */
-async function services(c: AhamoveClient): Promise<AhamoveService[]> {
+/** Every service Ahamove offers in the shop's city (cached for an hour). */
+export async function allServices(c: AhamoveClient = getClient()): Promise<AhamoveService[]> {
   if (servicesCache && Date.now() - servicesCache.at < SERVICES_TTL) return servicesCache.list;
-  const all = await c.services(process.env.AHAMOVE_CITY_ID || 'SGN');
-  const only = (process.env.AHAMOVE_SERVICES ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const list = only.length ? all.filter((s) => only.includes(s.id)) : all;
+  const list = await c.services(process.env.AHAMOVE_CITY_ID || 'SGN');
   servicesCache = { at: Date.now(), list };
   return list;
+}
+
+/**
+ * Services to price: the ids chosen in Cài đặt → Vận chuyển, else AHAMOVE_SERVICES from .env, else all.
+ * A chosen list that matches nothing falls back to all so the price table is never empty by accident.
+ */
+async function services(c: AhamoveClient, chosen: string[] = []): Promise<AhamoveService[]> {
+  const all = await allServices(c);
+  const only = chosen.length
+    ? chosen
+    : (process.env.AHAMOVE_SERVICES ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+  const list = only.length ? all.filter((s) => only.includes(s.id)) : all;
+  return list.length ? list : all;
 }
 
 const MAP_ERRORS: Record<string, string> = {
@@ -101,11 +112,11 @@ export interface QuoteRow extends AhamoveQuote {
 }
 
 /** Prices of every Ahamove service for this order's trip, cheapest first (refused ones last). */
-export async function quoteOrder(db: PrismaClient, code: string): Promise<QuoteRow[]> {
+export async function quoteOrder(db: PrismaClient, code: string, chosen: string[] = []): Promise<QuoteRow[]> {
   const o = await loadOrder(db, code);
   const c = getClient();
   try {
-    const list = await services(c);
+    const list = await services(c, chosen);
     if (!list.length) throw new PosError('Ahamove chưa có dịch vụ nào ở khu vực này');
     const quotes = await c.quote(
       pickupFromEnv()!,

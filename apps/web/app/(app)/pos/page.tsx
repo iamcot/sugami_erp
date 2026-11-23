@@ -223,6 +223,8 @@ export default function PosPage() {
   // orders opened from the recent list live as extra tabs beside the drafts
   const [orderTabs, setOrderTabs] = useState<string[]>([]);
   const [orderTab, setOrderTab] = useState<string | null>(null);
+  /** Order tab that should open its Tạo vận đơn price table once (a delivery order just made). */
+  const [shipOnOpen, setShipOnOpen] = useState<string | null>(null);
   const draftsRef = useRef<Draft[]>([]);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const searchRef = useRef<HTMLInputElement>(null);
@@ -458,14 +460,24 @@ export default function PosPage() {
           customer: { name: string | null; phone: string | null } | null;
         };
       }>(`/orders/${r.code}`);
-      setDone({
-        code: r.code,
-        order: {
-          ...o.order,
-          customerName: o.order.customer?.name ?? payload.receiver.name,
-          customerPhone: o.order.customer?.phone ?? payload.receiver.phone,
-        },
-      });
+      if (draft.mode === 'delivery') {
+        // stay on the sales page: open the new order right here and go on with its waybill
+        setOrderTabs((t) => (t.includes(r.code) ? t : [...t, r.code]));
+        setOrderTab(r.code);
+        setShipOnOpen(r.code);
+      }
+      setDone(
+        draft.mode === 'delivery'
+          ? null
+          : {
+              code: r.code,
+              order: {
+                ...o.order,
+                customerName: o.order.customer?.name ?? payload.receiver.name,
+                customerPhone: o.order.customer?.phone ?? payload.receiver.phone,
+              },
+            },
+      );
       setConfirming(false);
       const rest = drafts.filter((d) => d.id !== draft.id);
       setDrafts(rest);
@@ -626,7 +638,7 @@ export default function PosPage() {
 
       {orderTab ? (
         <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-4 dark:bg-slate-950">
-          <OrderDetail key={orderTab} code={orderTab} embedded />
+          <OrderDetail key={orderTab} code={orderTab} embedded openShipping={shipOnOpen === orderTab} />
         </div>
       ) : (
         <>

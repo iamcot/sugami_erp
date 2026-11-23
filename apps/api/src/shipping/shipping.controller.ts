@@ -31,6 +31,12 @@ export class ShippingController {
     return this.shipping.status();
   }
 
+  @Get('shipping/ahamove-services')
+  @RequirePermissions('orders.read')
+  async ahamoveServices() {
+    return { data: await this.shipping.ahamoveServices() };
+  }
+
   @Get('shipping/settings')
   @RequirePermissions('orders.read')
   settings() {

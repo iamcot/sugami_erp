@@ -76,3 +76,9 @@ Chạy thử webhook không cần Allingo: `curl` tới `/api/webhooks/allingo` 
 - AhaMove có bật cho tài khoản không (danh sách hãng của tài khoản test không có).
 - Phí dùng Allingo, phí thu hộ COD, chu kỳ trả COD về tài khoản shop.
 - Định dạng chính xác `status_event` trong webhook; mã xử lý đọc cả `data.object.status`/`delivery.status` nên vẫn chạy nếu thiếu.
+
+## Giao diện
+
+- Tạo đơn *Bán giao hàng* xong, trang bán hàng mở luôn đơn đó ở một tab và hiện sẵn bảng giá *Tạo vận đơn* (không còn popup thành công).
+- Dịch vụ AhaMove hiện trong bảng giá chọn ở Cài đặt → Vận chuyển (danh sách lấy từ AhaMove; không tick = hiện hết, hoặc theo `AHAMOVE_SERVICES` trong `.env`).
+- Logo hãng: đặt PNG vuông `apps/web/public/carriers/<mã hãng>.png` (spx, ghn, jt, ahamove...); thiếu thì hiện ô màu với chữ cái đầu.

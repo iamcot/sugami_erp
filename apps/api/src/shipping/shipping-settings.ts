@@ -29,6 +29,8 @@ export const ShippingSettings = z.object({
   defaultPayee: z.enum(['receiver', 'sender']).default('receiver'),
   /** Carrier preselected in each tab of the price table (partner id as Allingo reports it). */
   preferredStandard: z.string().trim().max(32).default('spx'),
+  /** Ahamove service ids offered in the price table; empty = all (or AHAMOVE_SERVICES from .env). */
+  ahamoveServices: z.array(z.string().trim().max(40)).max(20).default([]),
 });
 export type ShippingSettings = z.infer<typeof ShippingSettings>;
 
@@ -42,6 +44,7 @@ export const DEFAULT_SHIPPING: ShippingSettings = {
   defaultItemGrams: 200,
   defaultPayee: 'receiver',
   preferredStandard: 'spx',
+  ahamoveServices: [],
 };
 
 export async function loadShippingSettings(db: PrismaClient): Promise<ShippingSettings> {

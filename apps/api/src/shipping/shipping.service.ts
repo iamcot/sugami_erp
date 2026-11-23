@@ -14,7 +14,7 @@ import {
   type AllingoQuote,
 } from '@sugami/carriers-allingo';
 import type { Prisma } from '@sugami/db';
-import { ahamoveConfigured, bookOrder, quoteOrder } from '../pos/ahamove.js';
+import { ahamoveConfigured, allServices, bookOrder, quoteOrder } from '../pos/ahamove.js';
 import { PosError } from '../pos/pos-orders.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -86,6 +86,16 @@ export class ShippingService {
     return this.cached;
   }
   private cached: AllingoClient | null = null;
+
+  /** All Ahamove services of the shop's city, for the picker in the settings page. */
+  async ahamoveServices() {
+    if (!ahamoveConfigured()) return [];
+    try {
+      return await allServices();
+    } catch (err) {
+      this.fail(err);
+    }
+  }
 
   status() {
     const appId = process.env.ALLINGO_APP_ID ?? '';
@@ -206,7 +216,7 @@ export class ShippingService {
       return res.quotes ?? [];
     };
     const fromAhamove = async (): Promise<AllingoQuote[]> =>
-      (await quoteOrder(this.prisma.client, code)).map((q) => ({
+      (await quoteOrder(this.prisma.client, code, settings.ahamoveServices)).map((q) => ({
         service_id: `${AHAMOVE_PREFIX}${q.serviceId}`,
         service_name: q.name,
         partner: { id: 'ahamove', name: 'AhaMove' },
