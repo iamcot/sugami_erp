@@ -245,18 +245,21 @@ export function ShippingPanel({
                 <span className="font-mono">{formatVnd(order.shippingFee)}</span>
               </div>
             )}
-            {order.trackingUrl && (
-              <div>
-                <a
-                  className="inline-flex items-center gap-1 text-brand-600 hover:underline"
-                  href={order.trackingUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Xem tài xế trên bản đồ <ExternalLink className="size-3.5" />
-                </a>
-              </div>
-            )}
+            {order.trackingUrl &&
+              /tài xế đang đến|đã đến lấy|đang giao|giao thành công|hoàn/.test(
+                order.shippingStatus ?? '',
+              ) && (
+                <div>
+                  <a
+                    className="inline-flex items-center gap-1 text-brand-600 hover:underline"
+                    href={order.trackingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Xem tài xế trên bản đồ <ExternalLink className="size-3.5" />
+                  </a>
+                </div>
+              )}
           </div>
         </Card>
       ) : active ? (
@@ -329,18 +332,19 @@ export function ShippingPanel({
                 <span className="font-mono">{formatVnd(active.codAmount)}</span>
               </div>
             )}
-            {(active.trackLink ?? active.partnerTrackLink) && (
-              <div>
-                <a
-                  className="inline-flex items-center gap-1 text-brand-600 hover:underline"
-                  href={(active.partnerTrackLink ?? active.trackLink)!}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Link tra cứu gửi khách <ExternalLink className="size-3.5" />
-                </a>
-              </div>
-            )}
+            {(active.trackLink ?? active.partnerTrackLink) &&
+              !(active.phase === 'waiting' && active.scheduledAt) && (
+                <div>
+                  <a
+                    className="inline-flex items-center gap-1 text-brand-600 hover:underline"
+                    href={(active.partnerTrackLink ?? active.trackLink)!}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Link tra cứu gửi khách <ExternalLink className="size-3.5" />
+                  </a>
+                </div>
+              )}
           </div>
           {active.error && <p className="mt-2 text-xs text-rose-600">{active.error}</p>}
           {active.events.length > 0 && (
