@@ -73,6 +73,8 @@ export interface AhamoveOrder {
   total_price?: number;
   total_fee?: number;
   shared_link?: string;
+  service_id?: string;
+  order_time?: number;
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -197,12 +199,14 @@ export class AhamoveClient {
     dropoff: AhamoveStop;
     payment: 'CASH' | 'BALANCE';
     note?: string;
+    /** Unix seconds for a booking made for later; omitted = find a driver now. */
+    orderTime?: number;
   }): Promise<{ orderId: string; status: string; sharedLink: string | null; fee: number }> {
     const res = await this.call<{ order_id: string; status?: string; shared_link?: string; order?: AhamoveOrder }>(
       'POST',
       '/orders',
       {
-        order_time: 0,
+        order_time: input.orderTime ?? 0,
         path: [input.pickup, input.dropoff],
         service_id: input.serviceId,
         requests: [],

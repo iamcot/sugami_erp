@@ -102,3 +102,13 @@ describe('buildInquiry', () => {
     expect(body.pickup.province).toBe('Hà Nội');
   });
 });
+
+describe('speed buckets', () => {
+  it('groups couriers by how soon they deliver', async () => {
+    const { guessMinutes, speedOf } = await import('./shipping-core.js');
+    expect(speedOf(guessMinutes({ etaMinutes: null, serviceName: 'Siêu Tốc' }))).toBe('instant');
+    expect(speedOf(guessMinutes({ etaMinutes: null, serviceName: 'GREENSM - HCM - 2H' }))).toBe('h4');
+    expect(speedOf(guessMinutes({ etaMinutes: 300, serviceName: 'x' }))).toBe('today');
+    expect(speedOf(guessMinutes({ etaMinutes: null, serviceName: 'Tiêu chuẩn' }))).toBe('today');
+  });
+});

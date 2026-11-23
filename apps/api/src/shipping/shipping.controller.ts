@@ -15,6 +15,23 @@ const Parcel = z.object({
 const CreateBody = Parcel.extend({
   serviceId: z.string().trim().min(1).max(64),
   quotedPrice: z.number().int().min(0),
+  /** Book for a later time (ISO); omitted = a driver is looked for now. */
+  scheduleAt: z.iso.datetime().optional(),
+});
+const DraftQuoteBody = Parcel.extend({
+  receiver: z.object({
+    name: z.string().trim().max(191).default(''),
+    phone: z.string().trim().min(1).max(32),
+    address: z.string().trim().min(1).max(500),
+    ward: z.string().trim().max(128).default(''),
+    area: z.string().trim().max(128).default(''),
+  }),
+  lines: z
+    .array(z.object({ variantId: z.string().trim().min(1).max(36), qty: z.number().positive().max(100000) }))
+    .min(1)
+    .max(200),
+  codAmount: z.number().int().min(0).default(0),
+  total: z.number().int().min(0).default(0),
 });
 
 /** Carrier waybills for self-delivered counter orders, through the Allingo gateway. */
@@ -62,6 +79,32 @@ export class ShippingController {
   @RequirePermissions('orders.write')
   quotes(@Param('code') code: string, @Body() raw: unknown) {
     return this.shipping.quotes(code, parseInput(Parcel, raw ?? {}));
+  }
+
+  /** Prices for a sale that is still on the counter screen (the order does not exist yet). */
+  @Post('shipping/quotes')
+  @HttpCode(200)
+  @RequirePermissions('orders.write')
+  draftQuotes(@Body() raw: unknown) {
+    return this.shipping.draftQuotes(parseInput(DraftQuoteBody, raw));
+  }
+
+  @Post('orders/:code/dispatch-now')
+  @HttpCode(200)
+  @RequirePermissions('orders.write')
+  dispatchNow(@Param('code') code: string, @Body() raw: unknown, @CurrentUser() user: AuthUser) {
+    const { shipmentId } = parseInput(
+      z.object({ shipmentId: z.string().trim().max(36).optional() }),
+      raw ?? {},
+    );
+    return this.shipping.dispatchNow(code, shipmentId, user.id);
+  }
+
+  @Post('shipments/:id/refresh')
+  @HttpCode(200)
+  @RequirePermissions('orders.write')
+  refresh(@Param('id') id: string) {
+    return this.shipping.refresh(id);
   }
 
   @Post('orders/:code/shipments')

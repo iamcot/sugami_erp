@@ -1016,6 +1016,8 @@ model Shipment {
   pickedUpAt         DateTime?       @map("picked_up_at")
   deliveredAt        DateTime?       @map("delivered_at")
   canceledAt         DateTime?       @map("canceled_at")
+  /// A booking made for a later time ("hẹn giờ"); null = immediate.
+  scheduledAt        DateTime?       @map("scheduled_at")
   lastEventAt        DateTime?       @map("last_event_at")
   lastPolledAt       DateTime?       @map("last_polled_at")
   error              String?         @db.VarChar(500)

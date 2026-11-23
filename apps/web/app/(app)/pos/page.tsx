@@ -19,6 +19,7 @@ import { createPortal } from 'react-dom';
 import { Badge, Button } from '@/components/ui';
 import { type CustomerSaved, useDetail } from '@/components/detail-drawer';
 import { OrderDetail } from '@/components/order-detail';
+import { PosShippingColumn, type ShipSelection } from '@/components/pos-shipping-column';
 import { AreaSelect } from '@/components/vn-area-select';
 import { formatRelativeDateTime } from '@/lib/datetime';
 import { api } from '@/lib/api';
@@ -225,6 +226,15 @@ export default function PosPage() {
   const [orderTab, setOrderTab] = useState<string | null>(null);
   /** Order tab that should open its Tạo vận đơn price table once (a delivery order just made). */
   const [shipOnOpen, setShipOnOpen] = useState<string | null>(null);
+  /** Whether a carrier gateway is set up (Allingo or Ahamove): only then the carrier column is offered. */
+  const [carriersOn, setCarriersOn] = useState(false);
+  const [shipMsg, setShipMsg] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    api<{ configured: boolean; ahamove: boolean }>('/shipping/status')
+      .then((s) => setCarriersOn(s.configured || s.ahamove))
+      .catch(() => undefined);
+  }, []);
   const draftsRef = useRef<Draft[]>([]);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const searchRef = useRef<HTMLInputElement>(null);
@@ -426,6 +436,16 @@ export default function PosPage() {
   const when = toLocal(p?.orderedAt ?? null);
   const setWhen = (date: string, time: string) => date && time && patch({ orderedAt: fromLocal(date, time) });
   const customer = p?.customer?.id ? cinfo[p.customer.id] : undefined;
+  const rcv = p?.receiver;
+  /** A delivery sale with everything a carrier needs: the carrier column slides in. */
+  const shipReady =
+    carriersOn &&
+    draft?.mode === 'delivery' &&
+    !!p &&
+    p.lines.length > 0 &&
+    !!p.customer &&
+    !!rcv &&
+    !!(rcv.name.trim() && rcv.phone.trim() && rcv.address.trim() && rcv.area.trim() && rcv.ward.trim());
 
   const closeDraft = async (id: string) => {
     await api(`/pos/drafts/${id}`, { method: 'DELETE' }).catch(() => undefined);
@@ -489,6 +509,58 @@ export default function PosPage() {
     } finally {
       setBusy(false);
     }
+  };
+  /** Delivery sale with a carrier chosen in the third column: make the order, then book the carrier. */
+  const placeWithShipping = async (sel: ShipSelection, allowOversell = false) => {
+    if (!draft || !p) return;
+    setBusy(true);
+    setShipMsg(null);
+    let code: string;
+    try {
+      const payload: Payload = {
+        ...p,
+        carrier: '',
+        trackingNo: '',
+        shippingFee: 0,
+        paid: Math.min(p.paid, total),
+        orderedAt: p.orderedAt ?? new Date().toISOString(),
+      };
+      const res = await api<{ code: string }>(`/pos/drafts/${draft.id}/checkout`, {
+        method: 'POST',
+        json: { mode: 'delivery', payload, allowOversell },
+      });
+      code = res.code;
+    } catch (e) {
+      setShipMsg((e as Error).message);
+      setBusy(false);
+      return;
+    }
+    const rest = drafts.filter((d) => d.id !== draft.id);
+    setDrafts(rest);
+    if (!rest.length) await newDraft();
+    else setActive(rest[0]!.id);
+    setOrderTabs((t) => (t.includes(code) ? t : [...t, code]));
+    setOrderTab(code);
+    try {
+      await api(`/orders/${encodeURIComponent(code)}/shipments`, {
+        method: 'POST',
+        json: {
+          serviceId: sel.serviceId,
+          quotedPrice: sel.quotedPrice,
+          boxKey: sel.boxKey,
+          addFeeToOrder: sel.addFeeToOrder,
+          ...(sel.scheduleAt ? { scheduleAt: sel.scheduleAt } : {}),
+        },
+      });
+      setShipOnOpen(null);
+      setNotice(null);
+    } catch (e) {
+      // the order is made; the waybill can be retried from its card
+      setShipOnOpen(code);
+      setNotice(`Đã tạo đơn ${code} nhưng chưa đặt được ${sel.partnerName}: ${(e as Error).message}`);
+    }
+    void loadRecent().catch(() => undefined);
+    setBusy(false);
   };
   const print = async () => {
     if (!done) return;
@@ -638,11 +710,18 @@ export default function PosPage() {
 
       {orderTab ? (
         <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-4 dark:bg-slate-950">
+          {notice && (
+            <p className="mb-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+              {notice}
+            </p>
+          )}
           <OrderDetail key={orderTab} code={orderTab} embedded openShipping={shipOnOpen === orderTab} />
         </div>
       ) : (
         <>
-          <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 overflow-y-auto bg-slate-100 p-3 lg:grid-cols-[1fr_minmax(360px,420px)] lg:content-stretch lg:overflow-visible dark:bg-slate-950">
+          <div
+            className={`grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 overflow-y-auto bg-slate-100 p-3 transition-[grid-template-columns] duration-300 ${shipReady ? 'lg:grid-cols-[1fr_minmax(340px,400px)_minmax(360px,420px)]' : 'lg:grid-cols-[1fr_minmax(360px,420px)]'} lg:content-stretch lg:overflow-visible dark:bg-slate-950`}
+          >
             {/* lines: only the list scrolls */}
             <div className="flex flex-col rounded-lg bg-white lg:min-h-0 dark:bg-slate-900">
               <ul className="divide-y divide-slate-100 lg:min-h-0 lg:flex-1 lg:overflow-auto dark:divide-slate-800">
@@ -965,30 +1044,32 @@ export default function PosPage() {
                       ward={p.receiver.ward}
                       onChange={(v) => patch({ receiver: { ...p.receiver, area: v.province, ward: v.ward } })}
                     />
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                      <label className="text-xs text-slate-500">
-                        Đối tác giao hàng
-                        <input
-                          className={line}
-                          value={p.carrier}
-                          placeholder="SHOPEE, GHN, tự giao…"
-                          onChange={(e) => patch({ carrier: e.target.value })}
-                        />
-                      </label>
-                      <label className="text-xs text-slate-500">
-                        Phí trả ĐTGH
-                        <Money value={p.shippingFee} onChange={(n) => patch({ shippingFee: n })} />
-                      </label>
-                      <label className="col-span-2 text-xs text-slate-500">
-                        Mã vận đơn
-                        <input
-                          className={line}
-                          placeholder="Nhập mã vận đơn"
-                          value={p.trackingNo}
-                          onChange={(e) => patch({ trackingNo: e.target.value })}
-                        />
-                      </label>
-                    </div>
+                    {!carriersOn && (
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                        <label className="text-xs text-slate-500">
+                          Đối tác giao hàng
+                          <input
+                            className={line}
+                            value={p.carrier}
+                            placeholder="SHOPEE, GHN, tự giao…"
+                            onChange={(e) => patch({ carrier: e.target.value })}
+                          />
+                        </label>
+                        <label className="text-xs text-slate-500">
+                          Phí trả ĐTGH
+                          <Money value={p.shippingFee} onChange={(n) => patch({ shippingFee: n })} />
+                        </label>
+                        <label className="col-span-2 text-xs text-slate-500">
+                          Mã vận đơn
+                          <input
+                            className={line}
+                            placeholder="Nhập mã vận đơn"
+                            value={p.trackingNo}
+                            onChange={(e) => patch({ trackingNo: e.target.value })}
+                          />
+                        </label>
+                      </div>
+                    )}
                     <label className="flex items-center justify-between gap-4 pt-2">
                       <span>Thu hộ tiền (COD)</span>
                       <input
@@ -997,6 +1078,14 @@ export default function PosPage() {
                         onChange={(e) => patch({ cod: e.target.checked })}
                       />
                     </label>
+                    {carriersOn && (
+                      <label className="flex items-center justify-between gap-4 text-xs text-slate-500">
+                        Khách đã thanh toán trước
+                        <span className="w-32">
+                          <Money value={p.paid} onChange={(n) => patch({ paid: n })} />
+                        </span>
+                      </label>
+                    )}
                   </div>
                 )}
                 {outOfStock > 0 && (
@@ -1006,16 +1095,43 @@ export default function PosPage() {
                   </p>
                 )}
               </div>
-              <div className="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
-                <Button
-                  className="h-12 w-full text-base"
-                  disabled={busy || p.lines.length === 0}
-                  onClick={openConfirm}
-                >
-                  THANH TOÁN
-                </Button>
-              </div>
+              {!shipReady && (
+                <div className="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
+                  <Button
+                    className="h-12 w-full text-base"
+                    disabled={busy || p.lines.length === 0}
+                    onClick={openConfirm}
+                  >
+                    THANH TOÁN
+                  </Button>
+                </div>
+              )}
             </div>
+            {shipReady && p && (
+              <PosShippingColumn
+                input={{
+                  receiver: p.receiver,
+                  lines: p.lines.map((l) => ({ variantId: l.variantId, qty: l.qty })),
+                  codAmount: p.cod ? Math.max(0, total - Math.min(p.paid, total)) : 0,
+                  total,
+                }}
+                busy={busy}
+                message={
+                  shipMsg && (
+                    <>
+                      <p className="text-rose-600">{shipMsg}</p>
+                      {shipMsg.startsWith('Không đủ tồn') && (
+                        <p className="text-xs text-slate-500">
+                          Bấm “Thanh toán” ở cột bên cạnh để chọn “Vẫn bán” (tồn sẽ âm).
+                        </p>
+                      )}
+                    </>
+                  )
+                }
+                onConfirm={(sel) => void placeWithShipping(sel)}
+                onPlaceWithoutCarrier={openConfirm}
+              />
+            )}
           </div>
 
           <div className="flex shrink-0 gap-1 border-t border-slate-200 bg-white px-3 py-1 dark:border-slate-800 dark:bg-slate-900">

@@ -77,8 +77,15 @@ Chạy thử webhook không cần Allingo: `curl` tới `/api/webhooks/allingo` 
 - Phí dùng Allingo, phí thu hộ COD, chu kỳ trả COD về tài khoản shop.
 - Định dạng chính xác `status_event` trong webhook; mã xử lý đọc cả `data.object.status`/`delivery.status` nên vẫn chạy nếu thiếu.
 
-## Giao diện
+## Giao diện đặt đơn giao hàng (3 cột)
 
-- Tạo đơn *Bán giao hàng* xong, trang bán hàng mở luôn đơn đó ở một tab và hiện sẵn bảng giá *Tạo vận đơn* (không còn popup thành công).
-- Dịch vụ AhaMove hiện trong bảng giá chọn ở Cài đặt → Vận chuyển (danh sách lấy từ AhaMove; không tick = hiện hết, hoặc theo `AHAMOVE_SERVICES` trong `.env`).
-- Logo hãng: đặt PNG vuông `apps/web/public/carriers/<mã hãng>.png` (spx, ghn, jt, ahamove...); thiếu thì hiện ô màu với chữ cái đầu.
+Ở trang bán hàng, chế độ *Bán giao hàng*: khi đã có sản phẩm, khách hàng và đủ người nhận, SĐT, địa chỉ, phường, tỉnh thì cột thứ 3 trượt ra để chọn hãng.
+
+- Giá lấy từ đơn nháp (`POST /shipping/quotes`), chưa tạo đơn. Gói hàng: cân nặng từ cấu hình sản phẩm (thiếu thì lấy mặc định), hộp nhỏ nhất đủ chứa, đổi được ở thẻ hãng.
+- Hãng giao thường được chọn sẵn (cài đặt *Hãng chọn sẵn ở tab Giao thường*). Thẻ hãng hiện giá, thu hộ COD, người trả phí ("Cộng phí ship vào đơn"), và với hãng giao nhanh có hẹn giờ: giao ngay, sau 30 phút, sau 1 giờ, chọn giờ.
+- Bấm X ở đầu thẻ để mở lại danh sách: tab *Giao thường* và *Giao nhanh*. Giao nhanh chia *Giao ngay*, *Giao trong 4 giờ*, *Giao trong ngày* (theo thời gian hãng báo, thiếu thì đoán từ tên dịch vụ), mọi hãng trộn chung; biểu tượng mũi tên đổi cách xếp giá / thời gian.
+- **Xác nhận đặt đơn** ở cột 3: tạo đơn rồi đặt hãng; đơn nằm ở *Đang đóng gói* (chờ ship). Hãng báo đã lấy hàng (webhook) thì đơn sang *Đang giao* và trừ tồn; nút *Giao cho ĐVVC* vẫn bấm tay được. Hủy đơn lúc chưa giao thì hủy luôn lệnh lấy hàng ở hãng.
+- Thẻ vận chuyển trong chi tiết đơn: *Cập nhật* (làm mới từ hãng), *Tìm tài xế ngay* (chuyến hẹn giờ: hủy rồi đặt lại ngay cùng dịch vụ), *Tìm lại* và *Chọn hãng khác* sau khi chuyến bị hủy.
+- Hẹn giờ: Allingo dùng `fulfillment_type=scheduled` + `schedule_at`, AhaMove dùng `order_time`. Chưa kiểm với hãng thật, cần thử trên môi trường test.
+- Dịch vụ AhaMove hiện trong bảng giá chọn ở Cài đặt → Vận chuyển (không tick = hiện hết, hoặc theo `AHAMOVE_SERVICES`).
+- Logo hãng: đặt PNG vuông `apps/web/public/carriers/<mã hãng>.png`; thiếu thì hiện ô màu với chữ cái đầu.

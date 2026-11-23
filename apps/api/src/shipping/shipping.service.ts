@@ -14,7 +14,17 @@ import {
   type AllingoQuote,
 } from '@sugami/carriers-allingo';
 import type { Prisma } from '@sugami/db';
-import { ahamoveConfigured, allServices, bookOrder, quoteOrder } from '../pos/ahamove.js';
+import { refreshShipment } from '@sugami/sync';
+import {
+  ahamoveConfigured,
+  allServices,
+  bookOrder,
+  cancelTrip,
+  dispatchNow,
+  dropoffOfReceiver,
+  quoteStops,
+} from '../pos/ahamove.js';
+import { runPosAction } from '../pos/pos-orders.js';
 import { PosError } from '../pos/pos-orders.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -38,11 +48,24 @@ export interface ParcelOverride {
   weightGrams?: number;
   /** The shop pays the carrier and adds the fee to the order (the buyer pays it through COD). */
   addFeeToOrder?: boolean;
+  /** Book for a later time (ISO); omitted = find a driver now. */
+  scheduleAt?: string;
+}
+
+/** A sale still on the counter screen, priced before the order exists. */
+export interface DraftQuoteInput extends ParcelOverride {
+  receiver: { name: string; phone: string; address: string; ward?: string; area?: string };
+  lines: { variantId: string; qty: number }[];
+  /** COD the carrier collects (before any shipping fee added to the order). */
+  codAmount: number;
+  /** Order total, declared as the parcel value. */
+  total: number;
 }
 
 export interface ShipmentView {
   id: string;
   partnerCode: string;
+  serviceId: string;
   partnerName: string | null;
   serviceName: string | null;
   partnerTrackNo: string | null;
@@ -57,6 +80,7 @@ export interface ShipmentView {
   partnerTrackLink: string | null;
   livemode: boolean;
   error: string | null;
+  scheduledAt: Date | null;
   createdAt: Date;
   events: {
     status: string;
@@ -165,58 +189,120 @@ export class ShippingService {
     };
   }
 
+  private parcelOf(
+    input: {
+      lines: { qty: number; weightGrams: number | null }[];
+      codAmount: number;
+      total: number;
+    },
+    settings: ShippingSettings,
+    o: ParcelOverride,
+    addedFee = 0,
+  ): ParcelInput & { unknownWeights: number } {
+    const w = orderWeight(input.lines, settings.defaultItemGrams);
+    const grams = o.weightGrams ?? w.grams;
+    const box =
+      (o.boxKey ? settings.boxes.find((b) => b.key === o.boxKey) : undefined) ??
+      pickBox(grams, settings.boxes);
+    const payee = o.addFeeToOrder ? 'sender' : settings.defaultPayee;
+    return {
+      grams,
+      box,
+      // when the shop adds the fee to the order, the buyer pays it as part of the COD
+      codAmount: input.codAmount > 0 ? input.codAmount + addedFee : 0,
+      payee,
+      declaredValue: input.total,
+      unknownWeights: w.unknown,
+    };
+  }
+
   private parcel(
     order: Awaited<ReturnType<ShippingService['loadOrder']>>,
     settings: ShippingSettings,
     o: ParcelOverride,
     addedFee = 0,
   ): ParcelInput & { unknownWeights: number } {
-    const w = orderWeight(
-      order.lines.map((l) => ({ qty: Number(l.qty), weightGrams: l.variant?.weightGrams ?? null })),
-      settings.defaultItemGrams,
+    return this.parcelOf(
+      {
+        lines: order.lines.map((l) => ({ qty: Number(l.qty), weightGrams: l.variant?.weightGrams ?? null })),
+        codAmount: Number(order.codAmount),
+        total: Number(order.total),
+      },
+      settings,
+      o,
+      addedFee,
     );
-    const grams = o.weightGrams ?? w.grams;
-    const box =
-      (o.boxKey ? settings.boxes.find((b) => b.key === o.boxKey) : undefined) ??
-      pickBox(grams, settings.boxes);
-    const payee = o.addFeeToOrder ? 'sender' : settings.defaultPayee;
-    const cod = Number(order.codAmount);
-    return {
-      grams,
-      box,
-      // when the shop adds the fee to the order, the buyer pays it as part of the COD
-      codAmount: cod > 0 ? cod + addedFee : 0,
-      payee,
-      declaredValue: Number(order.total),
-      unknownWeights: w.unknown,
-    };
   }
 
-  /**
-   * Fee quotes for an order from every carrier set up: Allingo (all its carriers) and Ahamove (direct).
-   * Nothing is created. A carrier that fails does not hide the others; its message comes back as a warning.
-   */
+  /** Fee quotes for an existing order. */
   async quotes(code: string, o: ParcelOverride) {
     const order = await this.loadOrder(code);
     this.checkShippable(order);
     const settings = await loadShippingSettings(this.prisma.client);
+    return this.quoteFor(settings, this.receiver(order), this.parcel(order, settings, o));
+  }
+
+  /** Fee quotes for a sale still on the counter screen: the order is created only when the seller confirms. */
+  async draftQuotes(body: DraftQuoteInput) {
+    const settings = await loadShippingSettings(this.prisma.client);
+    const variants = await this.prisma.client.variant.findMany({
+      where: { id: { in: body.lines.map((l) => l.variantId) } },
+      select: { id: true, weightGrams: true },
+    });
+    const weight = new Map(variants.map((v) => [v.id, v.weightGrams]));
+    const parcel = this.parcelOf(
+      {
+        lines: body.lines.map((l) => ({ qty: l.qty, weightGrams: weight.get(l.variantId) ?? null })),
+        codAmount: body.codAmount,
+        total: body.total,
+      },
+      settings,
+      body,
+    );
+    const r = body.receiver;
+    return this.quoteFor(
+      settings,
+      { name: r.name, phone: r.phone, address: r.address, ward: r.ward ?? null, province: r.area ?? null },
+      parcel,
+    );
+  }
+
+  /**
+   * Fee quotes from every carrier set up: Allingo (all its carriers) and Ahamove (direct).
+   * Nothing is created. A carrier that fails does not hide the others; its message comes back as a warning.
+   */
+  private async quoteFor(
+    settings: ShippingSettings,
+    to: ReceiverInput,
+    parcel: ParcelInput & { unknownWeights: number },
+  ) {
     const allingoOn = this.status().configured;
     const ahamoveOn = ahamoveConfigured();
     if (!allingoOn && !ahamoveOn)
       throw new ServiceUnavailableException(
         'Chưa cấu hình hãng vận chuyển nào (Allingo hoặc Ahamove trong .env, xem docs/allingo.md)',
       );
-    const parcel = this.parcel(order, settings, o);
     const warnings: string[] = [];
 
     const fromAllingo = async (): Promise<AllingoQuote[]> => {
       const problem = pickupProblem(settings.pickup);
       if (problem) throw new BadRequestException(problem);
-      const res = await this.client().quote(buildInquiry(settings.pickup, this.receiver(order), parcel));
+      const res = await this.client().quote(buildInquiry(settings.pickup, to, parcel));
       return res.quotes ?? [];
     };
     const fromAhamove = async (): Promise<AllingoQuote[]> =>
-      (await quoteOrder(this.prisma.client, code, settings.ahamoveServices)).map((q) => ({
+      (
+        await quoteStops(
+          dropoffOfReceiver({
+            name: to.name,
+            phone: to.phone,
+            address: to.address,
+            ward: to.ward,
+            province: to.province,
+          }),
+          settings.ahamoveServices,
+        )
+      ).map((q) => ({
         service_id: `${AHAMOVE_PREFIX}${q.serviceId}`,
         service_name: q.name,
         partner: { id: 'ahamove', name: 'AhaMove' },
@@ -272,12 +358,27 @@ export class ShippingService {
     userId?: string,
   ) {
     const db = this.prisma.client;
-    const order = await this.loadOrder(code);
+    let order = await this.loadOrder(code);
     this.checkShippable(order);
+    const scheduleAt = body.scheduleAt ? new Date(body.scheduleAt) : null;
+    if (scheduleAt && (Number.isNaN(scheduleAt.getTime()) || scheduleAt.getTime() < Date.now() - 60_000))
+      throw new BadRequestException('Giờ hẹn phải ở tương lai');
+    // a booked order waits for its courier in "Đang đóng gói" (the parcel is handed over when picked up)
+    try {
+      for (const key of order.status === 'new'
+        ? ['confirm', 'pack']
+        : order.status === 'confirmed'
+          ? ['pack']
+          : [])
+        await runPosAction(db, order.code, key, userId);
+    } catch (err) {
+      this.fail(err);
+    }
+    order = await this.loadOrder(code);
     if (body.serviceId.startsWith(AHAMOVE_PREFIX)) {
-      // Ahamove is booked directly and hands the parcel over at once (stock leaves), see pos/ahamove.ts
+      // Ahamove is booked directly; the order moves on when the driver has the parcel, see pos/ahamove.ts
       try {
-        await bookOrder(db, code, body.serviceId.slice(AHAMOVE_PREFIX.length), userId);
+        await bookOrder(db, code, body.serviceId.slice(AHAMOVE_PREFIX.length), userId, scheduleAt);
       } catch (err) {
         this.fail(err);
       }
@@ -309,6 +410,7 @@ export class ShippingService {
           status: 'creating',
           phase: 'waiting',
           quotedPrice: BigInt(body.quotedPrice),
+          scheduledAt: scheduleAt,
           codAmount: BigInt(parcel.codAmount),
           payee: parcel.payee,
           weightGrams: Math.round(parcel.grams),
@@ -330,7 +432,9 @@ export class ShippingService {
           estimated_price: body.quotedPrice,
           deliverable_payment_method: parcel.codAmount > 0 ? 'cod' : 'prepaid',
           external_reference: order.code.slice(0, 64),
-          fulfillment_type: 'immediate',
+          ...(scheduleAt
+            ? { fulfillment_type: 'scheduled' as const, schedule_at: scheduleAt.toISOString() }
+            : { fulfillment_type: 'immediate' as const }),
         },
         key,
       );
@@ -411,6 +515,70 @@ export class ShippingService {
     return { ok: true };
   }
 
+  /**
+   * Call off the carriers' pickups of an order that is being cancelled. A carrier that already has the
+   * parcel refuses (and the order cannot be cancelled then anyway); other failures stop the cancel with a message.
+   */
+  async cancelForOrder(code: string) {
+    const db = this.prisma.client;
+    const order = await db.order.findUnique({
+      where: { code },
+      include: { shipments: { where: { phase: 'waiting', externalId: { not: null } } } },
+    });
+    if (!order) return;
+    for (const s of order.shipments) await this.cancel(s.id);
+    if (order.carrier === 'Ahamove' && order.trackingNo && order.status !== 'shipped') {
+      try {
+        await cancelTrip(db, code, 'Shop hủy đơn');
+      } catch (err) {
+        this.fail(err);
+      }
+    }
+  }
+
+  /** "Tìm tài xế ngay" for a trip booked for later: cancel it and book the same service for now. */
+  async dispatchNow(code: string, shipmentId?: string, userId?: string) {
+    const db = this.prisma.client;
+    if (!shipmentId) {
+      try {
+        await dispatchNow(db, code);
+      } catch (err) {
+        this.fail(err);
+      }
+      return this.forOrder(code);
+    }
+    const s = await db.shipment.findUnique({
+      where: { id: shipmentId },
+      include: { order: { select: { code: true } } },
+    });
+    if (!s || s.order.code !== code) throw new NotFoundException('Không tìm thấy vận đơn');
+    if (!s.scheduledAt || s.phase !== 'waiting')
+      throw new ConflictException('Vận đơn này không phải chuyến hẹn giờ đang chờ');
+    const quoted = Number(s.quotedPrice);
+    await this.cancel(s.id);
+    return this.create(
+      code,
+      { serviceId: s.serviceId ?? '', quotedPrice: quoted, addFeeToOrder: false },
+      userId,
+    );
+  }
+
+  /** Ask Allingo for the shipment's current state (for when no webhook arrived). */
+  async refresh(shipmentId: string) {
+    const db = this.prisma.client;
+    const s = await db.shipment.findUnique({
+      where: { id: shipmentId },
+      include: { order: { select: { code: true } } },
+    });
+    if (!s?.externalId) throw new NotFoundException('Không tìm thấy vận đơn');
+    try {
+      await refreshShipment(db, this.client(), { id: s.id, externalId: s.externalId });
+    } catch (err) {
+      this.fail(err);
+    }
+    return this.forOrder(s.order.code);
+  }
+
   async label(shipmentId: string) {
     const s = await this.prisma.client.shipment.findUnique({ where: { id: shipmentId } });
     if (!s?.externalId) throw new NotFoundException('Không tìm thấy vận đơn');
@@ -433,6 +601,7 @@ export class ShippingService {
         .map((s) => ({
           id: s.id,
           partnerCode: s.partnerCode,
+          serviceId: s.serviceId,
           partnerName: s.partnerName,
           serviceName: s.serviceName,
           partnerTrackNo: s.partnerTrackNo,
@@ -447,6 +616,7 @@ export class ShippingService {
           partnerTrackLink: s.partnerTrackLink,
           livemode: s.livemode,
           error: s.error,
+          scheduledAt: s.scheduledAt,
           createdAt: s.createdAt,
           events: s.events.map((e) => ({
             status: e.status,

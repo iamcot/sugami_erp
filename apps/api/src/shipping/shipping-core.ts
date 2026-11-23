@@ -45,6 +45,31 @@ export function groupOf(q: Pick<AllingoQuote, 'partner' | 'estimated_minutes'>):
   return q.estimated_minutes != null && q.estimated_minutes <= 360 ? 'fast' : 'standard';
 }
 
+/** How soon a same-day courier delivers: right away, within 4 hours, or later the same day. */
+export type Speed = 'instant' | 'h4' | 'today' | 'other';
+
+/**
+ * Minutes a courier needs: the carrier's own estimate when it gives one, otherwise a guess from the
+ * service name ("Siêu tốc", "2H", "Nhanh"...), so couriers can be grouped and sorted by time.
+ */
+export function guessMinutes(q: { etaMinutes: number | null; serviceName: string }): number | null {
+  if (q.etaMinutes != null) return q.etaMinutes;
+  const n = q.serviceName.toLowerCase();
+  const hours = /(\d+)\s*(h\b|giờ)/.exec(n);
+  if (hours) return Number(hours[1]) * 60;
+  if (/siêu tốc|hỏa tốc|instant|ngay|ưu tiên|bike/.test(n)) return 45;
+  if (/nhanh|express|eco|tiết kiệm/.test(n)) return 90;
+  return null;
+}
+
+export function speedOf(minutes: number | null): Speed {
+  if (minutes == null) return 'today';
+  if (minutes <= 90) return 'instant';
+  if (minutes <= 240) return 'h4';
+  if (minutes <= 720) return 'today';
+  return 'other';
+}
+
 export interface QuoteRow {
   serviceId: string;
   serviceName: string;
@@ -54,6 +79,9 @@ export interface QuoteRow {
   price: number;
   etaText: string | null;
   etaMinutes: number | null;
+  /** etaMinutes, or a guess from the service name when the carrier gives none (for grouping and sorting). */
+  sortMinutes: number | null;
+  speed: Speed;
   available: boolean;
   unavailableReason: string | null;
   cheapest: boolean;
@@ -71,11 +99,17 @@ export function toQuoteRows(quotes: AllingoQuote[]): QuoteRow[] {
     price: q.price + (q.addons_fee ?? 0),
     etaText: q.estimated_delivery_range ?? null,
     etaMinutes: q.estimated_minutes ?? null,
+    sortMinutes: null,
+    speed: 'today',
     available: q.available !== false,
     unavailableReason: q.available === false ? (q.error_code ?? 'Không khả dụng') : null,
     cheapest: false,
     fastest: false,
   }));
+  for (const r of rows) {
+    r.sortMinutes = guessMinutes(r);
+    r.speed = speedOf(r.sortMinutes);
+  }
   for (const group of ['standard', 'fast'] as const) {
     const ok = rows.filter((r) => r.group === group && r.available);
     if (ok.length > 1) {

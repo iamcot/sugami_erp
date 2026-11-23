@@ -11,6 +11,7 @@ import { formatRelativeDateTime } from '@/lib/datetime';
 interface Shipment {
   id: string;
   partnerCode: string;
+  serviceId: string;
   partnerName: string | null;
   serviceName: string | null;
   partnerTrackNo: string | null;
@@ -25,6 +26,7 @@ interface Shipment {
   partnerTrackLink: string | null;
   livemode: boolean;
   error: string | null;
+  scheduledAt: string | null;
   events: {
     status: string;
     statusName: string | null;
@@ -112,6 +114,7 @@ export function ShippingPanel({
 
   const isDelivery = order.source === 'pos' && order.fulfillment === 'delivery';
   const active = list?.find((s) => ACTIVE.includes(s.phase) || s.phase === 'delivered');
+  const last = list?.[0];
   const canCreate = isDelivery && ['new', 'confirmed', 'packing'].includes(order.status) && !active;
   // an Ahamove trip is booked directly (not a Shipment row): it follows the order's own carrier fields
   const ahamove = !active && order.carrier === 'Ahamove' && order.trackingNo ? order : null;
@@ -137,6 +140,24 @@ export function ShippingPanel({
       setBusy(false);
     }
   };
+  const dispatchNow = (shipmentId?: string) =>
+    run(
+      async () =>
+        void (await api(`/orders/${encodeURIComponent(order.code)}/dispatch-now`, {
+          method: 'POST',
+          json: shipmentId ? { shipmentId } : {},
+        })),
+    );
+  const refresh = (s: Shipment) =>
+    run(async () => void (await api(`/shipments/${s.id}/refresh`, { method: 'POST', json: {} })));
+  const rebook = (s: Shipment) =>
+    run(
+      async () =>
+        void (await api(`/orders/${encodeURIComponent(order.code)}/shipments`, {
+          method: 'POST',
+          json: { serviceId: s.serviceId, quotedPrice: s.quotedPrice },
+        })),
+    );
   const label = (s: Shipment) =>
     run(async () => {
       const r = await api<{ url: string }>(`/shipments/${s.id}/label`);
@@ -160,8 +181,23 @@ export function ShippingPanel({
               {order.shippingStatus ?? 'Đang giao'}
             </Badge>
             <span className="flex-1" />
-            {order.status === 'shipped' && (
+            {['packing', 'shipped'].includes(order.status) && (
               <>
+                {order.status === 'packing' && /hẹn/.test(order.shippingStatus ?? '') && (
+                  <Button disabled={busy} onClick={() => void dispatchNow()}>
+                    Tìm tài xế ngay
+                  </Button>
+                )}
+                {order.status === 'packing' && /đã hủy/.test(order.shippingStatus ?? '') && (
+                  <>
+                    <Button disabled={busy} onClick={() => void dispatchNow()}>
+                      Tìm lại
+                    </Button>
+                    <Button variant="secondary" disabled={busy} onClick={() => setCreating(true)}>
+                      Chọn hãng khác
+                    </Button>
+                  </>
+                )}
                 <Button
                   variant="secondary"
                   disabled={busy}
@@ -236,6 +272,16 @@ export function ShippingPanel({
             </Badge>
             {!active.livemode && <Badge tone="warn">THỬ</Badge>}
             <span className="flex-1" />
+            {active.phase === 'waiting' && active.scheduledAt && (
+              <Button disabled={busy} onClick={() => void dispatchNow(active.id)}>
+                Tìm tài xế ngay
+              </Button>
+            )}
+            {ACTIVE.includes(active.phase) && (
+              <Button variant="secondary" disabled={busy} onClick={() => void refresh(active)}>
+                Cập nhật
+              </Button>
+            )}
             <Button variant="secondary" disabled={busy} onClick={() => void label(active)}>
               <Printer className="size-4" /> In vận đơn
             </Button>
@@ -251,6 +297,12 @@ export function ShippingPanel({
             )}
           </div>
           <div className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            {active.scheduledAt && (
+              <div className="sm:col-span-2">
+                <span className="text-slate-500">Hẹn lấy hàng lúc: </span>
+                <span className="font-medium">{dt(active.scheduledAt)}</span>
+              </div>
+            )}
             <div>
               <span className="text-slate-500">Mã vận đơn: </span>
               <span className="font-mono">{active.partnerTrackNo ?? active.trackId ?? '—'}</span>
@@ -313,7 +365,14 @@ export function ShippingPanel({
             <span className="flex-1 text-sm text-slate-600 dark:text-slate-300">
               Đơn giao hàng chưa có vận đơn. Xem giá các hãng và tạo vận đơn, hãng sẽ đến lấy hàng.
             </span>
-            <Button onClick={() => setCreating(true)}>Tạo vận đơn</Button>
+            {last?.phase === 'canceled' && (
+              <Button variant="secondary" disabled={busy} onClick={() => void rebook(last)}>
+                Tìm lại
+              </Button>
+            )}
+            <Button onClick={() => setCreating(true)}>
+              {last?.phase === 'canceled' ? 'Chọn hãng khác' : 'Tạo vận đơn'}
+            </Button>
           </Card>
         )
       )}

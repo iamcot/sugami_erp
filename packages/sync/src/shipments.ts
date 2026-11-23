@@ -278,6 +278,34 @@ export async function processAllingoWebhooks(db: PrismaClient, limit = 100): Pro
 }
 
 /** Read every unfinished shipment from Allingo: the safety net behind the webhooks. */
+/** Read one shipment's current state and timeline from Allingo and apply it. */
+export async function refreshShipment(
+  db: PrismaClient,
+  client: Pick<AllingoClient, 'getOrder' | 'timeline'>,
+  shipment: { id: string; externalId: string },
+  now = new Date(),
+): Promise<ShipmentActivity[]> {
+  const o = await client.getOrder(shipment.externalId);
+  let events: AllingoTimelineEvent[] = [];
+  try {
+    events = await client.timeline(shipment.externalId);
+  } catch {
+    // the timeline is a bonus; the status above is what matters
+  }
+  return applyShipmentUpdate(db, shipment.id, {
+    ...fromOrder(o),
+    events: events.map((e) => ({
+      id: e.id,
+      status: e.status,
+      statusName: e.status_name,
+      note: e.note,
+      location: [e.scan_location?.name, e.scan_location?.city].filter(Boolean).join(', ') || null,
+      at: parseDate(e.scanned_at, now),
+    })),
+    source: 'poll',
+  });
+}
+
 export async function pollShipments(
   db: PrismaClient,
   client: Pick<AllingoClient, 'getOrder' | 'timeline'>,
@@ -297,27 +325,7 @@ export async function pollShipments(
   const out: ShipmentActivity[] = [];
   for (const s of open) {
     try {
-      const o = await client.getOrder(s.externalId!);
-      let events: AllingoTimelineEvent[] = [];
-      try {
-        events = await client.timeline(s.externalId!);
-      } catch {
-        // the timeline is a bonus; the status above is what matters
-      }
-      out.push(
-        ...(await applyShipmentUpdate(db, s.id, {
-          ...fromOrder(o),
-          events: events.map((e) => ({
-            id: e.id,
-            status: e.status,
-            statusName: e.status_name,
-            note: e.note,
-            location: [e.scan_location?.name, e.scan_location?.city].filter(Boolean).join(', ') || null,
-            at: parseDate(e.scanned_at, now),
-          })),
-          source: 'poll',
-        })),
-      );
+      out.push(...(await refreshShipment(db, client, { id: s.id, externalId: s.externalId! }, now)));
     } catch (err) {
       await db.shipment.update({
         where: { id: s.id },

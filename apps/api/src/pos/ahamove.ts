@@ -111,16 +111,15 @@ export interface QuoteRow extends AhamoveQuote {
   name: string;
 }
 
-/** Prices of every Ahamove service for this order's trip, cheapest first (refused ones last). */
-export async function quoteOrder(db: PrismaClient, code: string, chosen: string[] = []): Promise<QuoteRow[]> {
-  const o = await loadOrder(db, code);
+/** Prices of every Ahamove service for a trip from the shop to `dropoff`, cheapest first (refused ones last). */
+export async function quoteStops(dropoff: AhamoveStop, chosen: string[] = []): Promise<QuoteRow[]> {
   const c = getClient();
   try {
     const list = await services(c, chosen);
     if (!list.length) throw new PosError('Ahamove chưa có dịch vụ nào ở khu vực này');
     const quotes = await c.quote(
       pickupFromEnv()!,
-      dropoffOf(o),
+      dropoff,
       list.map((s) => s.id),
     );
     const names = new Map(list.map((s) => [s.id, s.name]));
@@ -132,11 +131,43 @@ export async function quoteOrder(db: PrismaClient, code: string, chosen: string[
   }
 }
 
-export async function bookOrder(db: PrismaClient, code: string, serviceId: string, _userId?: string) {
+/** Prices of every Ahamove service for this order's trip. */
+export async function quoteOrder(db: PrismaClient, code: string, chosen: string[] = []): Promise<QuoteRow[]> {
+  return quoteStops(dropoffOf(await loadOrder(db, code)), chosen);
+}
+
+/** The receiver of a sale still on the counter screen (no order yet) as an Ahamove stop. */
+export function dropoffOfReceiver(r: {
+  name: string;
+  phone: string;
+  address: string;
+  ward?: string | null;
+  province?: string | null;
+}): AhamoveStop {
+  const full = [r.address, r.ward, r.province].filter(Boolean).join(', ');
+  return {
+    address: /việt nam$/i.test(full) ? full : `${full}, Việt Nam`,
+    name: r.name || 'Khách',
+    mobile: r.phone,
+  };
+}
+
+/**
+ * Book the driver. The parcel is NOT handed over yet: the order stays "Đang đóng gói" with the trip saved on it,
+ * and moves to "Đang giao" (stock leaves) only when Ahamove reports the driver has picked the parcel up.
+ * `scheduleAt` books for a later time.
+ */
+export async function bookOrder(
+  db: PrismaClient,
+  code: string,
+  serviceId: string,
+  _userId?: string,
+  scheduleAt?: Date | null,
+) {
   const o = await loadOrder(db, code);
   if (!posActions(fulfillmentOf(o), o.status).some((a) => a.key === 'ship'))
     throw new PosError('Đơn chưa ở bước Đang đóng gói nên chưa gọi Ahamove được', 409);
-  if (o.carrier === AHAMOVE && o.trackingNo)
+  if (o.carrier === AHAMOVE && o.trackingNo && !/đã hủy/.test(o.shippingStatus ?? ''))
     throw new PosError('Đơn này đã có chuyến Ahamove, hủy chuyến cũ trước', 409);
   const c = getClient();
   let booked: Awaited<ReturnType<AhamoveClient['createOrder']>>;
@@ -147,6 +178,7 @@ export async function bookOrder(db: PrismaClient, code: string, serviceId: strin
       dropoff: dropoffOf(o),
       payment: process.env.AHAMOVE_PAYMENT === 'BALANCE' ? 'BALANCE' : 'CASH',
       note: o.code,
+      ...(scheduleAt ? { orderTime: Math.floor(scheduleAt.getTime() / 1000) } : {}),
     });
   } catch (err) {
     return explain(err);
@@ -157,7 +189,9 @@ export async function bookOrder(db: PrismaClient, code: string, serviceId: strin
       carrier: AHAMOVE,
       trackingNo: booked.orderId,
       trackingUrl: booked.sharedLink,
-      shippingStatus: ahamoveStatusText(booked.status),
+      shippingStatus: scheduleAt
+        ? `Ahamove: hẹn ${scheduleAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })}`
+        : ahamoveStatusText(booked.status),
       ...(booked.fee > 0 ? { shippingFee: BigInt(booked.fee) } : {}),
     },
   });
@@ -232,4 +266,35 @@ export async function cancelTrip(db: PrismaClient, code: string, reason: string)
         : { shippingStatus: 'Ahamove: đã hủy chuyến (hoàn hàng hoặc gọi lại)' },
   });
   return { ok: true };
+}
+
+/**
+ * "Tìm tài xế ngay" for a trip booked for later: cancel it and book the same service for now.
+ * The service is read back from Ahamove; nothing is cancelled unless the old trip can be read.
+ */
+export async function dispatchNow(db: PrismaClient, code: string) {
+  const o = await loadOrder(db, code);
+  if (o.carrier !== AHAMOVE || !o.trackingNo) throw new PosError('Đơn này không giao bằng Ahamove', 409);
+  const c = getClient();
+  let serviceId: string | undefined;
+  try {
+    serviceId = (await c.getOrder(o.trackingNo)).service_id;
+  } catch (err) {
+    return explain(err);
+  }
+  if (!serviceId)
+    throw new PosError('Ahamove không trả dịch vụ của chuyến cũ, hãy hủy chuyến rồi chọn lại', 409);
+  // a trip Ahamove already cancelled needs no second cancel
+  if (!/đã hủy/.test(o.shippingStatus ?? '')) {
+    try {
+      await c.cancelOrder(o.trackingNo, 'Tìm tài xế ngay');
+    } catch (err) {
+      return explain(err);
+    }
+  }
+  await db.order.update({
+    where: { code },
+    data: { carrier: null, trackingNo: null, trackingUrl: null, shippingStatus: null },
+  });
+  return bookOrder(db, code, serviceId);
 }

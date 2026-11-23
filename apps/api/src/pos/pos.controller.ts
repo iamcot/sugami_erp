@@ -19,6 +19,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { ShippingService } from '../shipping/shipping.service.js';
 import { fulfillmentOf, posActions } from './pos-flow.js';
 import { availability, createPosOrder, PosError, runPosAction } from './pos-orders.js';
 import { DraftBody, PosPayload } from './pos-schema.js';
@@ -45,7 +46,10 @@ interface SearchRow {
 /** Counter sales: product search, several open drafts, checkout into an order. */
 @Controller('pos')
 export class PosController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly shipping: ShippingService,
+  ) {}
 
   private wrap<T>(fn: () => Promise<T>): Promise<T> {
     return fn().catch((err: unknown) => {
@@ -240,7 +244,11 @@ export class PosController {
       }),
       raw ?? {},
     );
-    return this.wrap(() => runPosAction(this.prisma.client, code, key, user.id, extra));
+    return this.wrap(async () => {
+      // cancelling the order calls off the carrier's pickup too, so no courier turns up for a dead order
+      if (key === 'cancel') await this.shipping.cancelForOrder(code);
+      return runPosAction(this.prisma.client, code, key, user.id, extra);
+    });
   }
 
   /** Whether Ahamove is set up (keys and pickup address), so the screen knows to offer it. */
