@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PancakeChatClient, parseChatTime, plainText, toConversation, toMessage } from './chat.js';
+import { chatChannelOf, PancakeChatClient, parseChatTime, plainText, toConversation, toMessage } from './chat.js';
 import { PancakeError } from './client.js';
 
 const json = (body: unknown, status = 200) =>
@@ -34,6 +34,13 @@ function makeClient(handler: (url: URL) => Response) {
 }
 
 describe('chat mapping', () => {
+  it('tells the channel from the page id', () => {
+    expect(chatChannelOf('spo_6875667')).toBe('shopee');
+    expect(chatChannelOf('256469571178082')).toBe('facebook');
+    expect(chatChannelOf('wa_84328290781')).toBe('whatsapp');
+    expect(chatChannelOf('zl_1')).toBe('other');
+  });
+
   it('reads Pancake times as UTC', () => {
     expect(parseChatTime('2026-11-22T03:47:04.000000').toISOString()).toBe('2026-11-22T03:47:04.000Z');
     expect(parseChatTime(undefined).getTime()).toBe(0);

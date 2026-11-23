@@ -4,6 +4,8 @@ import { chatSummary, filterConversations } from './chat-filter.js';
 
 const c = (over: Partial<ChatConversation>): ChatConversation => ({
   id: 'x',
+  pageId: 'spo_1',
+  channel: 'shopee',
   kind: 'INBOX',
   customerName: 'buyer',
   customerId: null,
@@ -21,11 +23,15 @@ const c = (over: Partial<ChatConversation>): ChatConversation => ({
 const rows = [
   c({ id: 'a', snippet: 'Còn hàng không shop', seen: false, lastSentByShop: false }),
   c({ id: 'b', snippet: 'Đã gửi nhé', lastSentByShop: true }),
+  c({ id: 'f', channel: 'facebook', pageId: '123', snippet: 'Hello', seen: true }),
   c({ id: 'r', kind: 'RATING', snippet: '[5⭐]', seen: false, lastSentByShop: false, customerName: 'Mimi' }),
 ];
-const base = { kind: '', unread: false, waiting: false, q: '' };
+const base = { channel: '', kind: '', unread: false, waiting: false, q: '' };
 
 describe('filterConversations', () => {
+  it('filters by channel', () => {
+    expect(filterConversations(rows, { ...base, channel: 'facebook' }).map((r) => r.id)).toEqual(['f']);
+  });
   it('filters by kind', () => {
     expect(filterConversations(rows, { ...base, kind: 'RATING' }).map((r) => r.id)).toEqual(['r']);
   });
@@ -40,6 +46,6 @@ describe('filterConversations', () => {
     expect(filterConversations(rows, { ...base, q: 'mimi' }).map((r) => r.id)).toEqual(['r']);
   });
   it('summarises the whole range', () => {
-    expect(chatSummary(rows)).toEqual({ total: 3, inbox: 2, rating: 1, unread: 2, waiting: 1 });
+    expect(chatSummary(rows)).toEqual({ total: 4, inbox: 3, rating: 1, unread: 2, waiting: 1 });
   });
 });

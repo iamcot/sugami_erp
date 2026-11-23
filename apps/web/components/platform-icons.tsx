@@ -84,6 +84,16 @@ const DIAMOND: Record<string, { fill: string; label: string; mark: ReactNode }> 
       </g>
     ),
   },
+  facebook: {
+    fill: '#1877F2',
+    label: 'Facebook',
+    mark: (
+      <path
+        d="M13.4 18v-5.2h1.8l.3-2.1h-2.1V9.4c0-.6.2-1 1-1h1.2V6.5c-.2 0-.9-.1-1.7-.1-1.7 0-2.8 1-2.8 2.9v1.4H9.3v2.1h1.8V18h2.3Z"
+        fill="#fff"
+      />
+    ),
+  },
   pancake: {
     fill: '#7C3AED',
     label: 'Pancake',

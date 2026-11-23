@@ -1,8 +1,9 @@
 'use client';
 
 import { cn } from '@sugami/ui';
-import { ArrowLeft, CornerDownLeft, MessageCircle, RefreshCw, Search, Star } from 'lucide-react';
+import { ArrowLeft, CornerDownLeft, RefreshCw, Search, Star } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
+import { PlatformDiamond } from '@/components/platform-icons';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatRelativeDateTime } from '@/lib/datetime';
@@ -10,6 +11,7 @@ import { useQueryState } from '@/lib/use-query-state';
 
 interface Conversation {
   id: string;
+  channel: string;
   kind: string;
   customerName: string;
   snippet: string;
@@ -26,6 +28,8 @@ interface Summary {
   waiting: number;
 }
 interface ListResponse {
+  channels: { channel: string; count: number }[];
+  errors: { channel: string; message: string }[];
   summary: Summary;
   total: number;
   data: Conversation[];
@@ -39,6 +43,16 @@ interface Message {
 }
 
 const PAGE_SIZE = 30;
+/** The list reloads itself this often (seconds) while the tab is open. */
+const AUTO_RELOAD_SECONDS = 60;
+
+const CHANNEL_LABEL: Record<string, string> = {
+  shopee: 'Shopee',
+  tiktok: 'TikTok Shop',
+  facebook: 'Facebook',
+  whatsapp: 'WhatsApp',
+  other: 'Khác',
+};
 
 const RANGES = [
   ['1', '24 giờ qua'],
@@ -58,7 +72,7 @@ const ATTACHMENT_LABEL: Record<string, string> = {
   product: '[Sản phẩm]',
 };
 
-function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
+function Thread({ conv, refreshKey, onBack }: { conv: Conversation; refreshKey: number; onBack: () => void }) {
   const [msgs, setMsgs] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
@@ -99,9 +113,15 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
     }
   };
 
+  const shownConv = useRef<string | null>(null);
+
   useEffect(() => {
     const ctrl = new AbortController();
-    if (reload === 0) setMsgs(null);
+    // Only blank the thread when another conversation opens, not on a refresh or after sending.
+    if (shownConv.current !== conv.id) {
+      shownConv.current = conv.id;
+      setMsgs(null);
+    }
     setError(null);
     api<{ data: Message[] }>(`/chat/conversations/${encodeURIComponent(conv.id)}/messages`, {
       signal: ctrl.signal,
@@ -111,7 +131,7 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
         if (e.name !== 'AbortError') setError(e.message);
       });
     return () => ctrl.abort();
-  }, [conv.id, reload]);
+  }, [conv.id, reload, refreshKey]);
 
   return (
     <Card className="flex h-[70vh] flex-col overflow-hidden">
@@ -124,11 +144,12 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
         >
           <ArrowLeft className="size-4" />
         </button>
+        <PlatformDiamond platform={conv.channel} className="size-6" />
         <div className="min-w-0">
           <p className="truncate font-semibold">{conv.customerName || '(không tên)'}</p>
           <p className="font-mono text-[11px] text-slate-500">{conv.id}</p>
         </div>
-        <Badge tone={conv.kind === 'RATING' ? 'warn' : 'brand'}>{conv.kind === 'RATING' ? 'Đánh giá' : 'Chat'}</Badge>
+        {conv.kind === 'RATING' && <Badge tone="warn">Đánh giá</Badge>}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
         {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -198,7 +219,7 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
         </div>
       ) : (
         <p className="border-t border-slate-200/70 px-4 py-2 text-xs text-slate-500 dark:border-slate-700/60">
-          Đánh giá chỉ xem. Trả lời đánh giá làm trong Shopee.
+          Đánh giá chỉ xem, trả lời đánh giá làm trên sàn.
         </p>
       )}
     </Card>
@@ -207,6 +228,7 @@ function Thread({ conv, onBack }: { conv: Conversation; onBack: () => void }) {
 
 function ChatList() {
   const [qs, setQs] = useQueryState({
+    channel: '',
     kind: '',
     filter: '',
     q: '',
@@ -219,6 +241,20 @@ function ChatList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  const [countdown, setCountdown] = useState(AUTO_RELOAD_SECONDS);
+
+  // Reload by itself every minute while the tab is visible; any reload (by hand or timer) restarts the count.
+  useEffect(() => setCountdown(AUTO_RELOAD_SECONDS), [reload]);
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      setCountdown((n) => n - 1);
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => {
+    if (countdown <= 0) setReload((n) => n + 1);
+  }, [countdown]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -234,6 +270,7 @@ function ChatList() {
       days: qs.days,
       page: qs.page,
       pageSize: String(PAGE_SIZE),
+      ...(qs.channel ? { channel: qs.channel } : {}),
       ...(qs.kind ? { kind: qs.kind } : {}),
       ...(qs.filter === 'unread' ? { unread: '1' } : {}),
       ...(qs.filter === 'waiting' ? { waiting: '1' } : {}),
@@ -249,7 +286,7 @@ function ChatList() {
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [qs.kind, qs.filter, qs.q, qs.days, qs.page, reload]);
+  }, [qs.channel, qs.kind, qs.filter, qs.q, qs.days, qs.page, reload]);
 
   const selected = res?.data.find((c) => c.id === qs.c) ?? null;
   const s = res?.summary;
@@ -279,14 +316,46 @@ function ChatList() {
   return (
     <>
       <PageHeader
-        title="Chat Shopee"
+        title="Chat"
         description={s ? `${s.inbox} chat · ${s.rating} đánh giá trong ${qs.days} ngày qua` : 'Đọc từ Pancake'}
         actions={
-          <Button variant="secondary" onClick={() => setReload((n) => n + 1)} disabled={loading}>
-            <RefreshCw className={cn('size-4', loading && 'animate-spin')} /> Tải lại
-          </Button>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-xs text-slate-500 sm:inline">
+              Tự động tải lại sau <b className="tabular-nums">{Math.max(countdown, 0)}</b> giây
+            </span>
+            <Button variant="secondary" onClick={() => setReload((n) => n + 1)} disabled={loading}>
+              <RefreshCw className={cn('size-4', loading && 'animate-spin')} /> Tải lại
+            </Button>
+          </div>
         }
       />
+      {res && res.channels.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          {chip('Mọi kênh', !qs.channel, () => setQs({ channel: '', ...reset }))}
+          {res.channels.map((ch) => (
+            <button
+              key={ch.channel}
+              type="button"
+              onClick={() => setQs({ channel: ch.channel, ...reset })}
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded-full border pl-1.5 pr-3 text-sm transition',
+                qs.channel === ch.channel
+                  ? 'border-brand-500/70 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-500'
+                  : 'border-slate-200 bg-white/60 text-slate-600 hover:bg-white dark:border-slate-700 dark:bg-white/5 dark:text-slate-300',
+              )}
+            >
+              <PlatformDiamond platform={ch.channel} className="size-5" />
+              {CHANNEL_LABEL[ch.channel] ?? ch.channel}
+              <span className="font-mono text-[11px] opacity-70">{ch.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {res?.errors.map((e) => (
+        <p key={e.channel} className="mb-2 text-sm text-rose-600">
+          Không đọc được chat {CHANNEL_LABEL[e.channel] ?? e.channel}: {e.message}
+        </p>
+      ))}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {chip('Tất cả', !qs.kind && !qs.filter, () => setQs({ kind: '', filter: '', ...reset }), s?.total)}
         {chip('Chat', qs.kind === 'INBOX', () => setQs({ kind: 'INBOX', filter: '', ...reset }), s?.inbox)}
@@ -333,12 +402,11 @@ function ChatList() {
                   c.id === qs.c && 'bg-brand-500/10',
                 )}
               >
-                <span className="mt-0.5 text-slate-400">
-                  {c.kind === 'RATING' ? <Star className="size-4" /> : <MessageCircle className="size-4" />}
-                </span>
+                <PlatformDiamond platform={c.channel} className="mt-0.5 size-5" />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className={cn('truncate', !c.seen && 'font-semibold')}>{c.customerName || '(không tên)'}</span>
+                    {c.kind === 'RATING' && <Star className="size-3.5 shrink-0 text-amber-500" aria-label="Đánh giá" />}
                     {!c.seen && <span className="size-2 shrink-0 rounded-full bg-brand-500" aria-label="Chưa đọc" />}
                   </span>
                   <span className="block truncate text-sm text-slate-600 dark:text-slate-400">
@@ -375,7 +443,7 @@ function ChatList() {
         </div>
         <div className={cn(!selected && 'hidden lg:block')}>
           {selected ? (
-            <Thread conv={selected} onBack={() => setQs({ c: '' })} />
+            <Thread conv={selected} refreshKey={reload} onBack={() => setQs({ c: '' })} />
           ) : (
             <Card className="flex h-48 items-center justify-center text-sm text-slate-500">
               Chọn một hội thoại để xem tin nhắn.

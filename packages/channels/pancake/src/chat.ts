@@ -14,8 +14,22 @@ export const CHAT_MAX_RANGE_DAYS = 30;
 
 export type ChatKind = 'INBOX' | 'COMMENT' | 'RATING';
 
+/** Which marketplace or social channel a Pancake page belongs to, from its page id prefix. */
+export type ChatChannel = 'shopee' | 'tiktok' | 'facebook' | 'whatsapp' | 'other';
+
+export function chatChannelOf(pageId: string): ChatChannel {
+  if (pageId.startsWith('spo_')) return 'shopee';
+  if (pageId.startsWith('wa_')) return 'whatsapp';
+  if (/^tt/i.test(pageId)) return 'tiktok';
+  if (/^\d+$/.test(pageId)) return 'facebook';
+  return 'other';
+}
+
 export interface ChatConversation {
   id: string;
+  /** Pancake page this conversation belongs to, and its channel. */
+  pageId: string;
+  channel: ChatChannel;
   kind: ChatKind | string;
   /** Marketplace user name (Shopee username). */
   customerName: string;
@@ -74,6 +88,8 @@ export function toConversation(raw: Raw, pageId: string): ChatConversation {
   const lastSentBy = raw.last_sent_by as Raw | null | undefined;
   return {
     id: str(raw.id),
+    pageId,
+    channel: chatChannelOf(pageId),
     kind: str(raw.type) || 'INBOX',
     customerName: str(from.name) || str(from.username),
     customerId: from.id ? str(from.id) : null,
