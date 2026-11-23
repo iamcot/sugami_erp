@@ -654,6 +654,15 @@ export class ShippingService {
     });
     // the buyer's share of the fee goes back out of the order
     await removeShippingFee(db, s.orderId);
+    // the order no longer has this carrier: clear what was copied from it (carrier, tracking, fee, pack deadline)
+    const stillActive = await db.shipment.count({
+      where: { orderId: s.orderId, id: { not: s.id }, phase: { in: ACTIVE_PHASES } },
+    });
+    if (stillActive === 0)
+      await db.order.update({
+        where: { id: s.orderId },
+        data: { carrier: null, trackingNo: null, shippingFee: 0n, shipByAt: null },
+      });
     return { ok: true };
   }
 

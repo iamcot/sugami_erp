@@ -300,7 +300,14 @@ export async function cancelTrip(db: PrismaClient, code: string, reason: string)
     where: { code },
     data:
       o.status === 'packing'
-        ? { carrier: null, trackingNo: null, trackingUrl: null, shippingStatus: null }
+        ? {
+            carrier: null,
+            trackingNo: null,
+            trackingUrl: null,
+            shippingStatus: null,
+            shippingFee: 0n,
+            shipByAt: null,
+          }
         : { shippingStatus: 'Ahamove: đã hủy chuyến (hoàn hàng hoặc gọi lại)' },
   });
   return { ok: true };
