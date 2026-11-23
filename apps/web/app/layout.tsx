@@ -21,6 +21,8 @@ export const viewport: Viewport = {
   themeColor: '#eef3f8',
   width: 'device-width',
   initialScale: 1,
+  // stops iOS Safari zooming in when an input gets focus (inputs are under 16px)
+  maximumScale: 1,
   viewportFit: 'cover',
 };
 

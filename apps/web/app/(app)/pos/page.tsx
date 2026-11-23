@@ -709,7 +709,7 @@ export default function PosPage() {
       {slot &&
         createPortal(
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="relative flex w-72 shrink-0 items-center gap-2 lg:w-96">
+            <div className="relative flex min-w-0 flex-[2] items-center gap-2 sm:w-72 sm:flex-none lg:w-96">
               <button
                 aria-label="Đơn gần đây"
                 title="Đơn đã tạo gần đây"
@@ -841,10 +841,10 @@ export default function PosPage() {
         </div>
       ) : (
         <>
-          <div className="grid min-h-0 flex-1 gap-3 bg-slate-100 p-3 lg:grid-cols-[1fr_minmax(360px,420px)] dark:bg-slate-950">
+          <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 overflow-y-auto bg-slate-100 p-3 lg:grid-cols-[1fr_minmax(360px,420px)] lg:content-stretch lg:overflow-visible dark:bg-slate-950">
             {/* lines: only the list scrolls */}
-            <div className="flex min-h-0 flex-col rounded-lg bg-white dark:bg-slate-900">
-              <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-auto dark:divide-slate-800">
+            <div className="flex flex-col rounded-lg bg-white lg:min-h-0 dark:bg-slate-900">
+              <ul className="divide-y divide-slate-100 lg:min-h-0 lg:flex-1 lg:overflow-auto dark:divide-slate-800">
                 {p.lines.length === 0 && (
                   <li className="p-6 text-center text-sm text-slate-500">
                     Chưa có sản phẩm. Tìm hàng hoặc quét mã vạch.
@@ -855,10 +855,10 @@ export default function PosPage() {
                   const low = v && v.available < l.qty;
                   return (
                     <li key={l.variantId} className="px-3 py-2">
-                      <div className="flex items-center gap-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm sm:flex-nowrap">
                         <span className="w-5 text-slate-400">{i + 1}</span>
                         <Thumb src={v?.image} className="size-12" />
-                        <span className="min-w-0 flex-1">
+                        <span className="min-w-0 flex-1 max-sm:basis-[calc(100%-6.5rem)]">
                           <span className="line-clamp-2">
                             {v?.productName}{' '}
                             <span className="text-slate-500">{optionText(v?.optionValues)}</span>
@@ -918,7 +918,7 @@ export default function PosPage() {
                             <Plus className="size-3.5" />
                           </button>
                         </span>
-                        <span className="w-28">
+                        <span className="w-24 sm:w-28">
                           <Money
                             value={l.price}
                             onChange={(n) =>
@@ -930,7 +930,7 @@ export default function PosPage() {
                             }
                           />
                         </span>
-                        <span className="w-28 text-right font-medium tabular-nums">
+                        <span className="w-20 text-right font-medium tabular-nums max-sm:flex-1 sm:w-28">
                           {fmt(l.price * l.qty)}
                         </span>
                         <button
@@ -953,7 +953,7 @@ export default function PosPage() {
                   value={p.note}
                   onChange={(e) => patch({ note: e.target.value })}
                 />
-                <div className="w-full min-w-64 space-y-1 sm:w-80">
+                <div className="w-full space-y-1 sm:w-80 sm:min-w-64">
                   <div className="flex justify-between">
                     <span>Tổng tiền hàng ({p.lines.reduce((a, l) => a + l.qty, 0)})</span>
                     <span className="tabular-nums">{fmt(subtotal)}</span>
@@ -979,8 +979,8 @@ export default function PosPage() {
             </div>
 
             {/* right column: only this scrolls */}
-            <div className="flex min-h-0 flex-col rounded-lg bg-white text-sm dark:bg-slate-900">
-              <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
+            <div className="flex flex-col rounded-lg bg-white text-sm lg:min-h-0 dark:bg-slate-900">
+              <div className="space-y-3 p-3 lg:min-h-0 lg:flex-1 lg:overflow-auto">
                 <div className="flex items-center justify-end gap-2 text-slate-500">
                   <input
                     type="date"

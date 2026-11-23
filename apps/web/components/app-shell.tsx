@@ -266,7 +266,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <UpdateBanner />
-      <main className="px-4 pb-24 pt-6 lg:px-8 lg:pb-10">
+      <main className="min-w-0 px-4 pb-24 pt-6 lg:px-8 lg:pb-10">
         <Suspense>
           <DetailProvider>{children}</DetailProvider>
         </Suspense>

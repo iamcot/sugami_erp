@@ -533,7 +533,7 @@ function OrdersList() {
               Xóa bộ lọc
             </button>
           )}
-          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-slate-300/80 bg-white/80 px-2.5 text-sm md:ml-auto md:max-w-xs md:flex-none md:basis-80 dark:border-white/15 dark:bg-white/5">
+          <label className="flex h-8 min-w-0 flex-1 basis-full items-center gap-2 rounded-md border border-slate-300/80 bg-white/80 px-2.5 text-sm md:ml-auto md:max-w-xs md:flex-none md:basis-80 dark:border-white/15 dark:bg-white/5">
             <Search className="size-4 shrink-0 text-slate-400" />
             <input
               value={search}

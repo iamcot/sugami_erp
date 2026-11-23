@@ -151,7 +151,7 @@ export function DataTable<T>({
                       c.className,
                       c.sticky &&
                         cn(
-                          'sticky right-0 bg-[#f4f7fb] dark:bg-[#0b1322]',
+                          'bg-[#f4f7fb] sm:sticky sm:right-0 dark:bg-[#0b1322]',
                           covering &&
                             'border-l border-slate-300 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.25)] dark:border-slate-600',
                         ),
@@ -240,7 +240,7 @@ export function DataTable<T>({
                           (isSelected?.(r)
                             ? 'bg-brand-50 dark:bg-[#0f2230]'
                             : 'bg-[#f7f9fc] group-hover:bg-white dark:bg-[#0b1322] dark:group-hover:bg-[#121c2e]') +
-                            ' sticky right-0' +
+                            ' sm:sticky sm:right-0' +
                             (covering
                               ? ' border-l border-slate-300 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.25)] dark:border-slate-600'
                               : ''),
