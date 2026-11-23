@@ -2,7 +2,7 @@
 
 import { Bell } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 
 interface Item {
@@ -35,6 +35,7 @@ export function NotificationBell() {
   const [items, setItems] = useState<Item[]>([]);
   const [seen, setSeen] = useState(0);
   const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
 
   const load = useCallback(
     () =>
@@ -52,22 +53,40 @@ export function NotificationBell() {
   }, [load]);
 
   const unread = items.filter((i) => Date.parse(i.createdAt) > seen).length;
-  const toggle = () => {
-    if (!open) void load();
-    if (open) {
-      const now = Date.now();
-      try {
-        localStorage.setItem(SEEN_KEY, String(now));
-      } catch {
-        /* private window: the badge simply comes back */
-      }
-      setSeen(now);
+  // Close on a click anywhere outside or Escape. (A full-screen overlay does not work here: the header's
+  // blur makes `fixed` relative to the header, so it would only cover the header.)
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) close();
+    };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  const close = () => {
+    const now = Date.now();
+    try {
+      localStorage.setItem(SEEN_KEY, String(now));
+    } catch {
+      /* private window: the badge simply comes back */
     }
-    setOpen(!open);
+    setSeen(now);
+    setOpen(false);
+  };
+  const toggle = () => {
+    if (open) return close();
+    void load();
+    setOpen(true);
   };
 
   return (
-    <div className="relative">
+    <div ref={box} className="relative">
       <button
         onClick={toggle}
         className="relative rounded-md p-2 text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-white/10"
@@ -82,7 +101,6 @@ export function NotificationBell() {
       </button>
       {open && (
         <>
-          <button className="fixed inset-0 z-20 cursor-default" aria-label="Đóng" onClick={toggle} />
           <div className="absolute right-0 top-full z-30 mt-2 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
             <div className="border-b border-slate-100 px-4 py-2.5 text-sm font-medium dark:border-slate-800">
               Thông báo
@@ -110,7 +128,7 @@ export function NotificationBell() {
                     {i.url ? (
                       <Link
                         href={i.url}
-                        onClick={toggle}
+                        onClick={close}
                         className="flex gap-2 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                       >
                         {inner}
