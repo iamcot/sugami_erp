@@ -407,8 +407,8 @@ export function PosShippingColumn({
     <>
       {slot && createPortal(parcelSection, slot)}
       {payerSlot && chosen && createPortal(payerSection, payerSlot)}
-      <div className="flex min-h-0 flex-col rounded-lg bg-white text-sm dark:bg-slate-900">
-        <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
+      <div className="flex flex-col rounded-lg bg-white text-sm lg:min-h-0 dark:bg-slate-900">
+        <div className="space-y-3 p-3 lg:min-h-0 lg:flex-1 lg:overflow-auto">
           <div className="flex items-center justify-between">
             <span className="font-medium">Hãng vận chuyển</span>
             <button
@@ -666,7 +666,7 @@ export function PosShippingColumn({
           )}
         </div>
 
-        <div className="shrink-0 space-y-2 border-t border-slate-200 p-3 dark:border-slate-800">
+        <div className="sticky bottom-0 z-10 shrink-0 space-y-2 rounded-b-lg border-t border-slate-200 bg-white p-3 lg:static dark:border-slate-800 dark:bg-slate-900">
           {chosen && (
             <section className="max-h-56 space-y-2 overflow-auto rounded-lg border border-brand-500/40 px-4 py-3">
               <div className="flex items-baseline justify-between gap-3">

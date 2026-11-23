@@ -79,8 +79,13 @@ function Combo({
         }}
         className={`${input} flex items-center justify-between text-left disabled:opacity-50`}
       >
-        <span className={value ? '' : 'text-slate-400'}>{value || placeholder}</span>
-        <ChevronDown className="size-4 text-slate-400" />
+        <span
+          className={`min-w-0 flex-1 truncate ${value ? '' : 'text-slate-400'}`}
+          title={value || undefined}
+        >
+          {value || placeholder}
+        </span>
+        <ChevronDown className="ml-1 size-4 shrink-0 text-slate-400" />
       </button>
       {open && (
         <div className="absolute left-0 right-0 z-[60] mt-1 rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
