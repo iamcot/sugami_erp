@@ -406,7 +406,7 @@ export function PosShippingColumn({
   return (
     <>
       {slot && createPortal(parcelSection, slot)}
-      {payerSlot && chosen && createPortal(payerSection, payerSlot)}
+      {payerSlot && createPortal(payerSection, payerSlot)}
       <div className="flex flex-col rounded-lg bg-white text-sm lg:min-h-0 dark:bg-slate-900">
         <div className="space-y-3 p-3 lg:min-h-0 lg:flex-1 lg:overflow-auto">
           <div className="flex items-center justify-between">
