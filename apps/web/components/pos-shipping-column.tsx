@@ -1,10 +1,10 @@
 'use client';
 
 import { formatVnd } from '@sugami/shared';
-import { ArrowUpDown, Clock, Wallet, X } from 'lucide-react';
+import { ArrowUpDown, Clock, RefreshCw, Wallet, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CarrierLogo } from '@/components/carrier-logo';
-import { Badge, Button, Tabs } from '@/components/ui';
+import { Badge, Button } from '@/components/ui';
 import { api } from '@/lib/api';
 
 interface Quote {
@@ -106,6 +106,13 @@ export function PosShippingColumn({
   const [listOpen, setListOpen] = useState(false);
   const [schedule, setSchedule] = useState<Schedule>('now');
   const [customAt, setCustomAt] = useState('');
+  /** Bumped by the refresh button (and when the window regains focus after a failure) to price again. */
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const onFocus = () => error && setTick((t) => t + 1);
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [error]);
 
   useEffect(() => {
     api<Settings>('/shipping/settings')
@@ -114,7 +121,7 @@ export function PosShippingColumn({
   }, []);
 
   // the same sale is priced once; any change in what the carrier needs to know prices it again
-  const key = JSON.stringify([input, boxKey]);
+  const key = JSON.stringify([input, boxKey, tick]);
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -191,7 +198,7 @@ export function PosShippingColumn({
         setPicked(r.serviceId);
         setListOpen(false);
       }}
-      className="flex w-full items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-0 hover:bg-slate-50 disabled:opacity-45 dark:border-white/5 dark:hover:bg-white/5"
+      className="flex w-full items-center gap-3 border-b border-slate-100 px-1 py-2.5 text-left last:border-0 hover:bg-slate-50 disabled:opacity-45 dark:border-white/5 dark:hover:bg-white/5"
     >
       <CarrierLogo id={r.partnerId} name={r.partnerName} className="size-8" />
       <span className="min-w-0 flex-1">
@@ -211,6 +218,19 @@ export function PosShippingColumn({
   return (
     <div className="flex min-h-0 flex-col rounded-lg bg-white text-sm dark:bg-slate-900">
       <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
+        <div className="flex items-center justify-between">
+          <span className="font-medium">Hãng vận chuyển</span>
+          <button
+            type="button"
+            title="Tải lại giá các hãng"
+            aria-label="Tải lại giá các hãng"
+            disabled={loading}
+            className="rounded p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-60 dark:hover:bg-white/10"
+            onClick={() => setTick((t) => t + 1)}
+          >
+            <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
         {loading && !res && <p className="text-slate-500">Đang lấy giá các hãng…</p>}
         {error && <p className="text-rose-600">{error}</p>}
         {res?.warnings.map((w) => (
@@ -360,21 +380,25 @@ export function PosShippingColumn({
         )}
 
         {showList && all.length > 0 && (
-          <div className="rounded-lg border border-slate-200 dark:border-white/10">
-            <div className="flex items-center gap-2 border-b border-slate-100 p-1.5 dark:border-white/10">
-              <Tabs
-                className="flex-1"
-                value={tab}
-                onChange={setTab}
-                items={[
-                  {
-                    id: 'standard',
-                    label: 'Giao thường',
-                    count: all.filter((r) => r.group === 'standard').length,
-                  },
-                  { id: 'fast', label: 'Giao nhanh', count: all.filter((r) => r.group === 'fast').length },
-                ]}
-              />
+          <div>
+            <div className="flex items-center gap-1 border-b border-slate-200 dark:border-white/10">
+              {(
+                [
+                  ['standard', 'Giao thường'],
+                  ['fast', 'Giao nhanh'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTab(id)}
+                  className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === id ? 'border-brand-600 font-medium text-brand-700' : 'border-transparent text-slate-500'}`}
+                >
+                  {label}{' '}
+                  <span className="text-xs text-slate-400">{all.filter((r) => r.group === id).length}</span>
+                </button>
+              ))}
+              <span className="flex-1" />
               <button
                 type="button"
                 title={
@@ -382,8 +406,8 @@ export function PosShippingColumn({
                     ? 'Đang xếp theo giá, bấm để xếp theo thời gian'
                     : 'Đang xếp theo thời gian, bấm để xếp theo giá'
                 }
-                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
-                onClick={() => setSort((s) => (s === 'price' ? 'time' : 'price'))}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
+                onClick={() => setSort((v) => (v === 'price' ? 'time' : 'price'))}
               >
                 <ArrowUpDown className="size-4" /> {sort === 'price' ? 'Giá' : 'Thời gian'}
               </button>
@@ -391,14 +415,14 @@ export function PosShippingColumn({
             {grouped.map(([speed, list]) => (
               <div key={speed}>
                 {tab === 'fast' && (
-                  <p className="bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-white/5 dark:text-slate-300">
-                    {SPEED_TITLE[speed]} ({list.length} dịch vụ)
+                  <p className="mt-1 px-1 py-1.5 text-xs font-medium text-slate-500">
+                    {SPEED_TITLE[speed]} ({list.length})
                   </p>
                 )}
                 {list.map(row)}
               </div>
             ))}
-            {sorted.length === 0 && <p className="p-3 text-slate-500">Không có hãng nào ở nhóm này.</p>}
+            {sorted.length === 0 && <p className="py-3 text-slate-500">Không có hãng nào ở nhóm này.</p>}
           </div>
         )}
       </div>

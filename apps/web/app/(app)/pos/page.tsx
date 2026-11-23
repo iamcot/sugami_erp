@@ -720,7 +720,7 @@ export default function PosPage() {
       ) : (
         <>
           <div
-            className={`grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 overflow-y-auto bg-slate-100 p-3 transition-[grid-template-columns] duration-300 ${shipReady ? 'lg:grid-cols-[1fr_minmax(340px,400px)_minmax(360px,420px)]' : 'lg:grid-cols-[1fr_minmax(360px,420px)]'} lg:content-stretch lg:overflow-visible dark:bg-slate-950`}
+            className={`grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 overflow-y-auto bg-slate-100 p-3 transition-[grid-template-columns] duration-300 ${shipReady ? 'lg:grid-cols-[minmax(240px,1fr)_minmax(320px,380px)_minmax(340px,400px)] lg:overflow-x-auto lg:pr-4' : 'lg:grid-cols-[1fr_minmax(360px,420px)] lg:overflow-visible'} lg:content-stretch dark:bg-slate-950`}
           >
             {/* lines: only the list scrolls */}
             <div className="flex flex-col rounded-lg bg-white lg:min-h-0 dark:bg-slate-900">
