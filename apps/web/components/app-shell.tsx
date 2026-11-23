@@ -26,6 +26,7 @@ import { api, DATA_CHANGED } from '@/lib/api';
 import { DetailProvider } from './detail-drawer';
 import { GlobalSearch } from './global-search';
 import { NotificationBell } from './notification-bell';
+import { UpdateBanner } from './update-banner';
 import { PlatformDiamond } from './platform-icons';
 import { PwaBootstrap } from './app-settings';
 import { UserMenu } from './user-menu';
@@ -264,6 +265,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      <UpdateBanner />
       <main className="px-4 pb-24 pt-6 lg:px-8 lg:pb-10">
         <Suspense>
           <DetailProvider>{children}</DetailProvider>

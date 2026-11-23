@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_BUILD_ID: String(Date.now()) },
   output: 'standalone',
   transpilePackages: ['@sugami/shared', '@sugami/ui'],
   // Same-origin API: the browser calls /api/*, Next forwards to the NestJS API, so the
