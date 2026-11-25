@@ -174,7 +174,7 @@ export function DocumentEditor({
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
+      <Card className="relative z-30 p-4">
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
             <label className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900">
