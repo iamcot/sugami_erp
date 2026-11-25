@@ -94,7 +94,7 @@ function LinkChip({
   );
 }
 
-const makeColumns = (
+const allColumns = (
   openListings: (platform: 'shopee' | 'tiktok', p: ProductRow) => void,
 ): Column<ProductRow>[] => [
   {
@@ -209,6 +209,8 @@ const makeColumns = (
     render: (p) => <Badge tone={STATUS[p.status].tone}>{STATUS[p.status].label}</Badge>,
   },
 ];
+const makeColumns = (kv: boolean, openListings: (platform: 'shopee' | 'tiktok', p: ProductRow) => void) =>
+  allColumns(openListings).filter((c) => kv || c.key !== 'links');
 
 function ProductsList() {
   const { open, selected } = useDetail();
@@ -232,7 +234,9 @@ function ProductsList() {
     code: string;
     name: string;
   } | null>(null);
-  const columns = makeColumns((platform, p) => setListingsFor({ platform, code: p.code, name: p.name }));
+  const columns = makeColumns(integrations, (platform, p) =>
+    setListingsFor({ platform, code: p.code, name: p.name }),
+  );
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [version, setVersion] = useState(0);

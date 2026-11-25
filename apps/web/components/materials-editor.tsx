@@ -3,6 +3,7 @@
 import { formatVnd } from '@sugami/shared';
 import { Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 
 /** One material of a finished product: quantity for ONE finished unit and the material's average cost. */
@@ -47,6 +48,24 @@ export function MaterialSearch({
   const [hits, setHits] = useState<Hit[]>([]);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  // The list is drawn in a portal: glass cards around the editor each form a stacking context (and the form
+  // card clips overflow), so an absolutely positioned list would be hidden behind the next card.
+  const [rect, setRect] = useState<{ left: number; top: number; width: number } | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const b = box.current?.getBoundingClientRect();
+      if (b) setRect({ left: b.left, top: b.bottom + 4, width: b.width });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => {
@@ -60,7 +79,8 @@ export function MaterialSearch({
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!box.current?.contains(t) && !pop.current?.contains(t)) setOpen(false);
     };
     document.addEventListener('mousedown', away);
     return () => document.removeEventListener('mousedown', away);
@@ -81,41 +101,50 @@ export function MaterialSearch({
           }}
         />
       </div>
-      {open && hits.length > 0 && (
-        <div className="popover absolute inset-x-0 top-10 z-30 max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-          {hits.map((h) => (
-            <button
-              key={h.id}
-              type="button"
-              className="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-              onClick={() => {
-                onPick({
-                  variantId: h.id,
-                  sku: h.sku,
-                  name: label(h),
-                  qty: 1,
-                  cost: h.cost,
-                  available: h.available,
-                });
-                setQ('');
-                setOpen(false);
-              }}
-            >
-              <span className="min-w-0 flex-1 truncate">{label(h)}</span>
-              <span className="font-mono text-xs text-slate-500">{h.sku}</span>
-              <span className="w-20 text-right font-mono text-xs tabular-nums">{formatVnd(h.cost)}</span>
-              <span className="w-14 text-right font-mono text-xs tabular-nums text-slate-500">
-                còn {h.available.toLocaleString('vi-VN')}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-      {open && hits.length === 0 && q && (
-        <p className="absolute inset-x-0 top-10 z-30 rounded-lg border border-slate-200 bg-white p-2 text-sm text-slate-500 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-          Không thấy nguyên liệu. Tạo sản phẩm loại &quot;Nguyên liệu&quot; trước.
-        </p>
-      )}
+      {open &&
+        rect &&
+        (hits.length > 0 || q) &&
+        createPortal(
+          <div
+            ref={pop}
+            style={{ position: 'fixed', left: rect.left, top: rect.top, width: rect.width }}
+            className="popover z-[100] max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900"
+          >
+            {hits.length === 0 ? (
+              <p className="p-1 text-sm text-slate-500">
+                Không thấy nguyên liệu. Tạo sản phẩm loại &quot;Nguyên liệu&quot; trước.
+              </p>
+            ) : (
+              hits.map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                  onClick={() => {
+                    onPick({
+                      variantId: h.id,
+                      sku: h.sku,
+                      name: label(h),
+                      qty: 1,
+                      cost: h.cost,
+                      available: h.available,
+                    });
+                    setQ('');
+                    setOpen(false);
+                  }}
+                >
+                  <span className="min-w-0 flex-1 truncate">{label(h)}</span>
+                  <span className="font-mono text-xs text-slate-500">{h.sku}</span>
+                  <span className="w-20 text-right font-mono text-xs tabular-nums">{formatVnd(h.cost)}</span>
+                  <span className="w-14 text-right font-mono text-xs tabular-nums text-slate-500">
+                    còn {h.available.toLocaleString('vi-VN')}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useDetail } from '@/components/detail-drawer';
 import { Printer } from 'lucide-react';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import { formatRelativeDateTime } from '@/lib/datetime';
 import { printReceipt, type ReceiptTemplate } from '@/lib/receipt';
 
@@ -110,6 +111,7 @@ interface PosAction {
 }
 
 export function OrderDetail({ code, embedded }: { code: string; embedded?: boolean }) {
+  const kv = useMe()?.shop.integrations ?? false;
   const { open } = useDetail();
   const [order, setOrder] = useState<Order | null>(null);
   const [actions, setActions] = useState<PosAction[]>([]);
@@ -459,7 +461,7 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
         <div className="space-y-4">
           <Section title="Thông tin">
             <Row label="Mã đơn sàn" value={order.externalCode ?? '–'} />
-            <Row label="Mã hóa đơn KiotViet" value={order.kiotvietInvoiceCode ?? '–'} />
+            {kv && <Row label="Mã hóa đơn KiotViet" value={order.kiotvietInvoiceCode ?? '–'} />}
             <Row label="Tạo lúc" value={dt(order.orderedAt)} />
             <Row label="Hoàn thành" value={dt(order.completedAt)} />
             <Row

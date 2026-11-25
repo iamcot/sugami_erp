@@ -23,8 +23,8 @@ export default function SettingsPage() {
       <ThemePicker />
       <div className="mt-4" />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Link href="/settings/receipts">
-          <Card className="p-4 hover:bg-white/80 dark:hover:bg-white/5">
+        <Link href="/settings/receipts" className="block">
+          <Card className="h-full p-4 hover:bg-white/80 dark:hover:bg-white/5">
             <div className="flex items-center gap-2 font-medium">
               <Receipt className="size-4" /> Mẫu biên lai
             </div>
@@ -34,8 +34,8 @@ export default function SettingsPage() {
           </Card>
         </Link>
         {canUsers && (
-          <Link href="/settings/users">
-            <Card className="p-4 hover:bg-white/80 dark:hover:bg-white/5">
+          <Link href="/settings/users" className="block">
+            <Card className="h-full p-4 hover:bg-white/80 dark:hover:bg-white/5">
               <div className="flex items-center gap-2 font-medium">
                 <Users className="size-4" /> Tài khoản
               </div>
@@ -44,8 +44,8 @@ export default function SettingsPage() {
           </Link>
         )}
         {me?.isPlatformAdmin && (
-          <Link href="/settings/shops">
-            <Card className="p-4 hover:bg-white/80 dark:hover:bg-white/5">
+          <Link href="/settings/shops" className="block">
+            <Card className="h-full p-4 hover:bg-white/80 dark:hover:bg-white/5">
               <div className="flex items-center gap-2 font-medium">
                 <Store className="size-4" /> Các shop
               </div>

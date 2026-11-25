@@ -8,6 +8,7 @@ import { type Column, DataTable } from '@/components/data-table';
 import { useDetail } from '@/components/detail-drawer';
 import { Badge, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import { useQueryState } from '@/lib/use-query-state';
 
 interface CustomerRow {
@@ -106,7 +107,7 @@ function NoteIcon({ note }: { note: string }) {
   );
 }
 
-const columns: Column<CustomerRow>[] = [
+const allColumns: Column<CustomerRow>[] = [
   {
     key: 'name',
     header: 'Khách hàng',
@@ -146,7 +147,7 @@ const columns: Column<CustomerRow>[] = [
   },
   {
     key: 'orders',
-    header: 'Đơn trong Sugami',
+    header: 'Đơn hàng',
     align: 'right',
     className: 'hidden whitespace-nowrap tabular-nums sm:table-cell',
     render: (c) => (c.orders ? `${c.orders} · ${formatVnd(c.spent)}` : '–'),
@@ -165,8 +166,11 @@ const columns: Column<CustomerRow>[] = [
     render: (c) => date(c.lastPurchaseAt),
   },
 ];
+const makeColumns = (kv: boolean) => allColumns.filter((c) => kv || c.key !== 'sales');
 
 function CustomersList() {
+  const kv = useMe()?.shop.integrations ?? false;
+  const columns = makeColumns(kv);
   const { open, selected } = useDetail();
   const [qs, setQs] = useQueryState({ q: '', group: '', sort: 'recent', page: '1' });
   const [search, setSearch] = useState(qs.q);
@@ -260,7 +264,7 @@ function CustomersList() {
         total={res?.total}
         onPage={(p) => setQs({ page: String(p) })}
         loading={loading}
-        empty="Chưa có khách. Nhập file Khách hàng từ KiotViet ở mục KiotViet."
+        empty={kv ? 'Chưa có khách. Nhập file Khách hàng từ KiotViet ở mục KiotViet.' : 'Chưa có khách.'}
       />
     </>
   );

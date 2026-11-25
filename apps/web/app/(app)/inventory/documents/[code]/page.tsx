@@ -8,10 +8,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { DocumentEditor } from '@/components/document-editor';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import { type DocDetail, fmtDateTime, STATUS_LABEL, TYPE_LABEL } from '@/lib/stock-documents';
 
 export default function DocumentPage() {
   const { code } = useParams<{ code: string }>();
+  const kv = useMe()?.shop.integrations ?? false;
   const [d, setD] = useState<DocDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -85,7 +87,7 @@ export default function DocumentPage() {
                 Xác nhận
               </Button>
             </>
-          ) : doc.status === 'confirmed' ? (
+          ) : doc.status === 'confirmed' && kv ? (
             <a href={fileUrl} onClick={() => setTimeout(load, 1500)}>
               <Button>
                 <Download className="size-4" /> Tải file KiotViet
@@ -97,6 +99,7 @@ export default function DocumentPage() {
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge tone={STATUS_LABEL[doc.status].tone}>{STATUS_LABEL[doc.status].label}</Badge>
         {doc.status === 'confirmed' &&
+          kv &&
           (doc.exportedToKiotvietAt ? (
             <Badge tone="brand">Đã xuất KiotViet {fmtDateTime(doc.exportedToKiotvietAt)}</Badge>
           ) : (
@@ -105,7 +108,7 @@ export default function DocumentPage() {
       </div>
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
 
-      {doc.status !== 'cancelled' && d.kiotviet.missingSkus.length > 0 && (
+      {kv && doc.status !== 'cancelled' && d.kiotviet.missingSkus.length > 0 && (
         <Card className="mb-4 flex gap-3 border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40">
           <AlertTriangle className="size-5 shrink-0 text-amber-600" />
           <p>
@@ -179,36 +182,40 @@ export default function DocumentPage() {
 
       {doc.status === 'confirmed' && (
         <Card className="mt-4 p-4 text-sm">
-          <h2 className="font-medium">Đưa sang KiotViet</h2>
-          <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate-600 dark:text-slate-400">
-            <li>
-              Bấm <b>Tải file KiotViet</b> ở trên.
-            </li>
-            <li>
-              Trên KiotViet:{' '}
-              {receipt ? (
-                <>
-                  <b>Hàng hóa → Nhập hàng</b>, tạo phiếu nhập mới
-                </>
-              ) : (
-                <>
-                  <b>Hàng hóa → Kiểm kho</b>, tạo phiếu kiểm kho mới
-                </>
-              )}
-              , chọn nhập từ file Excel, chọn file vừa tải.
-            </li>
-            <li>
-              {receipt
-                ? 'Kiểm tra số lượng và giá rồi bấm Hoàn thành.'
-                : 'KiotViet tự tính chênh lệch theo số đếm; kiểm tra rồi bấm Hoàn thành (cân bằng kho).'}
-            </li>
-          </ol>
-          <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+          {kv && (
+            <>
+              <h2 className="font-medium">Đưa sang KiotViet</h2>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate-600 dark:text-slate-400">
+                <li>
+                  Bấm <b>Tải file KiotViet</b> ở trên.
+                </li>
+                <li>
+                  Trên KiotViet:{' '}
+                  {receipt ? (
+                    <>
+                      <b>Hàng hóa → Nhập hàng</b>, tạo phiếu nhập mới
+                    </>
+                  ) : (
+                    <>
+                      <b>Hàng hóa → Kiểm kho</b>, tạo phiếu kiểm kho mới
+                    </>
+                  )}
+                  , chọn nhập từ file Excel, chọn file vừa tải.
+                </li>
+                <li>
+                  {receipt
+                    ? 'Kiểm tra số lượng và giá rồi bấm Hoàn thành.'
+                    : 'KiotViet tự tính chênh lệch theo số đếm; kiểm tra rồi bấm Hoàn thành (cân bằng kho).'}
+                </li>
+              </ol>
+            </>
+          )}
+          <div className={`${kv ? 'mt-4 border-t border-slate-100 pt-3 dark:border-slate-800' : ''}`}>
             {askCancel ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span>
-                  Hủy phiếu sẽ đảo lại tồn trong Sugami
-                  {doc.exportedToKiotvietAt ? '; phiếu bên KiotViet bạn phải hủy tay' : ''}.
+                  Hủy phiếu sẽ đảo lại tồn trong kho
+                  {kv && doc.exportedToKiotvietAt ? '; phiếu bên KiotViet bạn phải hủy tay' : ''}.
                 </span>
                 <Button variant="secondary" disabled={busy} onClick={() => void act('cancel')}>
                   Hủy phiếu
