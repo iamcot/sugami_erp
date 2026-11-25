@@ -226,7 +226,7 @@ export class OrdersController {
       include: {
         channel: true,
         customer: { select: { id: true, kiotvietCode: true, name: true, phone: true } },
-        lines: { orderBy: { sort: 'asc' } },
+        lines: { orderBy: { sort: 'asc' }, include: { components: true } },
       },
     });
     if (!o) throw new NotFoundException('Không tìm thấy đơn');
@@ -255,6 +255,14 @@ export class OrdersController {
           price: Number(l.price),
           lineTotal: Number(l.lineTotal),
           costSnapshot: l.costSnapshot === null ? null : Number(l.costSnapshot),
+          /** Materials used per unit (made-to-order lines of assembly shops). */
+          components: l.components.map((c) => ({
+            variantId: c.variantId,
+            sku: c.sku,
+            name: c.name,
+            qty: Number(c.qty),
+            unitCost: Number(c.unitCost),
+          })),
         })),
       },
     };

@@ -22,6 +22,7 @@ import { MediaModule } from './media/media.module.js';
 import { HealthController } from './health/health.controller.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { UsersController } from './users/users.controller.js';
+import { ShopsController } from './shops/shops.controller.js';
 
 @Module({
   imports: [
@@ -47,6 +48,6 @@ import { UsersController } from './users/users.controller.js';
     PushModule,
     StockDocumentsModule,
   ],
-  controllers: [HealthController, UsersController],
+  controllers: [HealthController, UsersController, ShopsController],
 })
 export class AppModule {}

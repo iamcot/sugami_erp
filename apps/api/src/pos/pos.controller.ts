@@ -13,14 +13,14 @@ import {
   Query,
 } from '@nestjs/common';
 import { toSearchKey } from '@sugami/shared';
-import { Prisma } from '@sugami/db';
+import { currentShopId, Prisma } from '@sugami/db';
 import { z } from 'zod';
 import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { fulfillmentOf, posActions } from './pos-flow.js';
-import { availability, createPosOrder, PosError, runPosAction } from './pos-orders.js';
+import { availability, createPosOrder, PosError, posWarehouse, runPosAction } from './pos-orders.js';
 import { DraftBody, PosPayload } from './pos-schema.js';
 
 const CheckoutBody = z.object({
@@ -37,8 +37,49 @@ interface SearchRow {
   price: bigint;
   option_values: unknown;
   product_name: string;
+  kind: 'goods' | 'material' | 'finished';
+  cost_avg: bigint;
   image: string | null;
   on_hand: Prisma.Decimal | null;
+}
+
+/** Bill of materials of finished variants, for the counter screen to show and edit. */
+async function recipes(db: PrismaService['client'], variantIds: string[]) {
+  const items = variantIds.length
+    ? await db.comboItem.findMany({
+        where: { comboVariantId: { in: variantIds } },
+        select: {
+          comboVariantId: true,
+          quantity: true,
+          component: {
+            select: {
+              id: true,
+              sku: true,
+              costAvg: true,
+              optionValues: true,
+              product: { select: { name: true } },
+            },
+          },
+        },
+      })
+    : [];
+  const out = new Map<
+    string,
+    { variantId: string; sku: string; name: string; qty: number; cost: number }[]
+  >();
+  for (const i of items) {
+    const opts = Object.values((i.component.optionValues ?? {}) as Record<string, unknown>).join(' / ');
+    const list = out.get(i.comboVariantId) ?? [];
+    list.push({
+      variantId: i.component.id,
+      sku: i.component.sku,
+      name: `${i.component.product.name}${opts ? ` - ${opts}` : ''}`,
+      qty: Number(i.quantity),
+      cost: Number(i.component.costAvg),
+    });
+    out.set(i.comboVariantId, list);
+  }
+  return out;
 }
 
 /** Counter sales: product search, several open drafts, checkout into an order. */
@@ -60,19 +101,25 @@ export class PosController {
   /** Variants matching a SKU, barcode or name, with price, image and stock in the sales warehouse. */
   @Get('search')
   @RequirePermissions('orders.write')
-  async search(@Query('q') raw?: string, @Query('inStock') inStock?: string) {
+  async search(
+    @Query('q') raw?: string,
+    @Query('inStock') inStock?: string,
+    @Query('kind') kindRaw?: string,
+  ) {
     const q = (raw ?? '').trim().slice(0, 64);
+    const kind = ['goods', 'material', 'finished'].includes(kindRaw ?? '') ? kindRaw : null;
     const db = this.prisma.client;
-    const wh = await db.warehouse.findUnique({ where: { code: process.env.POS_WAREHOUSE || 'KHO-CHINH' } });
+    const wh = await posWarehouse(db);
     const key = `%${toSearchKey(q)}%`;
     const like = `%${q}%`;
     const rows = await db.$queryRaw<SearchRow[]>`
-      SELECT v.id, v.sku, v.barcode, v.price, v.option_values, p.name AS product_name,
+      SELECT v.id, v.sku, v.barcode, v.price, v.option_values, p.name AS product_name, p.kind, v.cost_avg,
              JSON_UNQUOTE(JSON_EXTRACT(v.image_urls, '$[0]')) AS image, sl.on_hand
       FROM variants v
       JOIN products p ON p.id = v.product_id
       LEFT JOIN stock_levels sl ON sl.variant_id = v.id AND sl.warehouse_id = ${wh?.id ?? ''}
-      WHERE p.status <> 'archived'
+      WHERE p.shop_id = ${currentShopId()} AND p.status <> 'archived'
+        ${kind ? Prisma.sql`AND p.kind = ${kind}` : Prisma.empty}
         ${q ? Prisma.sql`AND (v.sku LIKE ${like} OR v.barcode = ${q} OR p.search_key LIKE ${key} OR p.code LIKE ${like})` : Prisma.empty}
         ${inStock === '1' ? Prisma.sql`AND sl.on_hand > 0` : Prisma.empty}
       ORDER BY p.updated_at DESC, v.sku ASC
@@ -82,8 +129,15 @@ export class PosController {
       wh?.id ?? '',
       rows.map((r) => r.id),
     );
+    const bom = await recipes(
+      db,
+      rows.filter((r) => r.kind === 'finished').map((r) => r.id),
+    );
     return {
       data: rows.map((r) => ({
+        kind: r.kind,
+        cost: Number(r.cost_avg),
+        components: bom.get(r.id) ?? null,
         reserved: avail.get(r.id)?.reserved ?? 0,
         available: avail.get(r.id)?.available ?? 0,
         id: r.id,
@@ -105,7 +159,7 @@ export class PosController {
   async variants(@Body() raw: unknown) {
     const { ids } = parseInput(z.object({ ids: z.array(z.string().max(36)).max(200) }), raw);
     const db = this.prisma.client;
-    const wh = await db.warehouse.findUnique({ where: { code: process.env.POS_WAREHOUSE || 'KHO-CHINH' } });
+    const wh = await posWarehouse(db);
     const vs = await db.variant.findMany({
       where: { id: { in: ids } },
       select: {
@@ -115,7 +169,8 @@ export class PosController {
         price: true,
         optionValues: true,
         imageUrls: true,
-        product: { select: { name: true } },
+        costAvg: true,
+        product: { select: { name: true, kind: true } },
         stockLevels: { where: { warehouseId: wh?.id ?? '' }, select: { onHand: true } },
       },
     });
@@ -124,8 +179,15 @@ export class PosController {
       wh?.id ?? '',
       vs.map((v) => v.id),
     );
+    const bom = await recipes(
+      db,
+      vs.filter((v) => v.product.kind === 'finished').map((v) => v.id),
+    );
     return {
       data: vs.map((v) => ({
+        kind: v.product.kind,
+        cost: Number(v.costAvg),
+        components: bom.get(v.id) ?? null,
         reserved: avail.get(v.id)?.reserved ?? 0,
         available: avail.get(v.id)?.available ?? 0,
         id: v.id,
@@ -205,7 +267,7 @@ export class PosController {
   @Get('orders/:code/actions')
   @RequirePermissions('orders.read')
   async actions(@Param('code') code: string) {
-    const o = await this.prisma.client.order.findUnique({
+    const o = await this.prisma.client.order.findFirst({
       where: { code },
       select: {
         source: true,

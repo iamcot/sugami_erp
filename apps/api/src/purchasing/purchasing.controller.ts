@@ -100,7 +100,7 @@ export class PurchasingController {
   @RequirePermissions('sourcing.write')
   async createSupplier(@Body() raw: unknown) {
     const b = parseInput(SupplierBody, raw);
-    if (await this.db.supplier.findUnique({ where: { name: b.name } }))
+    if (await this.db.supplier.findFirst({ where: { name: b.name } }))
       throw new ConflictException('Nhà cung cấp này đã có');
     const s = await this.db.supplier.create({
       data: { name: b.name, platform: b.platform || null, contact: b.contact || null, note: b.note || null },
@@ -319,7 +319,7 @@ export class PurchasingController {
   // ---- helpers ----
 
   private async load(code: string) {
-    const o = await this.db.purchaseOrder.findUnique({
+    const o = await this.db.purchaseOrder.findFirst({
       where: { code: decodeURIComponent(code) },
       include: {
         supplier: { select: { name: true } },
@@ -352,7 +352,7 @@ export class PurchasingController {
   }
 
   private async warehouse(code = 'KHO-CHINH') {
-    const w = await this.db.warehouse.findUnique({ where: { code } });
+    const w = await this.db.warehouse.findFirst({ where: { code } });
     if (!w || !w.isActive) throw new BadRequestException('Không tìm thấy kho');
     return w;
   }

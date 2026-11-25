@@ -83,14 +83,14 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
     const real = await syncPancakeOrders(db, [mk(1)], opts());
     expect(real).toMatchObject({ created: 1, errors: [], unknownSkus: [] });
     expect(await onHand()).toBe(8);
-    const o = await db.order.findUniqueOrThrow({
+    const o = await db.order.findFirstOrThrow({
       where: { code: `PCT${run}1` },
       include: { lines: true, channel: true },
     });
     expect(o).toMatchObject({ source: 'pancake', externalCode: `SN${run}1`, channel: { code: 'shopee' } });
     expect(o.lines[0]).toMatchObject({ sku, variantId });
     expect(Number(o.total)).toBe(300000);
-    const buyer = await db.customer.findUniqueOrThrow({
+    const buyer = await db.customer.findFirstOrThrow({
       where: { externalKey: `shopee:buyer${run.toLowerCase()}` },
     });
     expect(buyer.name).toBe(`Buyer${run}`);
@@ -106,7 +106,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
     const cancelled = await syncPancakeOrders(db, [mk(1, { status: 'cancelled' })], opts());
     expect(cancelled).toMatchObject({ updated: 1, stock: { reversed: 1 } });
     expect(await onHand()).toBe(10);
-    expect((await db.order.findUniqueOrThrow({ where: { code: `PCT${run}1` } })).status).toBe('cancelled');
+    expect((await db.order.findFirstOrThrow({ where: { code: `PCT${run}1` } })).status).toBe('cancelled');
     // A second cancellation changes nothing.
     await syncPancakeOrders(db, [mk(1, { status: 'cancelled' })], opts());
     expect(await onHand()).toBe(10);
@@ -123,7 +123,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
   });
 
   it('does not duplicate or re-deduct an order KiotViet already imported', async () => {
-    const channel = await db.channel.findUniqueOrThrow({ where: { code: 'shopee' } });
+    const channel = await db.channel.findFirstOrThrow({ where: { code: 'shopee' } });
     await db.order.create({
       data: {
         code: `HDSPE_SN${run}4`,
@@ -192,7 +192,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
   });
 
   it('enriches an order KiotViet imported: carrier, tracking, and its customer learns the nickname', async () => {
-    const channel = await db.channel.findUniqueOrThrow({ where: { code: 'shopee' } });
+    const channel = await db.channel.findFirstOrThrow({ where: { code: 'shopee' } });
     const kv = await db.customer.create({ data: { kiotvietCode: `KHSPE${run}7`, name: 'T******u' } });
     await db.order.create({
       data: {
@@ -213,7 +213,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
     const r = await syncPancakeOrders(db, [o], opts());
     expect(r).toMatchObject({ created: 0, enriched: 1, customers: { created: 0, linked: 1 } });
     expect(await onHand()).toBe(8);
-    const after = await db.order.findUniqueOrThrow({ where: { code: `HDSPE_SN${run}7` } });
+    const after = await db.order.findFirstOrThrow({ where: { code: `HDSPE_SN${run}7` } });
     expect(after).toMatchObject({ carrier: 'SPX', trackingNo: `SPX${run}`, status: 'confirmed' });
     expect(await db.customer.findUniqueOrThrow({ where: { id: kv.id } })).toMatchObject({
       externalKey: `shopee:nick${run.toLowerCase()}`,
@@ -233,7 +233,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Pancake order sync (MySQL)', () => {
     const back = await syncPancakeOrders(db, [mk(9, { status: 'returned' })], opts());
     expect(back).toMatchObject({ updated: 1, stock: { reversed: 1 } });
     expect(await onHand()).toBe(before);
-    const o = await db.order.findUniqueOrThrow({ where: { code: `PCT${run}9` } });
+    const o = await db.order.findFirstOrThrow({ where: { code: `PCT${run}9` } });
     expect(o).toMatchObject({ status: 'returned', stockAppliedAt: null });
     expect(o.returnHandledAt).not.toBeNull();
     // seeing the same return again changes nothing

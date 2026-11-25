@@ -21,7 +21,7 @@ import {
 } from '@sugami/channels-pancake';
 import { CHAT_LOOKBACK_DAYS, needsAttention } from '@sugami/sync';
 import { z } from 'zod';
-import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
+import { CurrentUser, RequireIntegrations, RequirePermissions } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { parseInput } from '../common/validation.js';
@@ -53,6 +53,7 @@ const CACHE_MS = 10_000;
  * Shop chat (Shopee) through Pancake's Pages API. Nothing is stored in Sugami; the only write is a reply the
  * user types and confirms. Needs a page access token from Pancake → Settings → Tool of the Shopee page.
  */
+@RequireIntegrations()
 @Controller('chat')
 export class ChatController {
   constructor(private readonly prisma: PrismaService) {}

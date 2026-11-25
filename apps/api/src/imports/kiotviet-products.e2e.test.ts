@@ -82,7 +82,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet product import (MySQL)', ()
 
   afterAll(async () => {
     if (db) {
-      const w = await db.warehouse.findUnique({ where: { code: wh } });
+      const w = await db.warehouse.findFirst({ where: { code: wh } });
       if (w) {
         await db.stockMovement.deleteMany({ where: { warehouseId: w.id } });
         await db.stockLevel.deleteMany({ where: { warehouseId: w.id } });
@@ -119,7 +119,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet product import (MySQL)', ()
     const res = await upload(await xlsx(), false).expect(200);
     expect(res.body).toMatchObject({ dryRun: false, products: { created: 2 }, variants: { created: 3 } });
 
-    const product = await db.product.findUniqueOrThrow({
+    const product = await db.product.findFirstOrThrow({
       where: { code: sku('A') },
       include: {
         variants: { orderBy: { sku: 'asc' } },
@@ -141,7 +141,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet product import (MySQL)', ()
       ['MÀU', ['Xanh', 'Đỏ']],
     ]);
 
-    const w = await db.warehouse.findUniqueOrThrow({ where: { code: wh } });
+    const w = await db.warehouse.findFirstOrThrow({ where: { code: wh } });
     const levels = await db.stockLevel.findMany({
       where: { warehouseId: w.id },
       include: { variant: { select: { sku: true } } },
@@ -153,7 +153,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet product import (MySQL)', ()
     });
     const moves = await db.stockMovement.findMany({ where: { warehouseId: w.id } });
     expect(moves.every((m) => m.type === 'kiotviet_import')).toBe(true);
-    expect(Number((await db.variant.findUniqueOrThrow({ where: { sku: sku('C') } })).costAvg)).toBe(30000);
+    expect(Number((await db.variant.findFirstOrThrow({ where: { sku: sku('C') } })).costAvg)).toBe(30000);
     const refs = await db.externalRef.findMany({
       where: { provider: 'kiotviet', externalId: { in: [sku('A'), sku('B'), sku('C')] } },
     });
@@ -161,7 +161,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet product import (MySQL)', ()
   });
 
   it('is idempotent and reports, but does not overwrite, later stock differences', async () => {
-    const w = await db.warehouse.findUniqueOrThrow({ where: { code: wh } });
+    const w = await db.warehouse.findFirstOrThrow({ where: { code: wh } });
     const movesBefore = await db.stockMovement.count({ where: { warehouseId: w.id } });
 
     const same = await upload(await xlsx(), false).expect(200);

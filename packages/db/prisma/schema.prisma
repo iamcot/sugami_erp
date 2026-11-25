@@ -13,12 +13,43 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
+// Shops (tenants). Every business row carries shop_id; the API scopes all queries
+// to the logged-in user's shop (see withShopScope in @sugami/db).
+// ---------------------------------------------------------------------------
+
+enum ShopType {
+  /// Buys goods and resells them as they are (Sugami).
+  retail
+  /// Buys materials and sells finished products made from them (e.g. a flower shop).
+  assembly
+}
+
+model Shop {
+  id           String   @id @default(uuid(7)) @db.Char(36)
+  /// Short stable code, e.g. "sugami".
+  code         String   @unique @db.VarChar(32)
+  name         String   @db.VarChar(191)
+  type         ShopType @default(retail)
+  isActive     Boolean  @default(true) @map("is_active")
+  /// Pancake / KiotViet / chat integrations are configured through env for one shop only (Sugami).
+  integrations Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  users        User[]
+
+  @@map("shops")
+}
+
+// ---------------------------------------------------------------------------
 // Users & access control
 // ---------------------------------------------------------------------------
 
 model User {
   id                String             @id @default(uuid(7)) @db.Char(36)
   email             String             @unique @db.VarChar(191)
+  shopId            String             @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
+  /// Can create shops and their owner accounts (platform operator).
+  isPlatformAdmin   Boolean            @default(false) @map("is_platform_admin")
   name              String             @db.VarChar(191)
   passwordHash      String             @map("password_hash") @db.VarChar(255)
   isActive          Boolean            @default(true) @map("is_active")
@@ -34,7 +65,9 @@ model User {
   roles             UserRole[]
   auditLogs         AuditLog[]
   mediaUploads      MediaAsset[]
+  shop              Shop               @relation(fields: [shopId], references: [id], onDelete: Restrict)
 
+  @@index([shopId])
   @@map("users")
 }
 
@@ -101,9 +134,11 @@ model AuditLog {
 
 model Category {
   id        String     @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId    String     @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   parentId  String?    @map("parent_id") @db.Char(36)
   name      String     @db.VarChar(191)
-  slug      String     @unique @db.VarChar(191)
+  slug      String     @db.VarChar(191)
   sort      Int        @default(0)
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
@@ -111,16 +146,20 @@ model Category {
   children  Category[] @relation("CategoryTree")
   products  Product[]
 
+  @@unique([shopId, slug])
   @@index([parentId])
   @@map("categories")
 }
 
 model Brand {
   id        String    @id @default(uuid(7)) @db.Char(36)
-  name      String    @unique @db.VarChar(191)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId    String    @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
+  name      String    @db.VarChar(191)
   createdAt DateTime  @default(now()) @map("created_at")
   products  Product[]
 
+  @@unique([shopId, name])
   @@map("brands")
 }
 
@@ -130,31 +169,43 @@ enum ProductStatus {
   archived
 }
 
+/// goods: bought and sold as is. material: bought, used up in finished products (not sold alone).
+/// finished: sold, made from materials (bill of materials in combo_items); its stock is not tracked.
+enum ProductKind {
+  goods
+  material
+  finished
+}
+
 model Product {
-  id          String          @id @default(uuid(7)) @db.Char(36)
+  id          String           @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId      String           @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   /// Product code; variant SKUs are built from it (see buildSku in @sugami/shared).
-  code        String          @unique @db.VarChar(64)
-  name        String          @db.VarChar(255)
+  code        String           @db.VarChar(64)
+  name        String           @db.VarChar(255)
   /// Lowercase, diacritic-free name for search ("xe dieu khien").
-  searchKey   String          @map("search_key") @db.VarChar(255)
-  categoryId  String?         @map("category_id") @db.Char(36)
-  brandId     String?         @map("brand_id") @db.Char(36)
-  status      ProductStatus   @default(draft)
-  description String?         @db.Text
+  searchKey   String           @map("search_key") @db.VarChar(255)
+  categoryId  String?          @map("category_id") @db.Char(36)
+  brandId     String?          @map("brand_id") @db.Char(36)
+  status      ProductStatus    @default(draft)
+  kind        ProductKind      @default(goods)
+  description String?          @db.Text
   /// Toy attributes: { ageMin, material, battery, certification, dimensionsMm, ... }
   attributes  Json?
-  unit        String          @default("cái") @db.VarChar(32)
-  weightGrams Int?            @map("weight_grams")
+  unit        String           @default("cái") @db.VarChar(32)
+  weightGrams Int?             @map("weight_grams")
   tags        Json?
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
-  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  brand       Brand?          @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  category    Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand       Brand?           @relation(fields: [brandId], references: [id], onDelete: SetNull)
   options     ProductOption[]
   variants    Variant[]
   media       ProductMedia[]
   contents    ProductContent[]
 
+  @@unique([shopId, code])
   @@index([searchKey])
   @@index([categoryId])
   @@index([status])
@@ -192,31 +243,33 @@ enum VariantStatus {
 
 /// A sellable SKU. Stock, prices, orders and channel listings all hang off variants.
 model Variant {
-  id              String              @id @default(uuid(7)) @db.Char(36)
-  productId       String              @map("product_id") @db.Char(36)
+  id              String                  @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId          String                  @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
+  productId       String                  @map("product_id") @db.Char(36)
   /// SKU = KiotViet product code = seller SKU on Shopee/TikTok.
-  sku             String              @unique @db.VarChar(64)
-  barcode         String?             @unique @db.VarChar(64)
+  sku             String                  @db.VarChar(64)
+  barcode         String?                 @db.VarChar(64)
   /// Option values in option order, e.g. ["Đỏ", "Lớn"].
-  optionValues    Json                @map("option_values")
+  optionValues    Json                    @map("option_values")
   /// Retail price, VND.
-  price           BigInt              @default(0)
+  price           BigInt                  @default(0)
   /// "Was" price shown crossed out, VND.
-  compareAtPrice  BigInt?             @map("compare_at_price")
+  compareAtPrice  BigInt?                 @map("compare_at_price")
   /// Weighted average cost, VND. Maintained by inventory receipts only.
-  costAvg         BigInt              @default(0) @map("cost_avg")
-  weightGrams     Int?                @map("weight_grams")
+  costAvg         BigInt                  @default(0) @map("cost_avg")
+  weightGrams     Int?                    @map("weight_grams")
   /// Image URLs as the source system gave them (KiotViet file), shown as-is; not copied to storage.
-  imageUrls       Json?               @map("image_urls")
-  minStock        Decimal             @default(0) @map("min_stock") @db.Decimal(14, 3)
-  reorderQty      Decimal?            @map("reorder_qty") @db.Decimal(14, 3)
-  status          VariantStatus       @default(active)
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
-  product         Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  imageUrls       Json?                   @map("image_urls")
+  minStock        Decimal                 @default(0) @map("min_stock") @db.Decimal(14, 3)
+  reorderQty      Decimal?                @map("reorder_qty") @db.Decimal(14, 3)
+  status          VariantStatus           @default(active)
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+  product         Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
   unitConversions UnitConversion[]
-  comboItems      ComboItem[]         @relation("ComboParent")
-  usedInCombos    ComboItem[]         @relation("ComboComponent")
+  comboItems      ComboItem[]             @relation("ComboParent")
+  usedInCombos    ComboItem[]             @relation("ComboComponent")
   prices          PriceListItem[]
   stockLevels     StockLevel[]
   media           ProductMedia[]
@@ -225,7 +278,10 @@ model Variant {
   movements       StockMovement[]
   documentLines   StockDocumentLine[]
   purchaseLines   PurchaseOrderLine[]
+  usedInOrders    OrderLineComponent[]
 
+  @@unique([shopId, sku])
+  @@unique([shopId, barcode])
   @@index([productId])
   @@map("variants")
 }
@@ -243,6 +299,7 @@ model UnitConversion {
   @@map("unit_conversions")
 }
 
+/// Combo or bill of materials: a finished variant made of `quantity` of each component (material) per unit.
 model ComboItem {
   comboVariantId     String  @map("combo_variant_id") @db.Char(36)
   componentVariantId String  @map("component_variant_id") @db.Char(36)
@@ -257,12 +314,15 @@ model ComboItem {
 
 model PriceList {
   id        String          @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId    String          @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   name      String          @db.VarChar(191)
   /// Channel code this list applies to (shopee, tiktok, ...), null = general.
   channel   String?         @db.VarChar(32)
   createdAt DateTime        @default(now()) @map("created_at")
   items     PriceListItem[]
 
+  @@index([shopId])
   @@map("price_lists")
 }
 
@@ -309,7 +369,9 @@ enum WarehouseType {
 
 model Warehouse {
   id                String          @id @default(uuid(7)) @db.Char(36)
-  code              String          @unique @db.VarChar(32)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId            String          @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
+  code              String          @db.VarChar(32)
   name              String          @db.VarChar(191)
   type              WarehouseType   @default(warehouse)
   address           String?         @db.VarChar(255)
@@ -323,6 +385,7 @@ model Warehouse {
   orders            Order[]
   incomingTransfers StockDocument[] @relation("DocumentToWarehouse")
 
+  @@unique([shopId, code])
   @@map("warehouses")
 }
 
@@ -402,7 +465,9 @@ enum StockDocumentStatus {
 
 model StockDocument {
   id                   String              @id @default(uuid(7)) @db.Char(36)
-  code                 String              @unique @db.VarChar(32)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId               String              @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
+  code                 String              @db.VarChar(32)
   type                 StockDocumentType
   status               StockDocumentStatus @default(draft)
   warehouseId          String              @map("warehouse_id") @db.Char(36)
@@ -420,6 +485,7 @@ model StockDocument {
   lines                StockDocumentLine[]
   movements            StockMovement[]
 
+  @@unique([shopId, code])
   @@index([type, status])
   @@map("stock_documents")
 }
@@ -459,6 +525,8 @@ enum MediaStatus {
 /// One uploaded file. The bytes live in storage (S3 / local) under storageKey.
 model MediaAsset {
   id           String         @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId       String         @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   kind         MediaKind
   status       MediaStatus    @default(pending)
   /// Full object key, prefix included (e.g. "sugami/media/2026/11/<id>.jpg").
@@ -483,6 +551,7 @@ model MediaAsset {
 
   @@index([status, createdAt])
   @@index([checksum])
+  @@index([shopId])
   @@map("media_assets")
 }
 
@@ -531,24 +600,27 @@ model ProductMedia {
 
 /// A product listing on a marketplace shop (Shopee/TikTok), as Pancake pulled it. Read-only copy.
 model ChannelListing {
-  id         String                  @id @default(uuid(7)) @db.Char(36)
+  id            String                  @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId        String                  @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   /// Where we read it from: pancake (later shopee/tiktok directly).
-  source     String                  @db.VarChar(32)
+  source        String                  @db.VarChar(32)
   /// Marketplace shop name; part of the key because several shops (VN/MY/PH) share one marketplace id.
-  shopKey    String                  @default("") @map("shop_key") @db.VarChar(191)
-  externalId String                  @map("external_id") @db.VarChar(128)
-  marketplaceId String?              @map("marketplace_id") @db.VarChar(32)
-  name       String                  @db.VarChar(512)
-  sku        String?                 @db.VarChar(128)
-  price      BigInt?
-  imageUrl   String?                 @map("image_url") @db.VarChar(1000)
-  syncedAt   DateTime                @map("synced_at")
-  createdAt  DateTime                @default(now()) @map("created_at")
-  updatedAt  DateTime                @updatedAt @map("updated_at")
-  variations ChannelListingVariant[]
+  shopKey       String                  @default("") @map("shop_key") @db.VarChar(191)
+  externalId    String                  @map("external_id") @db.VarChar(128)
+  marketplaceId String?                 @map("marketplace_id") @db.VarChar(32)
+  name          String                  @db.VarChar(512)
+  sku           String?                 @db.VarChar(128)
+  price         BigInt?
+  imageUrl      String?                 @map("image_url") @db.VarChar(1000)
+  syncedAt      DateTime                @map("synced_at")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+  variations    ChannelListingVariant[]
 
   @@unique([source, shopKey, externalId])
   @@index([name(length: 100)])
+  @@index([shopId])
   @@map("channel_listings")
 }
 
@@ -591,8 +663,10 @@ enum ChannelType {
 
 model Channel {
   id             String      @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId         String      @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   /// Stable code used in code and imports: "shopee", "tiktok", "store".
-  code           String      @unique @db.VarChar(32)
+  code           String      @db.VarChar(32)
   type           ChannelType
   name           String      @db.VarChar(191)
   /// Shop id on the marketplace, once connected.
@@ -603,6 +677,7 @@ model Channel {
   updatedAt      DateTime    @updatedAt @map("updated_at")
   orders         Order[]
 
+  @@unique([shopId, code])
   @@map("channels")
 }
 
@@ -611,9 +686,11 @@ model Channel {
 /// marketplace customers they hold the buyer's marketplace username.
 model Customer {
   id             String    @id @default(uuid(7)) @db.Char(36)
-  kiotvietCode   String?   @unique @map("kiotviet_code") @db.VarChar(64)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId         String    @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
+  kiotvietCode   String?   @map("kiotviet_code") @db.VarChar(64)
   /// Marketplace buyer key for customers created from orders, e.g. "shopee:candy532" (lowercase nickname).
-  externalKey    String?   @unique @map("external_key") @db.VarChar(191)
+  externalKey    String?   @map("external_key") @db.VarChar(191)
   name           String?   @db.VarChar(191)
   /// Lowercase, accent-free name + phone + code, for search.
   searchKey      String?   @map("search_key") @db.VarChar(400)
@@ -641,6 +718,8 @@ model Customer {
   updatedAt      DateTime  @updatedAt @map("updated_at")
   orders         Order[]
 
+  @@unique([shopId, kiotvietCode])
+  @@unique([shopId, externalKey])
   @@index([phone])
   @@index([name])
   @@map("customers")
@@ -659,12 +738,14 @@ enum OrderStatus {
 
 model Order {
   id                  String      @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId              String      @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   /// Sugami order code; for KiotViet imports, the invoice code (HDSPE_..., HD000123).
-  code                String      @unique @db.VarChar(64)
+  code                String      @db.VarChar(64)
   channelId           String      @map("channel_id") @db.Char(36)
   /// Order number on the marketplace (Shopee order sn).
   externalCode        String?     @map("external_code") @db.VarChar(64)
-  kiotvietInvoiceCode String?     @unique @map("kiotviet_invoice_code") @db.VarChar(64)
+  kiotvietInvoiceCode String?     @map("kiotviet_invoice_code") @db.VarChar(64)
   kiotvietOrderCode   String?     @map("kiotviet_order_code") @db.VarChar(64)
   customerId          String?     @map("customer_id") @db.Char(36)
   warehouseId         String      @map("warehouse_id") @db.Char(36)
@@ -711,6 +792,8 @@ model Order {
   warehouse           Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   lines               OrderLine[]
 
+  @@unique([shopId, code])
+  @@unique([shopId, kiotvietInvoiceCode])
   @@index([channelId, orderedAt])
   @@index([orderedAt])
   @@index([status])
@@ -719,29 +802,51 @@ model Order {
 }
 
 model OrderLine {
-  id           String   @id @default(uuid(7)) @db.Char(36)
-  orderId      String   @map("order_id") @db.Char(36)
+  id           String               @id @default(uuid(7)) @db.Char(36)
+  orderId      String               @map("order_id") @db.Char(36)
   /// Null when the SKU is unknown in Sugami.
-  variantId    String?  @map("variant_id") @db.Char(36)
-  sku          String   @db.VarChar(64)
-  name         String   @db.VarChar(255)
-  qty          Decimal  @db.Decimal(14, 3)
+  variantId    String?              @map("variant_id") @db.Char(36)
+  sku          String               @db.VarChar(64)
+  name         String               @db.VarChar(255)
+  qty          Decimal              @db.Decimal(14, 3)
   /// List price per unit before line discount, VND.
-  unitPrice    BigInt   @map("unit_price")
+  unitPrice    BigInt               @map("unit_price")
   /// Discount per unit, VND.
-  discount     BigInt   @default(0)
+  discount     BigInt               @default(0)
   /// Selling price per unit after discount, VND.
   price        BigInt
-  lineTotal    BigInt   @map("line_total")
+  lineTotal    BigInt               @map("line_total")
   /// Variant average cost when the line was recorded, VND (for margin).
-  costSnapshot BigInt?  @map("cost_snapshot")
-  sort         Int      @default(0)
-  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  variant      Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  costSnapshot BigInt?              @map("cost_snapshot")
+  sort         Int                  @default(0)
+  order        Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant      Variant?             @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  /// Materials used to make one unit of this line (assembly shops). When present, stock moves for
+  /// the materials instead of the line's own variant.
+  components   OrderLineComponent[]
 
   @@index([orderId])
   @@index([variantId])
   @@map("order_lines")
+}
+
+/// One material used in a finished-product order line, per unit of the line, with its cost at the time.
+model OrderLineComponent {
+  id          String    @id @default(uuid(7)) @db.Char(36)
+  orderLineId String    @map("order_line_id") @db.Char(36)
+  variantId   String    @map("variant_id") @db.Char(36)
+  sku         String    @db.VarChar(64)
+  name        String    @db.VarChar(255)
+  /// Quantity per unit of the order line.
+  qty         Decimal   @db.Decimal(14, 3)
+  /// Material average cost when the order was made, VND per unit of material.
+  unitCost    BigInt    @default(0) @map("unit_cost")
+  orderLine   OrderLine @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
+  variant     Variant   @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([orderLineId])
+  @@index([variantId])
+  @@map("order_line_components")
 }
 
 // ---------------------------------------------------------------------------
@@ -797,6 +902,8 @@ model SyncCursor {
 /// A sale being rung up at the counter, kept on the server so several can be open at once and survive a reload.
 model PosDraft {
   id        String   @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId    String   @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   label     String   @db.VarChar(64)
   /// retail (take away) or delivery (ship to the buyer).
   mode      String   @db.VarChar(16)
@@ -806,12 +913,15 @@ model PosDraft {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([updatedAt])
+  @@index([shopId])
   @@map("pos_drafts")
 }
 
 /// Layout of a printed receipt: an ordered list of blocks (text, order info, lines, totals, divider).
 model ReceiptTemplate {
   id         String   @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId     String   @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   name       String   @db.VarChar(100)
   /// Paper width in mm (58 or 80 for bill printers).
   paperWidth Int      @default(80) @map("paper_width")
@@ -820,6 +930,7 @@ model ReceiptTemplate {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
+  @@index([shopId])
   @@map("receipt_templates")
 }
 
@@ -843,7 +954,9 @@ model ProductContent {
 
 model Supplier {
   id        String          @id @default(uuid(7)) @db.Char(36)
-  name      String          @unique @db.VarChar(191)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId    String          @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
+  name      String          @db.VarChar(191)
   /// Where the goods come from: "taobao", "1688", "local", "agent"...
   platform  String?         @db.VarChar(32)
   contact   String?         @db.VarChar(255)
@@ -852,6 +965,7 @@ model Supplier {
   updatedAt DateTime        @updatedAt @map("updated_at")
   orders    PurchaseOrder[]
 
+  @@unique([shopId, name])
   @@map("suppliers")
 }
 
@@ -865,7 +979,9 @@ enum PurchaseOrderStatus {
 /// A purchase from a supplier. Receiving it books a goods-received document at landed cost.
 model PurchaseOrder {
   id              String              @id @default(uuid(7)) @db.Char(36)
-  code            String              @unique @db.VarChar(32)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId          String              @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
+  code            String              @db.VarChar(32)
   supplierId      String?             @map("supplier_id") @db.Char(36)
   warehouseId     String              @map("warehouse_id") @db.Char(36)
   status          PurchaseOrderStatus @default(draft)
@@ -886,6 +1002,7 @@ model PurchaseOrder {
   lines           PurchaseOrderLine[]
   costs           PurchaseOrderCost[]
 
+  @@unique([shopId, code])
   @@index([status])
   @@map("purchase_orders")
 }
@@ -921,6 +1038,8 @@ model PurchaseOrderCost {
 /// What happened in the background (new order, order cancelled, sync trouble), shown under the bell and sent as push.
 model Notification {
   id        String   @id @default(uuid(7)) @db.Char(36)
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId    String   @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   /// order_new, order_status, order_items, error
   kind      String   @db.VarChar(24)
   title     String   @db.VarChar(191)
@@ -930,6 +1049,7 @@ model Notification {
 
   @@index([createdAt])
   @@index([kind, createdAt])
+  @@index([shopId])
   @@map("notifications")
 }
 
@@ -937,6 +1057,8 @@ model Notification {
 /// this only remembers who is waiting for an answer, what was already announced, and what was checked by hand).
 model ChatConversation {
   /// Pancake conversation id, e.g. spo_6875667_29536412864387988
+  /// Owning shop (tenant). Rows from before multi-shop belong to Sugami.
+  shopId        String    @default("00000000-0000-7000-8000-000000000001") @map("shop_id") @db.Char(36)
   id            String    @id @db.VarChar(128)
   pageId        String    @map("page_id") @db.VarChar(64)
   /// shopee, tiktok, facebook...
@@ -955,5 +1077,6 @@ model ChatConversation {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   @@index([lastFromBuyer, lastMessageAt])
+  @@index([shopId])
   @@map("chat_conversations")
 }

@@ -32,6 +32,7 @@
 | D15 | Sugami **có quản lý khách hàng**: trang Khách hàng, nối với đơn qua mã khách KiotViet. Lưu thông tin khách đúng như file KiotViet xuất (phần lớn đã bị che), không lưu `Ghi chú`. Thay quyết định cũ "chỉ lưu mã khách" | Chủ shop yêu cầu 22/11/2026 và gửi file mẫu |
 | D16 | Giao diện **kính sáng**: bố cục kiểu Gmail, góc vuông, khối kính trong mờ, số liệu font mono, menu nhóm Đơn hàng / Kho / Nền tảng. Màu nhấn chọn trong Cài đặt (mặc định xanh ngọc), có bản kính tối | Chủ shop chốt 23/11/2026 sau khi xem bản mẫu; người dùng chính là nhân viên nữ nên mặc định nền sáng |
 | D17 | Chat Shopee đọc từ Pancake **Pages API** bằng page access token, **polling theo yêu cầu** (cache 20 giây), không bật webhook | Webhook tính 2 trang trong gói cước (Standard chỉ 3 trang); shop dưới 10 đơn/ngày không cần tức thì. Dài hạn thay bằng Shopee/TikTok trực tiếp |
+| D18 | **Nhiều shop trên một hệ thống**: mọi dữ liệu gắn `shop_id`, tài khoản thuộc một shop và chỉ thấy/tạo dữ liệu của shop đó. Shop đầu tiên là Sugami (bán lẻ), giữ toàn bộ dữ liệu cũ. Shop có 2 loại: **bán lẻ** (nhập sao bán vậy) và **thành phẩm từ nguyên liệu** (vd. tiệm hoa: nhập hoa, lá, giấy gói; bán bó hoa). Thành phẩm có định mức nguyên liệu; lúc bán chọn/sửa nguyên liệu, nhập giá bán, hệ thống tính giá vốn từ nguyên liệu và lời/lỗ; kho trừ nguyên liệu, không trừ thành phẩm. Chỉ quản trị hệ thống (chủ shop Sugami) tạo shop mới kèm tài khoản chủ shop. Pancake/sàn/KiotViet chỉ dành cho Sugami | Chủ shop yêu cầu 25/11/2026 để phục vụ thêm các shop khác |
 
 ## 8.3 Câu hỏi còn mở
 

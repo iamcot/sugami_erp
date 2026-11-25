@@ -1,5 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { Prisma } from '@sugami/db';
+import { currentShopId, Prisma } from '@sugami/db';
 import { toSearchKey } from '@sugami/shared';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
@@ -51,7 +51,12 @@ export class InventoryController {
   @RequirePermissions('inventory.read')
   async list(@Query() rawQuery: unknown) {
     const q = parseInput(ListQuery, rawQuery);
-    const conds: Prisma.Sql[] = [Prisma.sql`p.status <> 'archived'`];
+    // finished products of assembly shops have no stock of their own (their materials do)
+    const conds: Prisma.Sql[] = [
+      Prisma.sql`p.shop_id = ${currentShopId()}`,
+      Prisma.sql`p.status <> 'archived'`,
+      Prisma.sql`p.kind <> 'finished'`,
+    ];
     if (q.q) {
       conds.push(
         Prisma.sql`(p.search_key LIKE ${`%${toSearchKey(q.q)}%`} OR v.sku LIKE ${`%${q.q}%`} OR v.barcode = ${q.q})`,

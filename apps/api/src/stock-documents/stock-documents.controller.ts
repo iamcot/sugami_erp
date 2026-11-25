@@ -14,7 +14,13 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { productTemplateFile, purchaseOrderFile, stockTakeFile } from '@sugami/channels-kiotviet';
-import { cancelStockDocument, confirmStockDocument, Prisma, StockDocumentError } from '@sugami/db';
+import {
+  cancelStockDocument,
+  confirmStockDocument,
+  currentShopId,
+  Prisma,
+  StockDocumentError,
+} from '@sugami/db';
 import { z } from 'zod';
 import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
@@ -141,7 +147,7 @@ export class StockDocumentsController {
   @RequirePermissions('inventory.write')
   async create(@Body() body: unknown, @CurrentUser() user: AuthUser) {
     const input = parseInput(Input, body);
-    const warehouse = await this.db.warehouse.findUnique({
+    const warehouse = await this.db.warehouse.findFirst({
       where: { code: input.warehouseCode ?? 'KHO-CHINH' },
     });
     if (!warehouse || !warehouse.isActive) throw new BadRequestException('Không tìm thấy kho');
@@ -254,7 +260,7 @@ export class StockDocumentsController {
   // ---- helpers ----
 
   private async load(code: string) {
-    const d = await this.db.stockDocument.findUnique({
+    const d = await this.db.stockDocument.findFirst({
       where: { code },
       include: {
         warehouse: true,
@@ -346,7 +352,7 @@ export class StockDocumentsController {
       JOIN products p ON p.id = v.product_id AND p.status <> 'archived'
       LEFT JOIN categories c ON c.id = p.category_id
       LEFT JOIN brands b ON b.id = p.brand_id
-      WHERE v.status = 'active'
+      WHERE v.shop_id = ${currentShopId()} AND v.status = 'active'
         AND NOT EXISTS (SELECT 1 FROM external_refs r WHERE r.provider = 'kiotviet' AND r.entity_type = 'variant' AND r.entity_id = v.id)
       ORDER BY p.code, v.sku`;
     if (rows.length === 0) return [];

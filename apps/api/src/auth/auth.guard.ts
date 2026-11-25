@@ -9,7 +9,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { AuthService } from './auth.service.js';
 import { type AuthUser, SESSION_COOKIE } from './auth.types.js';
-import { IS_PUBLIC, PERMISSIONS } from './decorators.js';
+import { IS_PUBLIC, NEEDS_INTEGRATIONS, PERMISSIONS, PLATFORM_ADMIN } from './decorators.js';
 import { hasPermission } from './permissions.js';
 
 /** Global guard: every route needs a valid session unless marked @Public(); checks @RequirePermissions(). */
@@ -33,6 +33,10 @@ export class AuthGuard implements CanActivate {
     const required = this.reflector.getAllAndOverride<string[]>(PERMISSIONS, targets) ?? [];
     const missing = required.filter((p) => !hasPermission(user.permissions, p));
     if (missing.length) throw new ForbiddenException(`Không có quyền: ${missing.join(', ')}`);
+    if (this.reflector.getAllAndOverride<boolean>(NEEDS_INTEGRATIONS, targets) && !user.shop.integrations)
+      throw new ForbiddenException('Shop chưa được kết nối Pancake / sàn');
+    if (this.reflector.getAllAndOverride<boolean>(PLATFORM_ADMIN, targets) && !user.isPlatformAdmin)
+      throw new ForbiddenException('Chỉ quản trị hệ thống mới làm được việc này');
     return true;
   }
 }

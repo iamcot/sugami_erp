@@ -2,12 +2,26 @@
 
 Các bảng chính, nhóm theo module. Cơ sở dữ liệu: **MySQL 8.4**, InnoDB, `utf8mb4` / `utf8mb4_0900_ai_ci`. Mọi bảng có `id` (UUID v7 lưu `BINARY(16)`, hoặc `BIGINT` tự tăng nếu muốn đơn giản), `created_at`, `updated_at`, `created_by`. Tiền lưu `BIGINT` theo đồng (VND không có số lẻ; CNY lưu theo xu), số lượng `DECIMAL(14,3)` để hỗ trợ đơn vị lẻ. Các cột ghi `jsonb` hay `text[]` bên dưới là kiểu `JSON` trong MySQL.
 
+## 4.0 Shop (nhiều shop trên một hệ thống)
+
+```
+shop                (id, code UNIQUE, name, type[retail|assembly], is_active, integrations)
+user                (..., shop_id → shop, is_platform_admin)
+```
+
+- Mỗi bảng nghiệp vụ có cột `shop_id` (sản phẩm, biến thể, nhóm hàng, thương hiệu, kho, phiếu kho, kênh, khách, đơn, đơn nháp, mẫu biên lai, NCC, đơn mua, media, tin đăng sàn, thông báo, chat). Bảng con (dòng đơn, tồn kho, sổ kho, dòng phiếu...) lọc theo bảng cha.
+- Mã chỉ duy nhất **trong một shop**: `(shop_id, code)` cho sản phẩm, kho, kênh, đơn, phiếu, đơn mua; `(shop_id, sku)` và `(shop_id, barcode)` cho biến thể; `(shop_id, name)` cho thương hiệu, NCC. Hai shop dùng trùng mã được.
+- Shop đầu tiên là **Sugami** (id cố định `00000000-0000-7000-8000-000000000001`, loại bán lẻ). Migration `multi_shop` tạo shop này, gắn toàn bộ dữ liệu và tài khoản cũ vào nó; id này cũng là giá trị mặc định của mọi cột `shop_id`, nên việc chạy nền (Pancake) và script vẫn ghi vào Sugami.
+- API tự giới hạn mọi truy vấn trong shop của người đăng nhập (`withShopScope` + `runAsShop` trong `@sugami/db`, đặt theo từng request ở `ShopInterceptor`). SQL viết tay phải tự thêm `shop_id = ${currentShopId()}`.
+- `type`: `retail` = nhập sao bán vậy; `assembly` = nhập nguyên liệu, bán thành phẩm làm từ nguyên liệu (vd. tiệm hoa). `integrations`: shop dùng Pancake/sàn/KiotViet cấu hình trong `.env` (chỉ Sugami); shop khác bị chặn các API đó.
+- `is_platform_admin`: người tạo được shop mới và tài khoản chủ shop (chủ shop Sugami).
+
 ## 4.1 Sản phẩm (catalog)
 
 ```
 category            (id, parent_id, name, slug, sort, external_ids jsonb)
 brand               (id, name)
-product             (id, code, name, category_id, brand_id, status[draft|active|archived],
+product             (id, shop_id, code, name, kind[goods|material|finished], category_id, brand_id, status[draft|active|archived],
                      description_base, attributes jsonb, unit, weight_g, dims_mm jsonb,
                      tags text[], origin, hs_note)   -- attributes đồ chơi: age_min, material, battery, cert_cr...
 product_option      (id, product_id, name)            -- vd: Màu, Size
@@ -16,10 +30,12 @@ variant (SKU)       (id, product_id, sku UNIQUE, barcode, option_values jsonb,
                      price_retail, price_compare, cost_avg, weight_g,
                      min_stock, reorder_qty, status)
 unit_conversion     (id, variant_id, unit, factor, barcode)   -- hộp = 12 cái
-combo_item          (combo_variant_id, component_variant_id, qty)
+combo_item          (combo_variant_id, component_variant_id, qty)   -- combo, hoặc định mức nguyên liệu của thành phẩm
 price_list          (id, name, channel_id?, currency)
 price_list_item     (price_list_id, variant_id, price, valid_from, valid_to)
 ```
+
+- `kind`: `goods` hàng hóa nhập sao bán vậy; `material` nguyên liệu (nhập kho, dùng làm thành phẩm); `finished` thành phẩm: **không có tồn riêng**, định mức nguyên liệu cho 1 sản phẩm nằm ở `combo_item`.
 
 ## 4.2 Kho & xuất nhập tồn
 
@@ -90,6 +106,8 @@ order               (id, code, channel_id, external_code, kiotviet_order_id, kio
                      total, cod_amount, ordered_at, warehouse_id, internal_note, tags)
 order_line          (id, order_id, variant_id, sku_snapshot, name_snapshot, qty,
                      unit_price, discount, cost_snapshot)
+order_line_component(id, order_line_id, variant_id, sku, name, qty, unit_cost)
+                     -- nguyên liệu cho 1 đơn vị của dòng (shop thành phẩm); trừ kho theo các dòng này
 shipment            (id, order_id, carrier, tracking_no, status, fee, packed_by, packed_at)
 return_request      (id, order_id, reason, status, refund_amount, restock bool)
 customer            (id, name, phone, email, address jsonb, kiotviet_customer_id, tags)

@@ -1,5 +1,5 @@
 import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
-import { Prisma } from '@sugami/db';
+import { currentShopId, Prisma } from '@sugami/db';
 import { toSearchKey } from '@sugami/shared';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
@@ -15,6 +15,8 @@ const ListQuery = z.object({
   view: z.enum(['all', 'active', 'draft', 'archived', 'out', 'negative', 'low']).default('all'),
   /** no_pancake = some variant is not on Pancake; on_market = some variant is linked to a Shopee/TikTok listing. */
   link: z.enum(['all', 'no_pancake', 'on_market']).default('all'),
+  /** goods | material | finished (assembly shops list materials and finished products apart). */
+  kind: z.enum(['goods', 'material', 'finished']).optional(),
   sort: z.enum(['name', 'code', 'stock', 'price', 'updated']).default('updated'),
   dir: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().int().min(1).default(1),
@@ -34,6 +36,7 @@ interface Row {
   code: string;
   name: string;
   status: string;
+  kind: string;
   category: string | null;
   variant_count: bigint;
   image: string | null;
@@ -74,7 +77,9 @@ export class ProductsController {
   @RequirePermissions('catalog.read')
   async list(@Query() rawQuery: unknown) {
     const q = parseInput(ListQuery, rawQuery);
-    const where: Prisma.Sql[] = [];
+    const shopId = currentShopId();
+    const where: Prisma.Sql[] = [Prisma.sql`p.shop_id = ${shopId}`];
+    if (q.kind) where.push(Prisma.sql`p.kind = ${q.kind}`);
     if (q.q) {
       const key = `%${toSearchKey(q.q)}%`;
       const raw = `%${q.q}%`;
@@ -107,7 +112,7 @@ export class ProductsController {
     };
     const whereSql = where.length ? Prisma.sql`WHERE ${Prisma.join(where, ' AND ')}` : Prisma.empty;
     const base = Prisma.sql`
-      SELECT p.id, p.code, p.name, p.status, c.name AS category, p.updated_at,
+      SELECT p.id, p.code, p.name, p.status, p.kind, c.name AS category, p.updated_at,
              COUNT(vs.id) AS variant_count, MAX(vs.image) AS image, MIN(vs.price) AS price_min, MAX(vs.price) AS price_max,
              COALESCE(SUM(vs.on_hand), 0) AS on_hand,
              SUM(vs.on_hand < 0) AS negative_skus,
@@ -118,6 +123,7 @@ export class ProductsController {
         SELECT v.id, v.product_id, v.price, v.min_stock, JSON_UNQUOTE(JSON_EXTRACT(v.image_urls, '$[0]')) AS image,
                COALESCE(SUM(sl.on_hand), 0) AS on_hand
         FROM variants v LEFT JOIN stock_levels sl ON sl.variant_id = v.id
+        WHERE v.shop_id = ${shopId}
         GROUP BY v.id
       ) vs ON vs.product_id = p.id
       ${whereSql}
@@ -148,6 +154,7 @@ export class ProductsController {
         code: r.code,
         name: r.name,
         status: r.status,
+        kind: r.kind,
         category: r.category,
         variantCount: n(r.variant_count),
         image: coverUrl.get(coverKey.get(r.id) ?? '') ?? r.image ?? null,
@@ -217,8 +224,10 @@ export class ProductsController {
         FROM products p
         LEFT JOIN (
           SELECT v.id, v.product_id, v.min_stock, COALESCE(SUM(sl.on_hand), 0) AS on_hand
-          FROM variants v LEFT JOIN stock_levels sl ON sl.variant_id = v.id GROUP BY v.id
+          FROM variants v LEFT JOIN stock_levels sl ON sl.variant_id = v.id
+          WHERE v.shop_id = ${currentShopId()} GROUP BY v.id
         ) vs ON vs.product_id = p.id
+        WHERE p.shop_id = ${currentShopId()}
         GROUP BY p.id
       ) t`;
     return Object.fromEntries(Object.entries(r ?? {}).map(([k, v]) => [k, Number(v ?? 0)]));
@@ -236,7 +245,22 @@ export class ProductsController {
         options: { orderBy: { sort: 'asc' }, select: { name: true } },
         variants: {
           orderBy: { sku: 'asc' },
-          include: { stockLevels: { include: { warehouse: { select: { code: true, name: true } } } } },
+          include: {
+            stockLevels: { include: { warehouse: { select: { code: true, name: true } } } },
+            comboItems: {
+              include: {
+                component: {
+                  select: {
+                    id: true,
+                    sku: true,
+                    costAvg: true,
+                    optionValues: true,
+                    product: { select: { name: true, unit: true } },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     });
@@ -271,6 +295,8 @@ export class ProductsController {
         code: product.code,
         name: product.name,
         status: product.status,
+        kind: product.kind,
+        unit: product.unit,
         description: product.description,
         category: product.category,
         brand: product.brand,
@@ -302,6 +328,19 @@ export class ProductsController {
           status: v.status,
           onHand: v.stockLevels.reduce((a, s) => a + Number(s.onHand), 0),
           stock: v.stockLevels.map((s) => ({ warehouse: s.warehouse.code, onHand: Number(s.onHand) })),
+          /** Bill of materials (finished products): materials per unit and the cost they add up to. */
+          components: v.comboItems.map((c) => ({
+            variantId: c.component.id,
+            sku: c.component.sku,
+            name: c.component.product.name,
+            optionValues: c.component.optionValues,
+            unit: c.component.product.unit,
+            qty: Number(c.quantity),
+            cost: Number(c.component.costAvg),
+          })),
+          materialCost: Math.round(
+            v.comboItems.reduce((a, c) => a + Number(c.quantity) * Number(c.component.costAvg), 0),
+          ),
         })),
       },
     };

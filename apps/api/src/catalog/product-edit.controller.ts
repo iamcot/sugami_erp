@@ -8,8 +8,9 @@ import {
   Param,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
-import { Prisma } from '@sugami/db';
+import { currentShopId, Prisma } from '@sugami/db';
 import { buildSku, toSearchKey, variantMatrix } from '@sugami/shared';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
@@ -29,11 +30,25 @@ const VariantInput = z.object({
   minStock: z.number().min(0).max(1_000_000).default(0),
 });
 
+const Kind = z.enum(['goods', 'material', 'finished']);
+const Unit = Text(32).min(1);
+
+/** Bill of materials: quantity of each material for one unit of the finished variant. */
+const Components = z
+  .array(z.object({ variantId: Text(36).min(1), qty: z.number().positive().max(100_000) }))
+  .max(50);
+
 const CreateBody = z.object({
   /** Empty = next SP number. */
   code: Text(64).optional(),
   name: Text(255).min(1, 'Nhập tên sản phẩm'),
   status: z.enum(['draft', 'active']).default('active'),
+  /** goods (resold as is), material (used in finished products), finished (made from materials). */
+  kind: Kind.default('goods'),
+  /** Unit sold/counted in: cái, cành, bó, mét... */
+  unit: Unit.optional(),
+  /** Finished products: materials of one unit, applied to every variant created. */
+  components: Components.optional(),
   description: Text(20_000).nullish(),
   categoryId: Text(36).nullish(),
   brand: Text(191).nullish(),
@@ -48,6 +63,8 @@ const CreateBody = z.object({
 
 const UpdateBody = z.object({
   name: Text(255).min(1).optional(),
+  kind: Kind.optional(),
+  unit: Unit.optional(),
   status: z.enum(['draft', 'active', 'archived']).optional(),
   description: Text(20_000).nullable().optional(),
   categoryId: Text(36).nullable().optional(),
@@ -102,14 +119,14 @@ export class ProductEditController {
   /** Next free "SP000123" style code. */
   private async nextCode(): Promise<string> {
     const rows = await this.db.$queryRaw<{ n: unknown }[]>`
-      SELECT MAX(CAST(SUBSTRING(code, 3) AS UNSIGNED)) AS n FROM products WHERE code REGEXP '^SP[0-9]+$'`;
+      SELECT MAX(CAST(SUBSTRING(code, 3) AS UNSIGNED)) AS n FROM products WHERE shop_id = ${currentShopId()} AND code REGEXP '^SP[0-9]+$'`;
     return `SP${String(Number(rows[0]?.n ?? 0) + 1).padStart(6, '0')}`;
   }
 
   private async brandId(name: string | null | undefined): Promise<string | null | undefined> {
     if (name === undefined) return undefined;
     if (!name) return null;
-    const found = await this.db.brand.findUnique({ where: { name } });
+    const found = await this.db.brand.findFirst({ where: { name } });
     return (found ?? (await this.db.brand.create({ data: { name } }))).id;
   }
 
@@ -137,8 +154,7 @@ export class ProductEditController {
     const code = (b.code || (await this.nextCode())).toUpperCase().replace(/\s+/g, '');
     if (!/^[A-Z0-9][A-Z0-9._-]*$/.test(code))
       throw new BadRequestException('Mã sản phẩm chỉ gồm chữ, số, - . _');
-    if (await this.db.product.findUnique({ where: { code } }))
-      throw new ConflictException(`Mã ${code} đã có`);
+    if (await this.db.product.findFirst({ where: { code } })) throw new ConflictException(`Mã ${code} đã có`);
 
     const optionNames = b.options.map((o) => o.name);
     if (new Set(optionNames).size !== optionNames.length)
@@ -173,6 +189,7 @@ export class ProductEditController {
     const brandId = await this.brandId(b.brand);
     if (b.categoryId && !(await this.db.category.findUnique({ where: { id: b.categoryId } })))
       throw new BadRequestException('Nhóm hàng không tồn tại');
+    const components = b.kind === 'finished' ? await this.checkComponents(b.components ?? []) : [];
 
     const product = await this.db.product.create({
       data: {
@@ -180,6 +197,8 @@ export class ProductEditController {
         name: b.name,
         searchKey: toSearchKey(b.name).slice(0, 255),
         status: b.status,
+        kind: b.kind,
+        ...(b.unit ? { unit: b.unit } : {}),
         description: b.description || null,
         categoryId: b.categoryId || null,
         brandId: brandId ?? null,
@@ -197,6 +216,16 @@ export class ProductEditController {
             optionValues: r.optionValues,
             price: BigInt(r.price),
             minStock: new Prisma.Decimal(r.minStock),
+            ...(components.length
+              ? {
+                  comboItems: {
+                    create: components.map((c) => ({
+                      componentVariantId: c.variantId,
+                      quantity: new Prisma.Decimal(c.qty),
+                    })),
+                  },
+                }
+              : {}),
           })),
         },
       },
@@ -209,7 +238,7 @@ export class ProductEditController {
   @RequirePermissions('catalog.write')
   async update(@Param('code') code: string, @Body() raw: unknown) {
     const b = parseInput(UpdateBody, raw);
-    const p = await this.db.product.findUnique({
+    const p = await this.db.product.findFirst({
       where: { code: decodeURIComponent(code) },
       select: { id: true },
     });
@@ -220,6 +249,8 @@ export class ProductEditController {
       data: {
         ...(b.name !== undefined ? { name: b.name, searchKey: toSearchKey(b.name).slice(0, 255) } : {}),
         ...(b.status !== undefined ? { status: b.status } : {}),
+        ...(b.kind !== undefined ? { kind: b.kind } : {}),
+        ...(b.unit !== undefined ? { unit: b.unit } : {}),
         ...(b.description !== undefined ? { description: b.description || null } : {}),
         ...(b.categoryId !== undefined ? { categoryId: b.categoryId || null } : {}),
         ...(brandId !== undefined ? { brandId } : {}),
@@ -232,7 +263,7 @@ export class ProductEditController {
   @RequirePermissions('catalog.write')
   async updateVariant(@Param('sku') sku: string, @Body() raw: unknown) {
     const b = parseInput(VariantUpdate, raw);
-    const v = await this.db.variant.findUnique({
+    const v = await this.db.variant.findFirst({
       where: { sku: decodeURIComponent(sku) },
       select: { id: true },
     });
@@ -254,12 +285,54 @@ export class ProductEditController {
     return { ok: true };
   }
 
+  /** Materials must exist in this shop, be materials (or goods), and not repeat. */
+  private async checkComponents(list: z.infer<typeof Components>, selfId?: string) {
+    const ids = list.map((c) => c.variantId);
+    if (new Set(ids).size !== ids.length) throw new BadRequestException('Có nguyên liệu bị trùng');
+    if (selfId && ids.includes(selfId))
+      throw new BadRequestException('Thành phẩm không thể là nguyên liệu của chính nó');
+    const found = await this.db.variant.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, sku: true, product: { select: { kind: true } } },
+    });
+    if (found.length !== ids.length) throw new BadRequestException('Có nguyên liệu không tồn tại');
+    const bad = found.find((v) => v.product.kind === 'finished');
+    if (bad) throw new BadRequestException(`${bad.sku} là thành phẩm, không dùng làm nguyên liệu được`);
+    return list;
+  }
+
+  /** Replace the bill of materials of a finished variant (materials per unit). */
+  @Put('variants/:sku/components')
+  @RequirePermissions('catalog.write')
+  async setComponents(@Param('sku') sku: string, @Body() raw: unknown) {
+    const list = parseInput(z.object({ components: Components }), raw).components;
+    const v = await this.db.variant.findFirst({
+      where: { sku: decodeURIComponent(sku) },
+      select: { id: true, product: { select: { kind: true } } },
+    });
+    if (!v) throw new NotFoundException('Không thấy biến thể');
+    if (v.product.kind !== 'finished')
+      throw new BadRequestException('Chỉ sản phẩm loại thành phẩm mới có định mức nguyên liệu');
+    await this.checkComponents(list, v.id);
+    await this.db.$transaction([
+      this.db.comboItem.deleteMany({ where: { comboVariantId: v.id } }),
+      this.db.comboItem.createMany({
+        data: list.map((c) => ({
+          comboVariantId: v.id,
+          componentVariantId: c.variantId,
+          quantity: new Prisma.Decimal(c.qty),
+        })),
+      }),
+    ]);
+    return { ok: true, components: list.length };
+  }
+
   /** Add one more variant to an existing product; new option values are added to the product's options. */
   @Post('products/:code/variants')
   @RequirePermissions('catalog.write')
   async addVariant(@Param('code') code: string, @Body() raw: unknown) {
     const b = parseInput(AddVariant, raw);
-    const p = await this.db.product.findUnique({
+    const p = await this.db.product.findFirst({
       where: { code: decodeURIComponent(code) },
       include: { options: { orderBy: { sort: 'asc' }, include: { values: true } } },
     });

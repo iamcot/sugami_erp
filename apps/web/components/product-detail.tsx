@@ -10,6 +10,8 @@ import { ProductContent } from '@/components/product-content';
 import { PancakePush } from '@/components/pancake-push';
 import { useDetail } from '@/components/detail-drawer';
 import { api } from '@/lib/api';
+import { KIND_LABEL, type ProductKind, useMe } from '@/lib/me';
+import { type Material, MaterialsEditor, materialsCost, ProfitLine } from '@/components/materials-editor';
 import { formatRelativeDateTime } from '@/lib/datetime';
 
 interface Variant {
@@ -24,12 +26,23 @@ interface Variant {
   status: string;
   onHand: number;
   stock: { warehouse: string; onHand: number }[];
+  components: {
+    variantId: string;
+    sku: string;
+    name: string;
+    optionValues: unknown;
+    qty: number;
+    cost: number;
+  }[];
+  materialCost: number;
 }
 interface Product {
   id: string;
   code: string;
   name: string;
   status: 'active' | 'draft' | 'archived';
+  kind: ProductKind;
+  unit: string;
   description: string | null;
   category: { id?: string; name: string } | null;
   brand: { name: string } | null;
@@ -120,8 +133,96 @@ const dt = (iso: string) =>
 const show = (v: unknown) =>
   v === null || v === undefined || v === '' ? '–' : Array.isArray(v) ? v.join(' / ') : String(v);
 
+const optText = (v: unknown) => Object.values((v ?? {}) as Record<string, unknown>).join(' / ');
+
+/** Bill of materials of one finished variant: shown with its cost and profit, editable in place. */
+function RecipeCard({
+  variant: v,
+  title,
+  onSaved,
+}: {
+  variant: Variant;
+  title: string | null;
+  onSaved: () => void;
+}) {
+  const initial = (): Material[] =>
+    v.components.map((c) => ({
+      variantId: c.variantId,
+      sku: c.sku,
+      name: `${c.name}${optText(c.optionValues) ? ` - ${optText(c.optionValues)}` : ''}`,
+      qty: c.qty,
+      cost: c.cost,
+    }));
+  const [list, setList] = useState<Material[]>(initial);
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/variants/${encodeURIComponent(v.sku)}/components`, {
+        method: 'PUT',
+        json: {
+          components: list.filter((m) => m.qty > 0).map((m) => ({ variantId: m.variantId, qty: m.qty })),
+        },
+      });
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card className="mb-4 p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium">Định mức nguyên liệu{title ? ` · ${title}` : ''}</h2>
+        {!editing ? (
+          <Button variant="secondary" onClick={() => setEditing(true)}>
+            Sửa định mức
+          </Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => (setList(initial()), setEditing(false))}>
+              Hủy
+            </Button>
+            <Button onClick={() => void save()} disabled={busy}>
+              {busy ? 'Đang lưu…' : 'Lưu'}
+            </Button>
+          </div>
+        )}
+      </div>
+      {editing ? (
+        <MaterialsEditor value={list} onChange={setList} />
+      ) : v.components.length ? (
+        <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+          {list.map((m) => (
+            <li key={m.variantId} className="flex items-center gap-3 py-1.5">
+              <span className="min-w-0 flex-1 truncate">{m.name}</span>
+              <span className="font-mono text-xs text-slate-500">× {m.qty.toLocaleString('vi-VN')}</span>
+              <span className="w-28 text-right font-mono text-xs tabular-nums">
+                {formatVnd(Math.round(m.qty * m.cost))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-amber-700">
+          Chưa có định mức: thêm nguyên liệu để bán được và tính lời lỗ.
+        </p>
+      )}
+      <div className="mt-3">
+        <ProfitLine price={v.price} cost={editing ? materialsCost(list) : v.materialCost} />
+      </div>
+      {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+    </Card>
+  );
+}
+
 export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
   const { open } = useDetail();
+  const me = useMe();
   const [product, setProduct] = useState<Product | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -163,9 +264,12 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
             <Button variant="secondary" onClick={() => setEditing((e) => !e)}>
               Sửa
             </Button>
-            <Button variant="secondary" onClick={() => setPancakeOpen((o) => !o)}>
-              <CloudUpload className="size-4" /> Pancake
-            </Button>
+            {me?.shop.integrations && (
+              <Button variant="secondary" onClick={() => setPancakeOpen((o) => !o)}>
+                <CloudUpload className="size-4" /> Pancake
+              </Button>
+            )}
+            {product.kind !== 'goods' && <Badge tone="brand">{KIND_LABEL[product.kind]}</Badge>}
             <Badge tone={product.status === 'active' ? 'success' : 'neutral'}>
               {product.status === 'active' ? 'Đang bán' : product.status === 'draft' ? 'Nháp' : 'Lưu trữ'}
             </Badge>
@@ -191,6 +295,16 @@ export function ProductDetail({ code }: { code: string; embedded?: boolean }) {
           </Card>
         ))}
       </div>
+
+      {product.kind === 'finished' &&
+        product.variants.map((v) => (
+          <RecipeCard
+            key={v.id}
+            variant={v}
+            title={product.variants.length > 1 ? v.optionValues.join(' / ') || v.sku : null}
+            onSaved={reload}
+          />
+        ))}
 
       {images.length > 0 && (
         <Card className="mb-4 p-3">

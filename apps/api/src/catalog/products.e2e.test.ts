@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { type INestApplication } from '@nestjs/common';
-import { applyMovements, hashPassword, type PrismaClient, withLedgerTx } from '@sugami/db';
+import { applyMovements, DEFAULT_SHOP_ID, hashPassword, type PrismaClient, withLedgerTx } from '@sugami/db';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -73,7 +73,7 @@ describe.skipIf(!process.env.DATABASE_URL)('product + order lists (MySQL)', () =
       ),
     );
     const shopee = await db.channel.upsert({
-      where: { code: 'shopee' },
+      where: { shopId_code: { shopId: DEFAULT_SHOP_ID, code: 'shopee' } },
       create: { code: 'shopee', type: 'shopee', name: 'Shopee' },
       update: {},
     });
@@ -99,7 +99,7 @@ describe.skipIf(!process.env.DATABASE_URL)('product + order lists (MySQL)', () =
 
   afterAll(async () => {
     if (db) {
-      const wh = await db.warehouse.findUnique({ where: { code: `PL-${run}` } });
+      const wh = await db.warehouse.findFirst({ where: { code: `PL-${run}` } });
       if (wh) {
         await db.order.deleteMany({ where: { warehouseId: wh.id } });
         await db.stockMovement.deleteMany({ where: { warehouseId: wh.id } });

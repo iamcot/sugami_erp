@@ -134,7 +134,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet invoice import (MySQL)', ()
 
   afterAll(async () => {
     if (db) {
-      const w = await db.warehouse.findUnique({ where: { code: wh } });
+      const w = await db.warehouse.findFirst({ where: { code: wh } });
       if (w) {
         await db.order.deleteMany({ where: { warehouseId: w.id } });
         await db.stockMovement.deleteMany({ where: { warehouseId: w.id } });
@@ -172,7 +172,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet invoice import (MySQL)', ()
     expect(await onHand(A)).toBe(9); // 10 - 1 (order 1 was before the snapshot)
     expect(await onHand(B)).toBe(1); // 4 - 3 (order 3 cancelled)
 
-    const o = await db.order.findUniqueOrThrow({
+    const o = await db.order.findFirstOrThrow({
       where: { code: code('2') },
       include: { lines: true, channel: true, customer: true },
     });
@@ -190,9 +190,9 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet invoice import (MySQL)', ()
     expect(JSON.stringify(o, (_k, v: unknown) => (typeof v === 'bigint' ? v.toString() : v))).not.toContain(
       'secret_user',
     );
-    expect((await db.order.findUniqueOrThrow({ where: { code: code('1') } })).stockAppliedAt).toBeNull();
+    expect((await db.order.findFirstOrThrow({ where: { code: code('1') } })).stockAppliedAt).toBeNull();
     expect(
-      (await db.order.findUniqueOrThrow({ where: { code: `HD${run}` }, include: { channel: true } })).channel
+      (await db.order.findFirstOrThrow({ where: { code: `HD${run}` }, include: { channel: true } })).channel
         .code,
     ).toBe('store');
   });
@@ -206,13 +206,13 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet invoice import (MySQL)', ()
     expect(cancelled.body).toMatchObject({ orders: { updated: 1 }, stock: { reversed: 2 } });
     expect(await onHand(A)).toBe(10);
     expect(await onHand(B)).toBe(4);
-    const o = await db.order.findUniqueOrThrow({ where: { code: code('2') } });
+    const o = await db.order.findFirstOrThrow({ where: { code: code('2') } });
     expect(o).toMatchObject({ status: 'cancelled', stockAppliedAt: null });
   });
 
   it('links an order the Pancake sync created earlier instead of duplicating it', async () => {
-    const channel = await db.channel.findUniqueOrThrow({ where: { code: 'shopee' } });
-    const w = await db.warehouse.findUniqueOrThrow({ where: { code: wh } });
+    const channel = await db.channel.findFirstOrThrow({ where: { code: 'shopee' } });
+    const w = await db.warehouse.findFirstOrThrow({ where: { code: wh } });
     await db.order.create({
       data: {
         code: `PCX${run}`,
@@ -232,7 +232,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet invoice import (MySQL)', ()
     );
     const res = await post('invoices', file, 'x.xlsx').expect(200);
     expect(res.body.orders).toMatchObject({ created: 0, updated: 1 });
-    expect(await db.order.findUniqueOrThrow({ where: { code: `PCX${run}` } })).toMatchObject({
+    expect(await db.order.findFirstOrThrow({ where: { code: `PCX${run}` } })).toMatchObject({
       kiotvietInvoiceCode: code('9'),
       status: 'completed',
     });

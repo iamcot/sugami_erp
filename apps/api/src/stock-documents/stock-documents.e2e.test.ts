@@ -79,7 +79,7 @@ describe.skipIf(!process.env.DATABASE_URL)('stock documents and KiotViet export 
 
   afterAll(async () => {
     if (db) {
-      const w = await db.warehouse.findUnique({ where: { code: wh } });
+      const w = await db.warehouse.findFirst({ where: { code: wh } });
       if (w) {
         await db.stockMovement.deleteMany({ where: { warehouseId: w.id } });
         await db.stockLevel.deleteMany({ where: { warehouseId: w.id } });
@@ -136,7 +136,7 @@ describe.skipIf(!process.env.DATABASE_URL)('stock documents and KiotViet export 
       ],
     });
     expect(res.body.kiotviet.missingSkus).toEqual([sku('2')]);
-    const v = await db.variant.findUniqueOrThrow({ where: { sku: sku('1') } });
+    const v = await db.variant.findFirstOrThrow({ where: { sku: sku('1') } });
     expect(Number(v.costAvg)).toBe(80000);
   });
 
