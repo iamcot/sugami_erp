@@ -68,7 +68,10 @@ export async function matchCustomers(
     const names = [...new Set(fb.map((r) => r.customerName.trim()).filter(Boolean))];
     const list = await db.customer.findMany({
       where: {
-        OR: [...ids.map((id) => ({ facebook: { contains: id } })), ...(names.length ? [{ name: { in: names } }] : [])],
+        OR: [
+          ...ids.map((id) => ({ facebook: { contains: id } })),
+          ...(names.length ? [{ name: { in: names } }] : []),
+        ],
       },
       select,
     });
@@ -103,7 +106,10 @@ export async function matchCustomers(
   const counts = hit.size
     ? await db.order.groupBy({
         by: ['customerId'],
-        where: { customerId: { in: [...new Set([...hit.values()].map((h) => h.id))] }, status: { not: 'cancelled' } },
+        where: {
+          customerId: { in: [...new Set([...hit.values()].map((h) => h.id))] },
+          status: { not: 'cancelled' },
+        },
         _count: true,
       })
     : [];

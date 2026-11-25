@@ -46,7 +46,9 @@ if (chatOn) {
   console.log('[worker] Pancake chat watch on (every 2 minutes)');
 } else {
   await pancakeQueue.removeJobScheduler('chat');
-  console.log('[worker] Pancake chat watch off (set PANCAKE_CHAT_PAGES or PANCAKE_CHAT_PAGE_ID + PANCAKE_CHAT_TOKEN)');
+  console.log(
+    '[worker] Pancake chat watch off (set PANCAKE_CHAT_PAGES or PANCAKE_CHAT_PAGE_ID + PANCAKE_CHAT_TOKEN)',
+  );
 }
 if (ordersOn || chatOn) {
   pancakeWorker = new Worker(

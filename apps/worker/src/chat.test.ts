@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { activitiesFromChats, chatSyncEnabled } from './chat.js';
 
 const conv = (n: number): ChatConversation =>
-  ({ id: `spo_1_${n}`, channel: 'shopee', customerName: `buyer${n}`, snippet: 'Còn hàng không' }) as ChatConversation;
+  ({
+    id: `spo_1_${n}`,
+    channel: 'shopee',
+    customerName: `buyer${n}`,
+    snippet: 'Còn hàng không',
+  }) as ChatConversation;
 
 describe('activitiesFromChats', () => {
   it('one push per chat, linking to the chat', () => {

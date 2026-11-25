@@ -20,7 +20,11 @@ describe('chatPagesFromEnv', () => {
   });
   it('uses a page id once and ignores broken entries', () => {
     expect(
-      chatPagesFromEnv({ PANCAKE_CHAT_PAGES: 'spo_1=a;junk;=x;spo_2=', PANCAKE_CHAT_PAGE_ID: 'spo_1', PANCAKE_CHAT_TOKEN: 'b' }),
+      chatPagesFromEnv({
+        PANCAKE_CHAT_PAGES: 'spo_1=a;junk;=x;spo_2=',
+        PANCAKE_CHAT_PAGE_ID: 'spo_1',
+        PANCAKE_CHAT_TOKEN: 'b',
+      }),
     ).toEqual([{ pageId: 'spo_1', token: 'a' }]);
     expect(chatPagesFromEnv({})).toEqual([]);
   });

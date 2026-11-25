@@ -36,9 +36,12 @@ export const CHAT_FRESH_MS = 6 * 3600 * 1000;
 export const CHAT_LOOKBACK_DAYS = 7;
 
 /** Waiting for the shop's answer and not checked since the buyer's last message. */
-export function needsAttention(
-  s: { kind?: string; lastFromBuyer: boolean; lastMessageAt: Date; reviewedAt: Date | null },
-): boolean {
+export function needsAttention(s: {
+  kind?: string;
+  lastFromBuyer: boolean;
+  lastMessageAt: Date;
+  reviewedAt: Date | null;
+}): boolean {
   if (s.kind && s.kind !== 'INBOX') return false;
   return s.lastFromBuyer && !(s.reviewedAt && s.reviewedAt.getTime() >= s.lastMessageAt.getTime());
 }

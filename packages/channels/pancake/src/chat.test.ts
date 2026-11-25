@@ -76,7 +76,13 @@ describe('chat mapping', () => {
 
   it('marks messages sent by the shop page', () => {
     const m = toMessage(
-      { id: 'm1', inserted_at: '2026-11-22T03:47:00.000000', from: { id: 'spo_1' }, original_message: 'Dạ ạ', attachments: [{ type: 'image' }] },
+      {
+        id: 'm1',
+        inserted_at: '2026-11-22T03:47:00.000000',
+        from: { id: 'spo_1' },
+        original_message: 'Dạ ạ',
+        attachments: [{ type: 'image' }],
+      },
       'spo_1',
     );
     expect(m).toMatchObject({ fromShop: true, text: 'Dạ ạ' });
@@ -86,7 +92,13 @@ describe('chat mapping', () => {
 
 describe('toAttachment', () => {
   it('keeps photos with their size and only https links', () => {
-    expect(toAttachment({ type: 'photo', url: 'https://content.example.vn/a.jpg', image_data: { width: 640, height: 480 } })).toEqual({
+    expect(
+      toAttachment({
+        type: 'photo',
+        url: 'https://content.example.vn/a.jpg',
+        image_data: { width: 640, height: 480 },
+      }),
+    ).toEqual({
       kind: 'image',
       url: 'https://content.example.vn/a.jpg',
       width: 640,
@@ -94,14 +106,24 @@ describe('toAttachment', () => {
     });
     expect(toAttachment({ type: 'photo', url: 'http://insecure.example/a.jpg' })).toBeNull();
     expect(toAttachment({ type: 'photo', url: 'javascript:alert(1)' })).toBeNull();
-    expect(toAttachment({ type: 'sticker', url: 'https://cdn.example/s.png' })).toMatchObject({ kind: 'image' });
+    expect(toAttachment({ type: 'sticker', url: 'https://cdn.example/s.png' })).toMatchObject({
+      kind: 'image',
+    });
   });
   it('turns system lines and cards into notes', () => {
-    expect(toAttachment({ type: 'shopee_faq_messages' })).toEqual({ kind: 'note', text: 'Tin tự động của Shopee' });
+    expect(toAttachment({ type: 'shopee_faq_messages' })).toEqual({
+      kind: 'note',
+      text: 'Tin tự động của Shopee',
+    });
     expect(
-      toAttachment({ type: 'system_message', message: 'Bạn đã yêu cầu thanh toán 159.000 ₫. Xem chi tiết(fb-pma://payments/x?id=1)' }),
+      toAttachment({
+        type: 'system_message',
+        message: 'Bạn đã yêu cầu thanh toán 159.000 ₫. Xem chi tiết(fb-pma://payments/x?id=1)',
+      }),
     ).toEqual({ kind: 'note', text: 'Bạn đã yêu cầu thanh toán 159.000 ₫.' });
-    expect(toAttachment({ type: 'attachment', name: 'abc', description: '159.000 ₫ Marked as shipped' })).toEqual({
+    expect(
+      toAttachment({ type: 'attachment', name: 'abc', description: '159.000 ₫ Marked as shipped' }),
+    ).toEqual({
       kind: 'note',
       text: 'abc · 159.000 ₫ Marked as shipped',
     });
@@ -162,7 +184,9 @@ describe('PancakeChatClient', () => {
   });
 
   it('never puts the token in an error', async () => {
-    const { client } = makeClient(() => json({ success: false, message: 'Invalid access_token', error_code: 102 }, 200));
+    const { client } = makeClient(() =>
+      json({ success: false, message: 'Invalid access_token', error_code: 102 }, 200),
+    );
     const err = await client.listMessages('x').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(PancakeError);
     expect((err as Error).message).not.toContain('secret-token');
@@ -182,7 +206,9 @@ describe('PancakeChatClient', () => {
     const failing = makeClient(() => json({}, 502));
     await expect(failing.client.sendMessage('x', 'hi')).rejects.toBeInstanceOf(PancakeError);
     expect(failing.fetchMock).toHaveBeenCalledTimes(1);
-    const init = (failing.fetchMock.mock.calls as unknown as [string, { method: string; body: string }][])[0]![1];
+    const init = (
+      failing.fetchMock.mock.calls as unknown as [string, { method: string; body: string }][]
+    )[0]![1];
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual({ action: 'reply_inbox', message: 'hi' });
   });
