@@ -47,6 +47,7 @@ export function MaterialSearch({
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
   // The list is drawn in a portal: glass cards around the editor each form a stacking context (and the form
@@ -70,7 +71,10 @@ export function MaterialSearch({
     if (!open) return;
     const t = setTimeout(() => {
       api<{ data: Hit[] }>(`/pos/search?kind=material&q=${encodeURIComponent(q)}`).then(
-        (r) => setHits(r.data),
+        (r) => {
+          setHits(r.data);
+          setActive(0);
+        },
         () => setHits([]),
       );
     }, 200);
@@ -85,6 +89,18 @@ export function MaterialSearch({
     document.addEventListener('mousedown', away);
     return () => document.removeEventListener('mousedown', away);
   }, [open]);
+  const pick = (h: Hit) => {
+    onPick({
+      variantId: h.id,
+      sku: h.sku,
+      name: label(h),
+      qty: 1,
+      cost: h.cost,
+      available: h.available,
+    });
+    setQ('');
+    setOpen(false);
+  };
   return (
     <div ref={box} className="relative">
       <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-900">
@@ -95,6 +111,20 @@ export function MaterialSearch({
           value={q}
           autoFocus={autoFocus}
           onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              if (!hits.length) return;
+              e.preventDefault();
+              setOpen(true);
+              const d = e.key === 'ArrowDown' ? 1 : -1;
+              setActive((a) => (a + d + hits.length) % hits.length);
+            } else if (e.key === 'Enter' && open && hits[active]) {
+              e.preventDefault();
+              pick(hits[active]!);
+            } else if (e.key === 'Escape') {
+              setOpen(false);
+            }
+          }}
           onChange={(e) => {
             setQ(e.target.value);
             setOpen(true);
@@ -115,22 +145,14 @@ export function MaterialSearch({
                 Không thấy nguyên liệu. Tạo sản phẩm loại &quot;Nguyên liệu&quot; trước.
               </p>
             ) : (
-              hits.map((h) => (
+              hits.map((h, i) => (
                 <button
                   key={h.id}
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                  onClick={() => {
-                    onPick({
-                      variantId: h.id,
-                      sku: h.sku,
-                      name: label(h),
-                      qty: 1,
-                      cost: h.cost,
-                      available: h.available,
-                    });
-                    setQ('');
-                    setOpen(false);
+                  className={`flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800 ${i === active ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+                  onClick={() => pick(h)}
+                  ref={(el) => {
+                    if (i === active) el?.scrollIntoView({ block: 'nearest' });
                   }}
                 >
                   <span className="min-w-0 flex-1 truncate">{label(h)}</span>
