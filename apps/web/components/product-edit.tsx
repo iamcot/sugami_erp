@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { CategoryBrand, Field, inputCls, useMeta } from '@/components/product-form-parts';
 import { Button, Card } from '@/components/ui';
 import { api } from '@/lib/api';
+import { KIND_LABEL, type ProductKind } from '@/lib/me';
 
 interface EditableProduct {
   code: string;
   name: string;
   status: 'active' | 'draft' | 'archived';
+  kind?: ProductKind;
+  unit?: string;
   category: { id?: string; name: string } | null;
   brand: { name: string } | null;
 }
@@ -36,6 +39,8 @@ export function ProductEditPanel({
   const meta = useMeta();
   const [name, setName] = useState(product.name);
   const [status, setStatus] = useState(product.status);
+  const [kind, setKind] = useState<ProductKind>(product.kind ?? 'goods');
+  const [unit, setUnit] = useState(product.unit ?? 'cái');
   const [categoryId, setCategoryId] = useState(product.category?.id ?? '');
   const [brand, setBrand] = useState(product.brand?.name ?? '');
   const [busy, setBusy] = useState(false);
@@ -47,7 +52,14 @@ export function ProductEditPanel({
     try {
       await api(`/products/${encodeURIComponent(product.code)}`, {
         method: 'PATCH',
-        json: { name, status, categoryId: categoryId || null, brand: brand.trim() || null },
+        json: {
+          name,
+          status,
+          kind,
+          ...(unit.trim() ? { unit: unit.trim() } : {}),
+          categoryId: categoryId || null,
+          brand: brand.trim() || null,
+        },
       });
       onSaved();
     } catch (e) {
@@ -71,6 +83,18 @@ export function ProductEditPanel({
           <option value="draft">Nháp</option>
           <option value="archived">Lưu trữ</option>
         </select>
+      </Field>
+      <Field label="Loại">
+        <select className={inputCls} value={kind} onChange={(e) => setKind(e.target.value as ProductKind)}>
+          {(Object.keys(KIND_LABEL) as ProductKind[]).map((k) => (
+            <option key={k} value={k}>
+              {KIND_LABEL[k]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Đơn vị tính">
+        <input className={inputCls} value={unit} onChange={(e) => setUnit(e.target.value)} />
       </Field>
       <CategoryBrand
         meta={meta}

@@ -7,6 +7,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { type Column, DataTable } from '@/components/data-table';
 import { Badge, Button, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import { type DocStatus, type DocType, fmtDateTime, STATUS_LABEL, TYPE_LABEL } from '@/lib/stock-documents';
 import { useQueryState } from '@/lib/use-query-state';
 
@@ -29,6 +30,7 @@ const TABS = [
   ['count', 'Kiểm kho'],
   ['pending', 'Chưa xuất KiotViet'],
 ] as const;
+const PLAIN_TABS = TABS.filter(([v]) => v !== 'pending');
 
 const columns: Column<Row>[] = [
   {
@@ -83,6 +85,7 @@ const columns: Column<Row>[] = [
 ];
 
 function DocumentsList() {
+  const kv = useMe()?.shop.integrations ?? false;
   const [qs, setQs] = useQueryState({ tab: 'all', page: '1' });
   const [res, setRes] = useState<{ data: Row[]; total: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,7 +111,11 @@ function DocumentsList() {
     <>
       <PageHeader
         title="Phiếu kho"
-        description="Nhập hàng và kiểm kho làm trên Sugami, xuất file để nhập vào KiotViet"
+        description={
+          kv
+            ? 'Nhập hàng và kiểm kho làm trên Sugami, xuất file để nhập vào KiotViet'
+            : 'Phiếu nhập hàng và kiểm kho'
+        }
         actions={
           <>
             <Link href="/inventory/documents/new?type=count">
@@ -125,7 +132,7 @@ function DocumentsList() {
         }
       />
       <div className="mb-3 flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-        {TABS.map(([v, label]) => (
+        {(kv ? TABS : PLAIN_TABS).map(([v, label]) => (
           <button
             key={v}
             onClick={() => setQs({ tab: v, page: '1' })}

@@ -21,12 +21,7 @@ export interface ChatFilter {
 }
 
 const fold = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase();
+  s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
 
 export function filterConversations(rows: ChatItem[], f: ChatFilter): ChatItem[] {
   const q = fold(f.q.trim());

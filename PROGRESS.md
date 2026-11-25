@@ -60,6 +60,8 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Quyết định đã chốt
 
+- 2026-11-25: **Nhiều shop** (D18): mọi dữ liệu gắn `shop_id`, tài khoản thuộc một shop và chỉ thấy/tạo dữ liệu của shop mình. Migration tạo shop **Sugami** (bán lẻ) và gắn toàn bộ dữ liệu, tài khoản cũ vào đó; chủ shop hiện tại là *quản trị hệ thống*, tạo shop mới kèm tài khoản chủ shop ở Cài đặt → Các shop. Loại shop: **bán lẻ** (nhập sao bán vậy) và **thành phẩm từ nguyên liệu** (tiệm hoa): sản phẩm chia Nguyên liệu / Thành phẩm / Hàng hóa, thành phẩm có định mức nguyên liệu; bán tại quầy chọn/sửa nguyên liệu, nhập giá bán, tính giá vốn và lời/lỗ; kho trừ nguyên liệu. Pancake, chat, sàn, KiotViet chỉ dành cho Sugami (shop có `integrations`).
+
 - 2026-11-23: Chat Shopee đọc qua Pancake Pages API bằng **polling theo yêu cầu**, không bật webhook vì webhook tính 2 trang trong gói cước (docs/pancake.md). Ô trả lời đã làm và chủ shop xác nhận gửi được qua Shopee (page token + public_api).
 - 2026-11-23: Đơn **hoàn hàng** từ sàn: khi Pancake báo hàng đã về shop, Sugami **tự cộng lại tồn** (giống sàn) và tính là đã xử lý; nếu hàng lỗi/mất thì bấm *Báo hàng lỗi/mất* trong đơn để trừ ra (phiếu `damage`). Đơn hoàn cũ còn giữ tồn vẫn "chờ xử lý": *Nhập lại kho* hoặc *Không nhập kho*. Menu chỉ đếm đơn hoàn chưa xử lý.
 - 2026-11-23: Giao diện **kính sáng** (D16): bố cục kiểu Gmail, góc vuông, khối kính trong mờ viền sáng, số liệu font mono; menu trái chia nhóm Đơn hàng / Kho / Nền tảng; icon sàn hình thoi có logo. Màu nhấn mặc định **xanh ngọc**, đổi được trong Cài đặt → Giao diện (xanh ngọc / xanh da trời / tím pastel, kính sáng / kính tối), lưu theo từng máy.
@@ -122,6 +124,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-23 | [UI] Giao diện kính sáng: bộ màu theo biến CSS, menu nhóm Đơn hàng/Kho/Nền tảng, icon sàn hình thoi, thẻ/nút/bảng/nhãn/KPI mới, chọn tông màu trong Cài đặt | xem commit `[UI]` |
 | 2026-11-23 | [UI] Trang Đơn hàng kiểu Gmail (thanh công cụ, nút lọc thả xuống, tab kênh, đơn cần xử lý in đậm), số đếm trên menu; đơn hoàn có bước "đã xử lý" (nhập lại kho / không nhập) | xem commit `[UI]` |
 | 2026-11-23 | Đơn hoàn từ sàn tự cộng lại tồn khi hàng về shop; nút Báo hàng lỗi/mất trong đơn; bỏ nút Tạo đơn ở menu | xem commit `[P4-P2]` |
+| 2026-11-25 | [MULTI-SHOP] Nhiều shop: bảng `shops`, `shop_id` trên mọi bảng nghiệp vụ, mã duy nhất theo shop, API tự lọc theo shop người đăng nhập; tạo shop + tài khoản chủ shop, thêm tài khoản trong shop; shop thành phẩm: sản phẩm Nguyên liệu/Thành phẩm, định mức nguyên liệu, bán tại quầy chọn nguyên liệu, tính giá vốn và lời/lỗ, trừ kho nguyên liệu | xem commit `[MULTI-SHOP]` |
 
 ## P0 — Chuẩn bị & xác minh
 

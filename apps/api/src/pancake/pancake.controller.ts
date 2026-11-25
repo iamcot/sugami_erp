@@ -40,7 +40,7 @@ import {
 } from '@sugami/sync';
 import { toSearchKey } from '@sugami/shared';
 import { z } from 'zod';
-import { RequirePermissions } from '../auth/decorators.js';
+import { RequireIntegrations, RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -88,6 +88,7 @@ const LinkBody = z.object({
 });
 
 /** Manual, one-product-at-a-time writes to Pancake for the trial. */
+@RequireIntegrations()
 @Controller('pancake')
 export class PancakeController {
   constructor(private readonly prisma: PrismaService) {}
@@ -387,7 +388,7 @@ export class PancakeController {
   /** Sugami warehouse whose stock is pushed, and the Pancake warehouse that receives it. */
   private async stockContext() {
     const code = process.env.PANCAKE_SYNC_WAREHOUSE || 'KHO-CHINH';
-    const sugami = await this.prisma.client.warehouse.findUnique({ where: { code }, select: { id: true } });
+    const sugami = await this.prisma.client.warehouse.findFirst({ where: { code }, select: { id: true } });
     if (!sugami) throw new UnprocessableEntityException(`Không thấy kho ${code} trong Sugami`);
     const client = this.client();
     const { warehouse } = await resolveWarehouse(client, undefined);
@@ -415,7 +416,7 @@ export class PancakeController {
   stockStatus() {
     return this.guard(async () => {
       const code = process.env.PANCAKE_SYNC_WAREHOUSE || 'KHO-CHINH';
-      const wh = await this.prisma.client.warehouse.findUnique({ where: { code }, select: { id: true } });
+      const wh = await this.prisma.client.warehouse.findFirst({ where: { code }, select: { id: true } });
       if (!wh) throw new UnprocessableEntityException(`Không thấy kho ${code} trong Sugami`);
       return stockPushStatus(this.prisma.client, wh.id);
     });

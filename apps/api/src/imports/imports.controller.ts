@@ -58,7 +58,7 @@ export class ImportsController {
   ) {
     const { dryRun, warehouse } = parseInput(ImportQuery, query);
     if (!file) throw new BadRequestException('Chưa chọn file (trường "file")');
-    const wh = await this.prisma.client.warehouse.findUnique({ where: { code: warehouse } });
+    const wh = await this.prisma.client.warehouse.findFirst({ where: { code: warehouse } });
     if (!wh) throw new NotFoundException(`Không có kho ${warehouse}`);
     if (this.running) throw new ConflictException('Đang có một lần import khác chạy, thử lại sau ít phút');
     this.running = true;

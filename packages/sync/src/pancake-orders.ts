@@ -672,7 +672,7 @@ export async function runPancakeOrderSync(
 ): Promise<OrderSyncSummary & { since: Date }> {
   const now = opts.now ?? (() => new Date());
   const startedAt = now();
-  const warehouse = await db.warehouse.findUnique({ where: { code: opts.warehouseCode ?? 'KHO-CHINH' } });
+  const warehouse = await db.warehouse.findFirst({ where: { code: opts.warehouseCode ?? 'KHO-CHINH' } });
   if (!warehouse) throw new Error(`Không có kho ${opts.warehouseCode ?? 'KHO-CHINH'}`);
   const saved = await db.syncCursor.findUnique({ where: { key: PANCAKE_ORDER_CURSOR } });
   const since = opts.range

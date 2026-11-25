@@ -9,10 +9,28 @@ export const PosPayload = z.object({
   lines: z
     .array(
       z.object({
-        variantId: z.string().trim().min(1).max(36),
+        /** The product sold. Optional only for a made-to-order item built from `components`. */
+        variantId: z.string().trim().min(1).max(36).optional(),
+        /** Name of a made-to-order item without a product (e.g. "Bó hoa theo yêu cầu"). */
+        name: z.string().trim().max(255).optional(),
         qty: z.number().positive().max(100000),
         /** Selling price per unit, VND (editable on the screen). */
         price: int,
+        /**
+         * Assembly shops: materials used for ONE unit of this line. Stock is taken from these instead of
+         * the line's product, and the cost of the line is their cost. Omitted for a finished product =
+         * its bill of materials.
+         */
+        components: z
+          .array(
+            z.object({
+              variantId: z.string().trim().min(1).max(36),
+              /** 0 while the seller is still typing; dropped at checkout. */
+              qty: z.number().min(0).max(100000),
+            }),
+          )
+          .max(50)
+          .optional(),
       }),
     )
     .max(200)

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useState } from 'react';
 import { Button } from '@/components/ui';
 import { api } from '@/lib/api';
+import { resetMe } from '@/lib/me';
 
 function LoginForm() {
   const router = useRouter();
@@ -22,6 +23,7 @@ function LoginForm() {
         json: { email: form.get('email'), password: form.get('password') },
       });
       const next = params.get('next');
+      resetMe();
       router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
       router.refresh();
     } catch (err) {

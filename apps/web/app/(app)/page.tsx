@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Badge, Card, Kpi, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import type { InventoryResponse } from '@/lib/inventory';
 
 interface Sum {
@@ -132,6 +133,7 @@ const ago = (iso: string) => {
 };
 
 export default function DashboardPage() {
+  const kv = useMe()?.shop.integrations ?? false;
   const [d, setD] = useState<Dashboard | null>(null);
   const [negative, setNegative] = useState<InventoryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -197,7 +199,7 @@ export default function DashboardPage() {
     <>
       <PageHeader title="Tổng quan" description={dateFmt.format(new Date())} />
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
-      {d?.lastInvoiceImport && (
+      {kv && d?.lastInvoiceImport && (
         <Card className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm">
           <span>
             Hóa đơn KiotViet nhập lần cuối <b>{ago(d.lastInvoiceImport.importedAt)}</b>, đơn mới nhất ngày{' '}

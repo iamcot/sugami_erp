@@ -4,15 +4,12 @@ import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
+import { loadMe, type Me, resetMe } from '@/lib/me';
 import { AppSettings } from './app-settings';
-
-interface Me {
-  user: { name: string; email: string; roles: string[] };
-}
 
 export function UserMenu() {
   const router = useRouter();
-  const [me, setMe] = useState<Me['user'] | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -32,8 +29,8 @@ export function UserMenu() {
   }, [open]);
 
   useEffect(() => {
-    api<Me>('/auth/me')
-      .then((r) => setMe(r.user))
+    loadMe()
+      .then(setMe)
       .catch(() => {
         // Session expired or revoked: go back to login.
         router.replace('/login');
@@ -42,6 +39,7 @@ export function UserMenu() {
 
   async function logout() {
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
+    resetMe();
     router.replace('/login');
     router.refresh();
   }
@@ -70,6 +68,11 @@ export function UserMenu() {
           <div className="px-3 py-2">
             <p className="truncate text-sm font-medium">{me?.name}</p>
             <p className="truncate text-xs text-slate-500">{me?.email}</p>
+            {me && (
+              <p className="mt-1 truncate text-xs font-medium text-brand-700 dark:text-brand-500">
+                Shop {me.shop.name}
+              </p>
+            )}
           </div>
           <AppSettings />
           <button

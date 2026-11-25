@@ -10,6 +10,7 @@ import { FilterMenu } from '@/components/filter-menu';
 import { PlatformDiamond } from '@/components/platform-icons';
 import { Badge, Button, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import { formatRelativeDateTime } from '@/lib/datetime';
 import { useQueryState } from '@/lib/use-query-state';
 
@@ -323,6 +324,7 @@ const columns: Column<OrderRow>[] = [
 ];
 
 function OrdersList() {
+  const kv = useMe()?.shop.integrations ?? false;
   const { open, selected } = useDetail();
   const [qs, setQs] = useQueryState({
     q: '',
@@ -620,7 +622,9 @@ function OrdersList() {
           total={res?.total}
           onPage={(p) => setQs({ page: String(p) })}
           loading={loading}
-          empty="Chưa có đơn. Nhập file chi tiết hóa đơn từ KiotViet ở mục Nhập KiotViet."
+          empty={
+            kv ? 'Chưa có đơn. Nhập file chi tiết hóa đơn từ KiotViet ở mục Nhập KiotViet.' : 'Chưa có đơn.'
+          }
         />
         <p className="border-t border-slate-300/50 px-4 py-2 text-xs text-slate-500 dark:border-white/10">
           Đơn in đậm có vạch màu bên trái là đơn cần xử lý: chờ đóng gói hoặc hàng hoàn chưa kiểm.

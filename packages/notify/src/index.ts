@@ -4,7 +4,7 @@
  * generated once with `pnpm vapid:generate`.
  */
 import { createHash } from 'node:crypto';
-import type { PrismaClient } from '@sugami/db';
+import { currentShopId, type PrismaClient } from '@sugami/db';
 import webpush from 'web-push';
 
 export interface PushPayload {
@@ -109,7 +109,10 @@ export class PushSender {
     await this.db.pushSubscription.deleteMany({ where: { userId, endpointHash: endpointHash(endpoint) } });
   }
 
-  /** Send to the given users, or to every active user holding one of `permissions` ("*" counts). */
+  /**
+   * Send to the given users, or to every active user of the current shop holding one of `permissions`
+   * ("*" counts).
+   */
   async notify(
     target: { userIds: string[] } | { permissions: string[] },
     payload: PushPayload,
@@ -120,6 +123,8 @@ export class PushSender {
         : {
             user: {
               isActive: true,
+              // only people of the shop the event belongs to (Sugami for background jobs)
+              shopId: currentShopId(),
               roles: {
                 some: {
                   role: {

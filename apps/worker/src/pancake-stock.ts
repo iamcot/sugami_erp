@@ -6,7 +6,7 @@ import { reportError } from './activity.js';
 /** One pass of the automatic stock push (does nothing while it is paused in settings or orders are behind). */
 export async function pancakeStockPass(db: PrismaClient, log: (msg: string) => void = console.log) {
   const code = process.env.PANCAKE_SYNC_WAREHOUSE || 'KHO-CHINH';
-  const sugami = await db.warehouse.findUnique({ where: { code }, select: { id: true } });
+  const sugami = await db.warehouse.findFirst({ where: { code }, select: { id: true } });
   if (!sugami) return;
   const client = new PancakeClient({
     apiKey: process.env.PANCAKE_API_KEY!,

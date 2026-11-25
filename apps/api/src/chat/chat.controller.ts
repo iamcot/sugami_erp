@@ -21,7 +21,7 @@ import {
 } from '@sugami/channels-pancake';
 import { CHAT_LOOKBACK_DAYS, needsAttention } from '@sugami/sync';
 import { z } from 'zod';
-import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
+import { CurrentUser, RequireIntegrations, RequirePermissions } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { parseInput } from '../common/validation.js';
@@ -53,6 +53,7 @@ const CACHE_MS = 10_000;
  * Shop chat (Shopee) through Pancake's Pages API. Nothing is stored in Sugami; the only write is a reply the
  * user types and confirms. Needs a page access token from Pancake → Settings → Tool of the Shopee page.
  */
+@RequireIntegrations()
 @Controller('chat')
 export class ChatController {
   constructor(private readonly prisma: PrismaService) {}
@@ -62,12 +63,18 @@ export class ChatController {
   private pages(): ChatPageConfig[] {
     const pages = chatPagesFromEnv(process.env);
     if (!pages.length)
-      throw new ServiceUnavailableException('Chưa cấu hình PANCAKE_CHAT_PAGES (hoặc PANCAKE_CHAT_PAGE_ID / PANCAKE_CHAT_TOKEN)');
+      throw new ServiceUnavailableException(
+        'Chưa cấu hình PANCAKE_CHAT_PAGES (hoặc PANCAKE_CHAT_PAGE_ID / PANCAKE_CHAT_TOKEN)',
+      );
     return pages;
   }
 
   private clientFor(page: ChatPageConfig) {
-    return new PancakeChatClient({ pageId: page.pageId, pageAccessToken: page.token, channel: pageChannel(page) });
+    return new PancakeChatClient({
+      pageId: page.pageId,
+      pageAccessToken: page.token,
+      channel: pageChannel(page),
+    });
   }
 
   private async guard<T>(fn: () => Promise<T>): Promise<T> {
@@ -113,7 +120,8 @@ export class ChatController {
           message: r.reason instanceof PancakeError ? r.reason.message : 'Không đọc được chat',
         });
     });
-    if (errors.length === pages.length) throw new UnprocessableEntityException(`Pancake từ chối: ${errors[0]!.message}`);
+    if (errors.length === pages.length)
+      throw new UnprocessableEntityException(`Pancake từ chối: ${errors[0]!.message}`);
     rows.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
     const reviews = new Map(
       (
@@ -199,7 +207,9 @@ export class ChatController {
     const { at, reviewed } = parseInput(ReviewBody, raw ?? {});
     const page = this.pageFor(id);
     const lastMessageAt = new Date(at);
-    const data = reviewed ? { reviewedAt: lastMessageAt, reviewedBy: user.id } : { reviewedAt: null, reviewedBy: null };
+    const data = reviewed
+      ? { reviewedAt: lastMessageAt, reviewedBy: user.id }
+      : { reviewedAt: null, reviewedBy: null };
     await this.prisma.client.chatConversation.upsert({
       where: { id },
       // The job may not have seen this chat yet: keep the minimum it needs to carry the mark.
@@ -246,7 +256,9 @@ export class ChatController {
     for (const { rows } of this.cache.values()) {
       const known = rows.find((c) => c.id === id);
       if (known && known.kind !== 'INBOX')
-        throw new UnprocessableEntityException('Chỉ trả lời được chat, không trả lời được bình luận/đánh giá ở đây');
+        throw new UnprocessableEntityException(
+          'Chỉ trả lời được chat, không trả lời được bình luận/đánh giá ở đây',
+        );
     }
     return this.guard(async () => {
       const sent = await this.clientFor(this.pageFor(id)).sendMessage(id, text);

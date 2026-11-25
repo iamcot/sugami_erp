@@ -1,5 +1,12 @@
 import type { ImportIssue, KvChannelCode, KvInvoice, ParsedInvoices } from '@sugami/channels-kiotviet';
-import { applyMovements, type MovementInput, Prisma, type PrismaClient, withLedgerTx } from '@sugami/db';
+import {
+  applyMovements,
+  currentShopId,
+  type MovementInput,
+  Prisma,
+  type PrismaClient,
+  withLedgerTx,
+} from '@sugami/db';
 
 export interface InvoiceImportOptions {
   warehouseId: string;
@@ -150,7 +157,7 @@ export async function importKiotVietInvoices(
       if (inv.customerCode) {
         customerId = (
           await db.customer.upsert({
-            where: { kiotvietCode: inv.customerCode },
+            where: { shopId_kiotvietCode: { shopId: currentShopId(), kiotvietCode: inv.customerCode } },
             create: { kiotvietCode: inv.customerCode },
             update: {},
           })

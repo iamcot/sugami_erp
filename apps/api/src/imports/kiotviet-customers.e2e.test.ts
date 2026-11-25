@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { type INestApplication } from '@nestjs/common';
 import { writeSheet } from '@sugami/channels-kiotviet';
-import { hashPassword, type PrismaClient } from '@sugami/db';
+import { DEFAULT_SHOP_ID, hashPassword, type PrismaClient } from '@sugami/db';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -81,7 +81,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet customer import (MySQL)', (
       .join('; ');
     // An order created earlier by the invoice import: only a stub customer with the code.
     const channel = await db.channel.upsert({
-      where: { code: 'shopee' },
+      where: { shopId_code: { shopId: DEFAULT_SHOP_ID, code: 'shopee' } },
       create: { code: 'shopee', name: 'Shopee', type: 'shopee' },
       update: {},
     });
@@ -123,7 +123,7 @@ describe.skipIf(!process.env.DATABASE_URL)('KiotViet customer import (MySQL)', (
     expect(await db.customer.count({ where: { kiotvietCode: C2 } })).toBe(0);
 
     await post(await file()).expect(200);
-    const c = await db.customer.findUniqueOrThrow({ where: { kiotvietCode: C1 }, include: { orders: true } });
+    const c = await db.customer.findFirstOrThrow({ where: { kiotvietCode: C1 }, include: { orders: true } });
     expect(c).toMatchObject({
       name: 'Trần Thị Bé',
       phone: '0901234567',

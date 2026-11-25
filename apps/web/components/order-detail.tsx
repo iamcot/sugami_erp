@@ -6,6 +6,7 @@ import { useDetail } from '@/components/detail-drawer';
 import { Printer } from 'lucide-react';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import { formatRelativeDateTime } from '@/lib/datetime';
 import { printReceipt, type ReceiptTemplate } from '@/lib/receipt';
 
@@ -20,6 +21,8 @@ interface Line {
   lineTotal: number;
   costSnapshot: number | null;
   variantId: string | null;
+  /** Materials of one unit (made-to-order lines of assembly shops). */
+  components?: { variantId: string; sku: string; name: string; qty: number; unitCost: number }[];
 }
 interface Order {
   id: string;
@@ -108,6 +111,7 @@ interface PosAction {
 }
 
 export function OrderDetail({ code, embedded }: { code: string; embedded?: boolean }) {
+  const kv = useMe()?.shop.integrations ?? false;
   const { open } = useDetail();
   const [order, setOrder] = useState<Order | null>(null);
   const [actions, setActions] = useState<PosAction[]>([]);
@@ -209,7 +213,9 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
 
   const st = STATUS[order.status] ?? { label: order.status, tone: 'neutral' as const };
   const cost = order.lines.reduce((a, l) => a + (l.costSnapshot ?? 0) * l.qty, 0);
-  const knownCost = order.lines.every((l) => l.costSnapshot !== null && l.variantId !== null);
+  const knownCost = order.lines.every(
+    (l) => l.costSnapshot !== null && (l.variantId !== null || !!l.components?.length),
+  );
   const afterDiscount = order.subtotal - order.discount;
   const isMarketplace = ['shopee', 'tiktok'].includes(order.channel.code);
   const toCollect = order.codAmount || Math.max(0, order.total - order.paidAmount);
@@ -364,7 +370,7 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
                       <td className="px-4 py-2">
                         <p className="line-clamp-2">{l.name}</p>
                         <p className="font-mono text-xs text-slate-500">
-                          {l.variantId ? (
+                          {l.variantId || l.components?.length ? (
                             l.sku
                           ) : (
                             <span className="text-amber-600">
@@ -372,6 +378,12 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
                             </span>
                           )}
                         </p>
+                        {!!l.components?.length && (
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            Nguyên liệu: {l.components.map((c) => `${c.name} × ${c.qty}`).join(', ')} · giá
+                            vốn {formatVnd(l.costSnapshot ?? 0)}/sp
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums">{l.qty}</td>
                       <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums">
@@ -449,7 +461,7 @@ export function OrderDetail({ code, embedded }: { code: string; embedded?: boole
         <div className="space-y-4">
           <Section title="Thông tin">
             <Row label="Mã đơn sàn" value={order.externalCode ?? '–'} />
-            <Row label="Mã hóa đơn KiotViet" value={order.kiotvietInvoiceCode ?? '–'} />
+            {kv && <Row label="Mã hóa đơn KiotViet" value={order.kiotvietInvoiceCode ?? '–'} />}
             <Row label="Tạo lúc" value={dt(order.orderedAt)} />
             <Row label="Hoàn thành" value={dt(order.completedAt)} />
             <Row

@@ -24,8 +24,8 @@ export class AuthService {
     meta: { userAgent?: string; ip?: string } = {},
   ): Promise<{ token: string; expiresAt: Date }> {
     const email = emailInput.trim().toLowerCase();
-    const user = await this.db.user.findUnique({ where: { email } });
-    if (!user || !user.isActive) {
+    const user = await this.db.user.findUnique({ where: { email }, include: { shop: true } });
+    if (!user || !user.isActive || !user.shop.isActive) {
       // Same work and message whether or not the account exists.
       await verifyPassword(password, 'scrypt$AAAAAAAAAAAAAAAAAAAAAA==$AAAA');
       throw new UnauthorizedException(INVALID);
@@ -73,9 +73,10 @@ export class AuthService {
     if (!token) return null;
     const session = await this.db.session.findUnique({
       where: { id: hashToken(token) },
-      include: { user: { include: { roles: { include: { role: true } } } } },
+      include: { user: { include: { shop: true, roles: { include: { role: true } } } } },
     });
-    if (!session || session.expiresAt <= new Date() || !session.user.isActive) return null;
+    if (!session || session.expiresAt <= new Date() || !session.user.isActive || !session.user.shop.isActive)
+      return null;
     // Touch at most once an hour to avoid a write per request.
     if (Date.now() - session.lastSeenAt.getTime() > 3_600_000) {
       await this.db.session.update({ where: { id: session.id }, data: { lastSeenAt: new Date() } });
@@ -85,6 +86,15 @@ export class AuthService {
       id: session.user.id,
       email: session.user.email,
       name: session.user.name,
+      shopId: session.user.shopId,
+      shop: {
+        id: session.user.shop.id,
+        code: session.user.shop.code,
+        name: session.user.shop.name,
+        type: session.user.shop.type,
+        integrations: session.user.shop.integrations,
+      },
+      isPlatformAdmin: session.user.isPlatformAdmin,
       roles: roles.map((r) => r.code),
       permissions: collectPermissions(roles),
       sessionId: session.id,

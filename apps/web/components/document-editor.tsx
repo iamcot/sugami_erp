@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Card } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import type { InventoryResponse, InventoryRow } from '@/lib/inventory';
 import { type DocDetail, type DocType, TYPE_LABEL } from '@/lib/stock-documents';
 
@@ -36,6 +37,7 @@ export function DocumentEditor({
   initialReason?: string;
 }) {
   const router = useRouter();
+  const kv = useMe()?.shop.integrations ?? false;
   const [lines, setLines] = useState<EditorLine[]>(initial);
   const [reason, setReason] = useState(initialReason);
   const [q, setQ] = useState('');
@@ -172,7 +174,7 @@ export function DocumentEditor({
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
+      <Card className="relative z-30 p-4">
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
             <label className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900">
@@ -355,8 +357,8 @@ export function DocumentEditor({
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <p className="text-xs text-slate-500">
         {receipt
-          ? 'Xác nhận sẽ cộng tồn vào Sugami và cập nhật giá vốn bình quân. Sau đó tải file để nhập vào KiotViet.'
-          : 'Xác nhận sẽ chỉnh tồn Sugami bằng số đếm. Sau đó tải file để KiotViet cân bằng kho theo cùng số.'}{' '}
+          ? `Xác nhận sẽ cộng tồn kho và cập nhật giá vốn bình quân.${kv ? ' Sau đó tải file để nhập vào KiotViet.' : ''}`
+          : `Xác nhận sẽ chỉnh tồn kho bằng số đếm.${kv ? ' Sau đó tải file để KiotViet cân bằng kho theo cùng số.' : ''}`}{' '}
         {TYPE_LABEL[type]} chưa xác nhận có thể sửa lại.
       </p>
     </div>

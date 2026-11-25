@@ -4,10 +4,12 @@ import { buildSku, variantMatrix } from '@sugami/shared';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { type Material, MaterialsEditor, materialsCost, ProfitLine } from '@/components/materials-editor';
 import { CategoryBrand, Field, inputCls, useMeta } from '@/components/product-form-parts';
 import { Button, Card, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
+import { KIND_LABEL, type ProductKind, useMe } from '@/lib/me';
 
 interface Opt {
   name: string;
@@ -27,6 +29,15 @@ const split = (s: string) => [
 export default function NewProductPage() {
   const router = useRouter();
   const meta = useMeta();
+  const me = useMe();
+  const assembly = me?.shop.type === 'assembly';
+  const [kind, setKind] = useState<ProductKind>('goods');
+  const [unit, setUnit] = useState('');
+  const [materials, setMaterials] = useState<Material[]>([]);
+  // an assembly shop starts on "material": that is what it adds most (flowers, leaves, paper)
+  useEffect(() => {
+    if (assembly) setKind((k) => (k === 'goods' ? 'material' : k));
+  }, [assembly]);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<'active' | 'draft'>('active');
@@ -58,6 +69,12 @@ export default function NewProductPage() {
           code: code.trim() || undefined,
           name,
           status,
+          kind,
+          unit: unit.trim() || undefined,
+          components:
+            kind === 'finished'
+              ? materials.filter((m) => m.qty > 0).map((m) => ({ variantId: m.variantId, qty: m.qty }))
+              : undefined,
           description: description || null,
           categoryId: categoryId || null,
           brand: brand.trim() || null,
@@ -104,6 +121,38 @@ export default function NewProductPage() {
           onCategory={setCategoryId}
           onBrand={setBrand}
         />
+        {(assembly || kind !== 'goods') && (
+          <Field
+            label="Loại"
+            hint={
+              kind === 'material'
+                ? 'Nhập kho rồi dùng để làm thành phẩm'
+                : kind === 'finished'
+                  ? 'Làm từ nguyên liệu; bán ra sẽ trừ kho nguyên liệu'
+                  : 'Nhập sao bán vậy'
+            }
+          >
+            <select
+              className={inputCls}
+              value={kind}
+              onChange={(e) => setKind(e.target.value as ProductKind)}
+            >
+              {(Object.keys(KIND_LABEL) as ProductKind[]).map((k) => (
+                <option key={k} value={k}>
+                  {KIND_LABEL[k]}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+        <Field label="Đơn vị tính" hint="cái, cành, bó, tờ, mét…">
+          <input
+            className={inputCls}
+            value={unit}
+            placeholder="cái"
+            onChange={(e) => setUnit(e.target.value)}
+          />
+        </Field>
         <Field label="Trạng thái">
           <select
             className={inputCls}
@@ -133,6 +182,21 @@ export default function NewProductPage() {
           </Field>
         </div>
       </Card>
+
+      {kind === 'finished' && (
+        <Card className="mb-4 p-4">
+          <h2 className="mb-1 text-sm font-medium">Định mức nguyên liệu</h2>
+          <p className="mb-3 text-xs text-slate-500">
+            Nguyên liệu cho 1 sản phẩm. Lúc bán có thể đổi nguyên liệu cho từng đơn.
+          </p>
+          <MaterialsEditor value={materials} onChange={setMaterials} />
+          {materials.length > 0 && (
+            <div className="mt-3">
+              <ProfitLine price={Number(price) || 0} cost={materialsCost(materials)} />
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card className="mb-4 p-4">
         <div className="flex items-center justify-between">

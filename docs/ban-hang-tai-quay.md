@@ -38,3 +38,13 @@ Header của cả site nền xanh (thương hiệu). Trang Bán hàng đưa than
 ## Giữ chỗ (đặt trước)
 
 Đơn giao hàng chưa giao cho ĐVVC (Mới, Đã xác nhận, Đang đóng gói) **giữ chỗ** hàng nhưng chưa trừ tồn. *Còn bán* = tồn kho − hàng đang giữ; số giữ được tính trực tiếp từ các đơn đó (`availability()` trong `pos-orders.ts`), không lưu bộ đếm riêng nên không lệch. Tìm hàng và dòng đơn hiện *Còn bán*, kèm tồn/giữ khi có giữ. Lúc XÁC NHẬN, nếu số lượng vượt *Còn bán* thì máy chủ trả lỗi 409 "Không đủ tồn: …" và ngăn xác nhận hiện nút **Vẫn bán (tồn sẽ âm)**. Hủy đơn hoặc giao cho ĐVVC thì hết giữ (giao thì chuyển thành trừ tồn). Giữ chỗ chỉ áp dụng cho đơn bán tại quầy, chưa tính đơn sàn đang chờ.
+
+## Shop thành phẩm từ nguyên liệu (vd. tiệm hoa)
+
+Shop loại *thành phẩm từ nguyên liệu* (`assembly`) bán thứ tự làm ra từ nguyên liệu trong kho.
+
+- **Sản phẩm** có 3 loại: *Nguyên liệu* (hoa, lá, giấy gói: nhập kho bằng phiếu nhập như hàng thường), *Thành phẩm* (bó hoa: không có tồn riêng) và *Hàng hóa* (bán nguyên như nhập). Thành phẩm có **định mức nguyên liệu** cho 1 sản phẩm; trang sản phẩm hiện giá vốn nguyên liệu, giá bán và lời/lỗ, sửa được bằng nút *Sửa định mức*.
+- **Bán tại quầy**: chọn thành phẩm thì nguyên liệu theo định mức hiện ngay dưới dòng, sửa số lượng/thêm/bỏ nguyên liệu được cho riêng đơn đó. Nút *Thành phẩm theo yêu cầu* tạo dòng không cần sản phẩm có sẵn: đặt tên, chọn nguyên liệu, nhập giá bán. Mỗi dòng hiện giá vốn (tổng nguyên liệu × giá vốn bình quân) và lời/lỗ; cuối đơn có tổng giá vốn và lời/lỗ của cả đơn.
+- Thanh toán **trừ kho nguyên liệu** (× số lượng dòng), không trừ thành phẩm; kiểm tra đủ tồn theo nguyên liệu (có "vẫn bán" như hàng thường). Nguyên liệu và giá vốn lúc bán lưu ở `order_line_components`; giá vốn dòng (`cost_snapshot`) là giá vốn nguyên liệu cho 1 sản phẩm, nên báo cáo lãi gộp và tổng quan tính đúng lời/lỗ.
+- Đơn giao hàng: nguyên liệu được giữ cho đơn cho tới khi giao ĐVVC, hủy/hoàn thì trả nguyên liệu về kho, giống hàng thường.
+- Kho bán của shop: `POS_WAREHOUSE` (mặc định `KHO-CHINH`) nếu shop có, nếu không thì kho đang hoạt động đầu tiên. Shop mới được tạo sẵn `KHO-CHINH`.

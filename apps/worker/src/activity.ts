@@ -87,7 +87,11 @@ export async function recordActivity(
   if (items.length === 0) return;
   // burst summaries exist only for push
   const logged = items.filter(
-    (a) => !((a.kind === 'order_new' && a.tag === 'orders-new') || (a.kind === 'chat_new' && a.tag === 'chat-burst')),
+    (a) =>
+      !(
+        (a.kind === 'order_new' && a.tag === 'orders-new') ||
+        (a.kind === 'chat_new' && a.tag === 'chat-burst')
+      ),
   );
   try {
     await db.notification.createMany({

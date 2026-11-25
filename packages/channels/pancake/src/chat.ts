@@ -112,7 +112,9 @@ export function toConversation(raw: Raw, pageId: string, channel?: ChatChannel):
     seen: raw.seen === true,
     lastSentByShop: lastSentBy && typeof lastSentBy === 'object' ? str(lastSentBy.id) === pageId : null,
     messageCount: Number(raw.message_count ?? 0) || 0,
-    tags: tags.map((t) => str(typeof t === 'object' && t ? ((t as Raw).text ?? (t as Raw).id) : t)).filter(Boolean),
+    tags: tags
+      .map((t) => str(typeof t === 'object' && t ? ((t as Raw).text ?? (t as Raw).id) : t))
+      .filter(Boolean),
     assigneeIds: assignees.map(str),
     updatedAt: parseChatTime(raw.updated_at),
     createdAt: parseChatTime(raw.inserted_at),
@@ -149,7 +151,8 @@ export function toAttachment(raw: Raw): ChatAttachment | null {
     ...(Number(data.width) > 0 ? { width: Number(data.width) } : {}),
     ...(Number(data.height) > 0 ? { height: Number(data.height) } : {}),
   };
-  if (type === 'photo' || type === 'image' || type === 'sticker') return url ? { kind: 'image', url, ...size } : null;
+  if (type === 'photo' || type === 'image' || type === 'sticker')
+    return url ? { kind: 'image', url, ...size } : null;
   if (type === 'video' || type === 'video_inline') return { kind: 'video', ...(url ? { url } : {}) };
   if (type === 'file' || type === 'document' || type === 'audio')
     return { kind: 'file', ...(url ? { url } : {}), text: str(raw.name) || str(raw.description) || type };
@@ -237,7 +240,11 @@ export class PancakeChatClient {
         continue;
       }
       // A POST is never retried after the server may have received it: the buyer could get the text twice.
-      if (method === 'GET' && (res.status === 429 || res.status >= 500) && attempt < this.retryDelaysMs.length) {
+      if (
+        method === 'GET' &&
+        (res.status === 429 || res.status >= 500) &&
+        attempt < this.retryDelaysMs.length
+      ) {
         await this.sleep(this.retryDelaysMs[attempt]!);
         continue;
       }
@@ -264,7 +271,11 @@ export class PancakeChatClient {
    * list by `page_number` with no page size, so this reads pages until one comes back empty or
    * `maxPages` is reached.
    */
-  async listConversations(opts: { since: Date; until: Date; maxPages?: number }): Promise<ChatConversation[]> {
+  async listConversations(opts: {
+    since: Date;
+    until: Date;
+    maxPages?: number;
+  }): Promise<ChatConversation[]> {
     const since = Math.floor(opts.since.getTime() / 1000);
     const until = Math.floor(opts.until.getTime() / 1000);
     const out = new Map<string, ChatConversation>();
@@ -290,9 +301,12 @@ export class PancakeChatClient {
 
   /** Messages of one conversation, oldest first. `currentCount` skips that many of the newest messages. */
   async listMessages(conversationId: string, currentCount?: number): Promise<ChatMessage[]> {
-    const res = await this.get<{ messages?: Raw[] }>(`/conversations/${encodeURIComponent(conversationId)}/messages`, {
-      current_count: currentCount,
-    });
+    const res = await this.get<{ messages?: Raw[] }>(
+      `/conversations/${encodeURIComponent(conversationId)}/messages`,
+      {
+        current_count: currentCount,
+      },
+    );
     return (res.messages ?? [])
       .map((m) => toMessage(m, this.opts.pageId))
       .sort((a, b) => a.at.getTime() - b.at.getTime());

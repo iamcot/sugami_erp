@@ -1,4 +1,9 @@
-import { chatPagesFromEnv, PancakeChatClient, type ChatConversation, pageChannel } from '@sugami/channels-pancake';
+import {
+  chatPagesFromEnv,
+  PancakeChatClient,
+  type ChatConversation,
+  pageChannel,
+} from '@sugami/channels-pancake';
 import type { PrismaClient } from '@sugami/db';
 import { applyChatRead, CHAT_LOOKBACK_DAYS } from '@sugami/sync';
 import { type Activity, recordActivity, reportError } from './activity.js';

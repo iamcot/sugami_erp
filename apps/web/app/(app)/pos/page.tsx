@@ -17,6 +17,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Badge, Button } from '@/components/ui';
+import { type Material, MaterialsEditor, materialsCost, ProfitLine } from '@/components/materials-editor';
+import { useMe } from '@/lib/me';
 import { type CustomerSaved, useDetail } from '@/components/detail-drawer';
 import { OrderDetail } from '@/components/order-detail';
 import { AreaSelect } from '@/components/vn-area-select';
@@ -24,8 +26,19 @@ import { formatRelativeDateTime } from '@/lib/datetime';
 import { api } from '@/lib/api';
 import { printReceipt, type ReceiptOrder, type ReceiptTemplate } from '@/lib/receipt';
 
+/**
+ * One line of a sale. Assembly shops: `components` are the materials of ONE unit (prefilled from the
+ * finished product's recipe, editable per sale); a made-to-order line has a `name` and no product.
+ */
+interface PosLine {
+  variantId?: string;
+  name?: string;
+  qty: number;
+  price: number;
+  components?: { variantId: string; qty: number }[];
+}
 interface Payload {
-  lines: { variantId: string; qty: number; price: number }[];
+  lines: PosLine[];
   customer: {
     id?: string | null;
     name?: string | null;
@@ -67,6 +80,32 @@ interface VariantInfo {
   reserved: number;
   /** onHand minus reserved: what can still be sold. */
   available: number;
+  kind?: 'goods' | 'material' | 'finished';
+  /** Average cost, VND. */
+  cost?: number;
+  /** Recipe of a finished product (materials per unit). */
+  components?: { variantId: string; sku: string; name: string; qty: number; cost: number }[] | null;
+}
+
+/** Ids a sale needs details for: its products and every material. */
+const lineIds = (lines: PosLine[]) => [
+  ...new Set(
+    lines.flatMap((l) => [
+      ...(l.variantId ? [l.variantId] : []),
+      ...(l.components ?? []).map((c) => c.variantId),
+    ]),
+  ),
+];
+
+/** Stock a sale takes per variant: materials for lines that have them, otherwise the product itself. */
+function stockNeeds(lines: PosLine[]) {
+  const need = new Map<string, number>();
+  for (const l of lines) {
+    if (l.components?.length)
+      for (const c of l.components) need.set(c.variantId, (need.get(c.variantId) ?? 0) + c.qty * l.qty);
+    else if (l.variantId) need.set(l.variantId, (need.get(l.variantId) ?? 0) + l.qty);
+  }
+  return need;
 }
 interface CustomerHit {
   id: string;
@@ -196,6 +235,8 @@ function Money({
 }
 
 export default function PosPage() {
+  const me = useMe();
+  const assembly = me?.shop.type === 'assembly';
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [info, setInfo] = useState<Record<string, VariantInfo>>({});
@@ -256,7 +297,7 @@ export default function PosPage() {
       if (r.data.length) {
         setDrafts(r.data);
         setActive(r.data[0]!.id);
-        await learn([...new Set(r.data.flatMap((d) => d.payload.lines.map((l) => l.variantId)))]);
+        await learn([...new Set(r.data.flatMap((d) => lineIds(d.payload.lines)))]);
         for (const id of new Set(r.data.map((d) => d.payload.customer?.id).filter((x): x is string => !!x)))
           void loadCustomer(id).catch(() => undefined);
       } else await newDraft();
@@ -330,11 +371,22 @@ export default function PosPage() {
   const addVariant = (v: VariantInfo) => {
     if (!draft) return;
     setInfo((cur) => ({ ...cur, [v.id]: v }));
-    const has = draft.payload.lines.find((l) => l.variantId === v.id);
+    // a finished product comes with its recipe, which can then be changed for this sale only
+    const recipe =
+      v.kind === 'finished'
+        ? (v.components ?? []).map((c) => ({ variantId: c.variantId, qty: c.qty }))
+        : undefined;
+    if (recipe?.length) void learn(recipe.map((c) => c.variantId)).catch(() => undefined);
+    const same = (l: PosLine) =>
+      l.variantId === v.id && JSON.stringify(l.components ?? null) === JSON.stringify(recipe ?? null);
+    const has = draft.payload.lines.find(same);
     patch({
       lines: has
-        ? draft.payload.lines.map((l) => (l.variantId === v.id ? { ...l, qty: l.qty + 1 } : l))
-        : [...draft.payload.lines, { variantId: v.id, qty: 1, price: v.price }],
+        ? draft.payload.lines.map((l) => (same(l) ? { ...l, qty: l.qty + 1 } : l))
+        : [
+            ...draft.payload.lines,
+            { variantId: v.id, qty: 1, price: v.price, ...(recipe ? { components: recipe } : {}) },
+          ],
     });
     setQ('');
     searchRef.current?.focus();
@@ -420,7 +472,27 @@ export default function PosPage() {
   const subtotal = p ? p.lines.reduce((a, l) => a + l.price * l.qty, 0) : 0;
   const total = p ? Math.max(0, subtotal - p.discount + p.otherIncome) : 0;
   const retail = draft?.mode === 'retail';
-  const outOfStock = p?.lines.filter((l) => (info[l.variantId]?.available ?? 0) < l.qty).length ?? 0;
+  const needs = stockNeeds(p?.lines ?? []);
+  const outOfStock = [...needs].filter(([id, q]) => (info[id]?.available ?? 0) < q).length;
+  /** Materials of a line as the editor shows them (names, costs and stock from what the screen knows). */
+  const materialsOf = (l: PosLine): Material[] =>
+    (l.components ?? []).map((c) => {
+      const m = info[c.variantId];
+      return {
+        variantId: c.variantId,
+        qty: c.qty,
+        sku: m?.sku ?? '…',
+        name: m
+          ? `${m.productName}${optionText(m.optionValues) ? ` - ${optionText(m.optionValues)}` : ''}`
+          : '…',
+        cost: m?.cost ?? 0,
+        available: m?.available,
+      };
+    });
+  /** Cost of one unit of a line: its materials, or the product's average cost. */
+  const unitCost = (l: PosLine) =>
+    l.components?.length ? materialsCost(materialsOf(l)) : l.variantId ? (info[l.variantId]?.cost ?? 0) : 0;
+  const costTotal = p ? p.lines.reduce((a, l) => a + unitCost(l) * l.qty, 0) : 0;
   const when = toLocal(p?.orderedAt ?? null);
   const setWhen = (date: string, time: string) => date && time && patch({ orderedAt: fromLocal(date, time) });
   const customer = p?.customer?.id ? cinfo[p.customer.id] : undefined;
@@ -548,10 +620,16 @@ export default function PosPage() {
                   </span>
                   <span className="text-right">
                     <span className="block tabular-nums">{fmt(v.price)}</span>
-                    <span className={`text-xs ${v.available > 0 ? 'text-slate-500' : 'text-rose-600'}`}>
-                      Còn bán {fmt(v.available)}
-                      {v.reserved > 0 ? ` (tồn ${fmt(v.onHand)}, giữ ${fmt(v.reserved)})` : ''}
-                    </span>
+                    {v.kind === 'finished' ? (
+                      <span className="text-xs text-brand-700">
+                        Thành phẩm · {v.components?.length ?? 0} nguyên liệu
+                      </span>
+                    ) : (
+                      <span className={`text-xs ${v.available > 0 ? 'text-slate-500' : 'text-rose-600'}`}>
+                        Còn bán {fmt(v.available)}
+                        {v.reserved > 0 ? ` (tồn ${fmt(v.onHand)}, giữ ${fmt(v.reserved)})` : ''}
+                      </span>
+                    )}
                   </span>
                 </button>
               </li>
@@ -640,19 +718,34 @@ export default function PosPage() {
                   </li>
                 )}
                 {p.lines.map((l, i) => {
-                  const v = info[l.variantId];
-                  const low = v && v.available < l.qty;
+                  const v = l.variantId ? info[l.variantId] : undefined;
+                  const made = !!l.components || !l.variantId;
+                  const low = !made && v && v.available < l.qty;
+                  const setLine = (patchLine: Partial<PosLine>) =>
+                    patch({ lines: p.lines.map((x, j) => (j === i ? { ...x, ...patchLine } : x)) });
+                  const dropLine = () => patch({ lines: p.lines.filter((_, j) => j !== i) });
                   return (
-                    <li key={l.variantId} className="px-3 py-2">
+                    <li key={`${i}-${l.variantId ?? 'custom'}`} className="px-3 py-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm sm:flex-nowrap">
                         <span className="w-5 text-slate-400">{i + 1}</span>
                         <Thumb src={v?.image} className="size-12" />
                         <span className="min-w-0 flex-1 max-sm:basis-[calc(100%-6.5rem)]">
-                          <span className="line-clamp-2">
-                            {v?.productName}{' '}
-                            <span className="text-slate-500">{optionText(v?.optionValues)}</span>
+                          {l.variantId ? (
+                            <span className="line-clamp-2">
+                              {v?.productName}{' '}
+                              <span className="text-slate-500">{optionText(v?.optionValues)}</span>
+                            </span>
+                          ) : (
+                            <input
+                              className={line}
+                              value={l.name ?? ''}
+                              placeholder="Tên thành phẩm (vd. Bó hoa theo yêu cầu)"
+                              onChange={(e) => setLine({ name: e.target.value })}
+                            />
+                          )}
+                          <span className="font-mono text-xs text-slate-500">
+                            {l.variantId ? (v?.sku ?? '…') : 'Theo yêu cầu'}
                           </span>
-                          <span className="font-mono text-xs text-slate-500">{v?.sku ?? '…'}</span>
                           {low && (
                             <span className="ml-2 text-xs text-rose-600">
                               Còn bán: {fmt(v.available)} (không đủ)
@@ -665,16 +758,7 @@ export default function PosPage() {
                             aria-label="Giảm"
                             tabIndex={-1}
                             className="rounded-full border border-slate-300 p-1 dark:border-slate-700"
-                            onClick={() =>
-                              patch({
-                                lines:
-                                  l.qty <= 1
-                                    ? p.lines.filter((x) => x.variantId !== l.variantId)
-                                    : p.lines.map((x) =>
-                                        x.variantId === l.variantId ? { ...x, qty: x.qty - 1 } : x,
-                                      ),
-                              })
-                            }
+                            onClick={() => (l.qty <= 1 ? dropLine() : setLine({ qty: l.qty - 1 }))}
                           >
                             <Minus className="size-3.5" />
                           </button>
@@ -682,57 +766,84 @@ export default function PosPage() {
                             inputMode="numeric"
                             className="w-12 border-b border-slate-300 bg-transparent text-center outline-none dark:border-slate-700"
                             value={l.qty}
-                            onChange={(e) =>
-                              patch({
-                                lines: p.lines.map((x) =>
-                                  x.variantId === l.variantId
-                                    ? { ...x, qty: Math.max(1, num(e.target.value)) }
-                                    : x,
-                                ),
-                              })
-                            }
+                            onChange={(e) => setLine({ qty: Math.max(1, num(e.target.value)) })}
                           />
                           <button
                             aria-label="Tăng"
                             tabIndex={-1}
                             className="rounded-full border border-slate-300 p-1 dark:border-slate-700"
-                            onClick={() =>
-                              patch({
-                                lines: p.lines.map((x) =>
-                                  x.variantId === l.variantId ? { ...x, qty: x.qty + 1 } : x,
-                                ),
-                              })
-                            }
+                            onClick={() => setLine({ qty: l.qty + 1 })}
                           >
                             <Plus className="size-3.5" />
                           </button>
                         </span>
                         <span className="w-24 sm:w-28">
-                          <Money
-                            value={l.price}
-                            onChange={(n) =>
-                              patch({
-                                lines: p.lines.map((x) =>
-                                  x.variantId === l.variantId ? { ...x, price: n } : x,
-                                ),
-                              })
-                            }
-                          />
+                          <Money value={l.price} onChange={(n) => setLine({ price: n })} />
                         </span>
                         <span className="w-20 text-right font-medium tabular-nums max-sm:flex-1 sm:w-28">
                           {fmt(l.price * l.qty)}
                         </span>
-                        <button
-                          aria-label="Xóa dòng"
-                          tabIndex={-1}
-                          onClick={() => patch({ lines: p.lines.filter((x) => x.variantId !== l.variantId) })}
-                        >
+                        <button aria-label="Xóa dòng" tabIndex={-1} onClick={dropLine}>
                           <Trash2 className="size-4 text-slate-400 hover:text-rose-500" />
                         </button>
                       </div>
+                      {made && (
+                        <div className="mt-2 rounded-md border border-dashed border-slate-200 p-2 sm:ml-[4.75rem] dark:border-slate-700">
+                          <MaterialsEditor
+                            value={materialsOf(l)}
+                            times={l.qty}
+                            onChange={(list) => {
+                              setInfo((cur) => {
+                                const next = { ...cur };
+                                for (const m of list)
+                                  if (!next[m.variantId])
+                                    next[m.variantId] = {
+                                      id: m.variantId,
+                                      sku: m.sku,
+                                      barcode: null,
+                                      price: 0,
+                                      productName: m.name,
+                                      optionValues: null,
+                                      image: null,
+                                      onHand: m.available ?? 0,
+                                      reserved: 0,
+                                      available: m.available ?? 0,
+                                      kind: 'material',
+                                      cost: m.cost,
+                                    };
+                                return next;
+                              });
+                              setLine({
+                                components: list.map((m) => ({ variantId: m.variantId, qty: m.qty })),
+                              });
+                            }}
+                          />
+                          <div className="mt-2">
+                            <ProfitLine price={l.price} cost={unitCost(l)} qty={l.qty} />
+                          </div>
+                        </div>
+                      )}
                     </li>
                   );
                 })}
+                {assembly && (
+                  <li className="px-3 py-2">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline"
+                      onClick={() =>
+                        patch({
+                          lines: [
+                            ...p.lines,
+                            { name: 'Thành phẩm theo yêu cầu', qty: 1, price: 0, components: [] },
+                          ],
+                        })
+                      }
+                    >
+                      <Plus className="size-4" /> Thành phẩm theo yêu cầu (tự chọn nguyên liệu)
+                    </button>
+                  </li>
+                )}
               </ul>
               <div className="grid shrink-0 gap-3 border-t border-slate-200 p-3 text-sm sm:grid-cols-[1fr_auto] dark:border-slate-800">
                 <textarea
@@ -747,6 +858,17 @@ export default function PosPage() {
                     <span>Tổng tiền hàng ({p.lines.reduce((a, l) => a + l.qty, 0)})</span>
                     <span className="tabular-nums">{fmt(subtotal)}</span>
                   </div>
+                  {assembly && (
+                    <div className="flex justify-between text-xs text-slate-500">
+                      <span>Giá vốn nguyên liệu · lời/lỗ</span>
+                      <span className="tabular-nums">
+                        {fmt(costTotal)} ·{' '}
+                        <b className={total - costTotal < 0 ? 'text-rose-600' : 'text-emerald-600'}>
+                          {fmt(total - costTotal)}
+                        </b>
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between gap-6">
                     <span>Giảm giá</span>
                     <span className="w-32">

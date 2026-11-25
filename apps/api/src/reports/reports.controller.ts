@@ -1,5 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { Prisma } from '@sugami/db';
+import { currentShopId, Prisma } from '@sugami/db';
 import { z } from 'zod';
 import { RequirePermissions } from '../auth/decorators.js';
 import { parseInput } from '../common/validation.js';
@@ -71,7 +71,7 @@ export class ReportsController {
       JOIN channels c ON c.id = o.channel_id
       LEFT JOIN variants v ON v.id = l.variant_id
       LEFT JOIN products p ON p.id = v.product_id
-      WHERE o.status NOT IN ('cancelled', 'returned') AND o.ordered_at >= ${from} AND o.ordered_at < ${to}`;
+      WHERE o.shop_id = ${currentShopId()} AND o.status NOT IN ('cancelled', 'returned') AND o.ordered_at >= ${from} AND o.ordered_at < ${to}`;
     const unitCost = Prisma.sql`COALESCE(NULLIF(l.cost_snapshot, 0), v.cost_avg, 0)`;
     const measures = Prisma.sql`
       COUNT(DISTINCT o.id) AS orders, COALESCE(SUM(l.qty), 0) AS units,
@@ -90,7 +90,7 @@ export class ReportsController {
             SELECT ${q.by === 'month' ? Prisma.sql`DATE_FORMAT(DATE_ADD(o.ordered_at, INTERVAL 7 HOUR), '%Y-%m')` : Prisma.sql`c.code`} AS \`key\`,
                    COALESCE(SUM(o.platform_fee), 0) AS fee
             FROM orders o JOIN channels c ON c.id = o.channel_id
-            WHERE o.status NOT IN ('cancelled', 'returned') AND o.ordered_at >= ${from} AND o.ordered_at < ${to}
+            WHERE o.shop_id = ${currentShopId()} AND o.status NOT IN ('cancelled', 'returned') AND o.ordered_at >= ${from} AND o.ordered_at < ${to}
             GROUP BY \`key\``
         : Promise.resolve(null),
     ]);

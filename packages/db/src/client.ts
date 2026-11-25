@@ -1,5 +1,6 @@
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from './generated/prisma/client.js';
+import { withShopScope } from './shop-scope.js';
 
 export interface MysqlConnectionOptions {
   host: string;
@@ -26,8 +27,9 @@ export function parseDatabaseUrl(url: string): MysqlConnectionOptions {
   };
 }
 
+/** Prisma client whose queries stay inside the current shop (see runAsShop; Sugami when none is set). */
 export function createPrismaClient(url = process.env.DATABASE_URL): PrismaClient {
   if (!url) throw new Error('DATABASE_URL is not set');
   const adapter = new PrismaMariaDb({ ...parseDatabaseUrl(url), connectionLimit: 10 });
-  return new PrismaClient({ adapter });
+  return withShopScope(new PrismaClient({ adapter }));
 }

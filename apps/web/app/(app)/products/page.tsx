@@ -11,6 +11,7 @@ import { PancakeIcon, ShopeeIcon, TikTokIcon } from '@/components/platform-icons
 import { Badge, Button, Card, PageHeader, Tabs } from '@/components/ui';
 import { api } from '@/lib/api';
 import type { InventoryResponse } from '@/lib/inventory';
+import { KIND_LABEL, type ProductKind, useMe } from '@/lib/me';
 import { useQueryState } from '@/lib/use-query-state';
 
 interface ProductRow {
@@ -18,6 +19,7 @@ interface ProductRow {
   code: string;
   name: string;
   status: 'active' | 'draft' | 'archived';
+  kind: ProductKind;
   category: string | null;
   variantCount: number;
   image: string | null;
@@ -92,7 +94,7 @@ function LinkChip({
   );
 }
 
-const makeColumns = (
+const allColumns = (
   openListings: (platform: 'shopee' | 'tiktok', p: ProductRow) => void,
 ): Column<ProductRow>[] => [
   {
@@ -117,7 +119,12 @@ const makeColumns = (
         )}
         <div className="min-w-0">
           <p className="line-clamp-1 font-medium">{p.name}</p>
-          <p className="font-mono text-xs text-slate-500">{p.code}</p>
+          <p className="font-mono text-xs text-slate-500">
+            {p.code}
+            {p.kind !== 'goods' && (
+              <span className="ml-2 font-sans text-brand-700">{KIND_LABEL[p.kind]}</span>
+            )}
+          </p>
         </div>
       </div>
     ),
@@ -202,13 +209,18 @@ const makeColumns = (
     render: (p) => <Badge tone={STATUS[p.status].tone}>{STATUS[p.status].label}</Badge>,
   },
 ];
+const makeColumns = (kv: boolean, openListings: (platform: 'shopee' | 'tiktok', p: ProductRow) => void) =>
+  allColumns(openListings).filter((c) => kv || c.key !== 'links');
 
 function ProductsList() {
   const { open, selected } = useDetail();
+  const me = useMe();
+  const integrations = me?.shop.integrations ?? false;
   const [qs, setQs] = useQueryState({
     q: '',
     view: 'all',
     link: 'all',
+    kind: '',
     sort: 'updated',
     dir: 'desc',
     page: '1',
@@ -222,7 +234,9 @@ function ProductsList() {
     code: string;
     name: string;
   } | null>(null);
-  const columns = makeColumns((platform, p) => setListingsFor({ platform, code: p.code, name: p.name }));
+  const columns = makeColumns(integrations, (platform, p) =>
+    setListingsFor({ platform, code: p.code, name: p.name }),
+  );
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
@@ -291,7 +305,8 @@ function ProductsList() {
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
-    const params = new URLSearchParams({ ...qs, pageSize: '50' });
+    const { kind, ...rest } = qs;
+    const params = new URLSearchParams({ ...rest, ...(kind ? { kind } : {}), pageSize: '50' });
     api<ListResponse>(`/products?${params}`, { signal: ctrl.signal })
       .then((r) => {
         setRes(r);
@@ -302,7 +317,7 @@ function ProductsList() {
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [qs.q, qs.view, qs.link, qs.sort, qs.dir, qs.page, version]);
+  }, [qs.q, qs.view, qs.link, qs.kind, qs.sort, qs.dir, qs.page, version]);
 
   const counts = res?.counts ?? {};
   return (
@@ -317,9 +332,11 @@ function ProductsList() {
                 <Plus className="size-4" /> Thêm sản phẩm
               </Button>
             </Link>
-            <Button variant="secondary" disabled={syncing} onClick={sync}>
-              <RefreshCw className={`size-4 ${syncing ? 'animate-spin' : ''}`} /> Đồng bộ từ Pancake
-            </Button>
+            {integrations && (
+              <Button variant="secondary" disabled={syncing} onClick={sync}>
+                <RefreshCw className={`size-4 ${syncing ? 'animate-spin' : ''}`} /> Đồng bộ từ Pancake
+              </Button>
+            )}
             {pendingConfirm > 0 && (
               <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
                 Tin đăng cần xác nhận ({pendingConfirm})
@@ -331,9 +348,11 @@ function ProductsList() {
             <Link href="/inventory/documents/new?type=count">
               <Button variant="secondary">Kiểm kho</Button>
             </Link>
-            <Link href="/data/import">
-              <Button variant="secondary">Nhập từ KiotViet</Button>
-            </Link>
+            {integrations && (
+              <Link href="/data/import">
+                <Button variant="secondary">Nhập từ KiotViet</Button>
+              </Link>
+            )}
           </>
         }
       />
@@ -382,15 +401,29 @@ function ProductsList() {
           value={qs.view}
           onChange={(v) => setQs({ view: v, page: '1' })}
         />
-        <select
-          value={qs.link}
-          onChange={(e) => setQs({ link: e.target.value, page: '1' })}
-          className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
-        >
-          <option value="all">Mọi liên kết</option>
-          <option value="no_pancake">Chưa kết nối Pancake</option>
-          <option value="on_market">Đã kết nối sàn TMĐT</option>
-        </select>
+        {me?.shop.type === 'assembly' && (
+          <select
+            value={qs.kind}
+            onChange={(e) => setQs({ kind: e.target.value, page: '1' })}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
+          >
+            <option value="">Mọi loại</option>
+            <option value="material">Nguyên liệu</option>
+            <option value="finished">Thành phẩm</option>
+            <option value="goods">Hàng hóa</option>
+          </select>
+        )}
+        {integrations && (
+          <select
+            value={qs.link}
+            onChange={(e) => setQs({ link: e.target.value, page: '1' })}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-slate-800 dark:bg-slate-900"
+          >
+            <option value="all">Mọi liên kết</option>
+            <option value="no_pancake">Chưa kết nối Pancake</option>
+            <option value="on_market">Đã kết nối sàn TMĐT</option>
+          </select>
+        )}
         <label className="flex h-9 w-full min-w-0 shrink-0 items-center md:flex-1 gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm md:ml-auto md:max-w-xs dark:border-slate-800 dark:bg-slate-900">
           <Search className="size-4 shrink-0 text-slate-400" />
           <input
@@ -418,7 +451,9 @@ function ProductsList() {
         empty={
           qs.q
             ? `Không tìm thấy "${qs.q}"`
-            : 'Chưa có sản phẩm. Nhập danh sách hàng hóa từ KiotViet để bắt đầu.'
+            : integrations
+              ? 'Chưa có sản phẩm. Nhập danh sách hàng hóa từ KiotViet để bắt đầu.'
+              : 'Chưa có sản phẩm. Bấm Thêm sản phẩm để bắt đầu.'
         }
       />
     </>

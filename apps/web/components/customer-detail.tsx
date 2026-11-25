@@ -7,6 +7,7 @@ import { type CustomerSaved, useDetail } from '@/components/detail-drawer';
 import { Badge, Button, Card, PageHeader } from '@/components/ui';
 import { AreaSelect } from '@/components/vn-area-select';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 
 interface Detail {
   customer: {
@@ -94,6 +95,7 @@ const toSaved = (c: Detail['customer']): CustomerSaved => ({
 
 /** Code `new` = the create form (nothing to load); otherwise the customer's view with an edit form. */
 export function CustomerDetail({ code, embedded }: { code: string; embedded?: boolean }) {
+  const kv = useMe()?.shop.integrations ?? false;
   const { open, close, optsFor } = useDetail();
   const isNew = code === 'new';
   const opts = optsFor('customer', code);
@@ -200,10 +202,14 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
       {d && c && (
         <div className={`mb-4 grid grid-cols-2 gap-3 ${embedded ? '' : 'md:grid-cols-4'}`}>
           {[
-            ['Đơn trong Sugami', String(d.stats.orders)],
-            ['Chi tiêu trong Sugami', formatVnd(d.stats.spent)],
-            ['Tổng mua (KiotViet)', formatVnd(c.kvTotalSales)],
-            ['Nợ cần thu', formatVnd(c.kvDebt)],
+            ['Số đơn', String(d.stats.orders)],
+            ['Chi tiêu', formatVnd(d.stats.spent)],
+            ...(kv
+              ? [
+                  ['Tổng mua (KiotViet)', formatVnd(c.kvTotalSales)],
+                  ['Nợ cần thu', formatVnd(c.kvDebt)],
+                ]
+              : []),
           ].map(([l, v]) => (
             <Card key={l} className="p-3">
               <div className="text-xs text-slate-500">{l}</div>
@@ -281,7 +287,7 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
               <Button variant="secondary" onClick={() => (isNew ? close() : setEdit(null))}>
                 Hủy
               </Button>
-              {!isNew && (
+              {!isNew && kv && (
                 <span className="self-center text-xs text-slate-500">
                   Nhập lại file khách từ KiotViet có thể ghi đè các thông tin này.
                 </span>
@@ -299,7 +305,7 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
             </div>
             <Field label="Giới tính" value={c.gender} />
             <Field label="Ngày sinh" value={c.birthday && dt(c.birthday)} />
-            <Field label="Tạo trên KiotViet" value={dt(c.kvCreatedAt)} />
+            {kv && <Field label="Tạo trên KiotViet" value={dt(c.kvCreatedAt)} />}
             <Field label="Mua gần nhất" value={dt(c.lastPurchaseAt)} />
             <Field
               label="Nhóm"
@@ -322,9 +328,7 @@ export function CustomerDetail({ code, embedded }: { code: string; embedded?: bo
           <h2 className="mb-2 text-sm font-medium">Đơn hàng ({d.orders.length})</h2>
           <Card className="overflow-hidden">
             {d.orders.length === 0 ? (
-              <p className="p-4 text-sm text-slate-500">
-                Chưa có đơn nào trong Sugami. Nhập file hóa đơn từ KiotViet để thấy lịch sử mua.
-              </p>
+              <p className="p-4 text-sm text-slate-500">Chưa có đơn nào.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-900">

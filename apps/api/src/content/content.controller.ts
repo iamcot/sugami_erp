@@ -18,7 +18,7 @@ export class ContentController {
   constructor(private readonly prisma: PrismaService) {}
 
   private async productId(code: string) {
-    const p = await this.prisma.client.product.findUnique({
+    const p = await this.prisma.client.product.findFirst({
       where: { code: decodeURIComponent(code) },
       select: { id: true },
     });

@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { Prisma } from '@sugami/db';
+import { currentShopId, type Prisma } from '@sugami/db';
 import { RequirePermissions } from '../auth/decorators.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -25,6 +25,7 @@ export class DashboardController {
     const days = 14;
     const from = new Date(today.getTime() - (days - 1) * DAY);
     const d30 = new Date(today.getTime() - 29 * DAY);
+    const shop = currentShopId();
     const active: Prisma.OrderWhereInput = { status: { notIn: ['cancelled', 'returned'] } };
 
     const [orders, margin, stock, todo, lastImport, health] = await Promise.all([
@@ -37,19 +38,19 @@ export class DashboardController {
                COALESCE(SUM(l.qty * COALESCE(l.cost_snapshot, 0)), 0) AS cost,
                COALESCE(SUM(l.cost_snapshot IS NULL OR l.cost_snapshot = 0), 0) AS missing
         FROM order_lines l JOIN orders o ON o.id = l.order_id
-        WHERE o.status NOT IN ('cancelled', 'returned') AND o.ordered_at >= ${d30}`,
+        WHERE o.shop_id = ${shop} AND o.status NOT IN ('cancelled', 'returned') AND o.ordered_at >= ${d30}`,
       db.$queryRaw<{ value: unknown; units: unknown }[]>`
         SELECT COALESCE(SUM(GREATEST(t.on_hand, 0) * t.cost_avg), 0) AS value, COALESCE(SUM(GREATEST(t.on_hand, 0)), 0) AS units
         FROM (SELECT v.cost_avg, COALESCE(SUM(sl.on_hand), 0) AS on_hand
-              FROM variants v JOIN products p ON p.id = v.product_id AND p.status <> 'archived'
-              LEFT JOIN stock_levels sl ON sl.variant_id = v.id GROUP BY v.id) t`,
+              FROM variants v JOIN products p ON p.id = v.product_id AND p.status <> 'archived' AND p.kind <> 'finished'
+              LEFT JOIN stock_levels sl ON sl.variant_id = v.id WHERE v.shop_id = ${shop} GROUP BY v.id) t`,
       db.$queryRaw<{ negative: unknown; out_active: unknown; zero_price: unknown }[]>`
         SELECT COALESCE(SUM(t.on_hand < 0), 0) AS negative,
                COALESCE(SUM(t.on_hand = 0 AND t.status = 'active'), 0) AS out_active,
                COALESCE(SUM(t.price = 0), 0) AS zero_price
         FROM (SELECT v.price, p.status, COALESCE(SUM(sl.on_hand), 0) AS on_hand
-              FROM variants v JOIN products p ON p.id = v.product_id AND p.status <> 'archived'
-              LEFT JOIN stock_levels sl ON sl.variant_id = v.id GROUP BY v.id) t`,
+              FROM variants v JOIN products p ON p.id = v.product_id AND p.status <> 'archived' AND p.kind <> 'finished'
+              LEFT JOIN stock_levels sl ON sl.variant_id = v.id WHERE v.shop_id = ${shop} GROUP BY v.id) t`,
       db.order.aggregate({
         where: { source: 'kiotviet_excel' },
         _max: { createdAt: true, orderedAt: true },
@@ -102,19 +103,22 @@ export class DashboardController {
   /** Plain counts behind the "Sức khỏe shop" card; the page decides tone and wording. */
   private async healthCounts(since: Date) {
     const db = this.prisma.client;
+    const shop = currentShopId();
     const [row, cursors] = await Promise.all([
       db.$queryRaw<Record<string, unknown>[]>`
         SELECT
           (SELECT COUNT(*) FROM order_lines l JOIN orders o ON o.id = l.order_id
-            WHERE l.variant_id IS NULL AND o.status NOT IN ('cancelled', 'returned') AND o.ordered_at >= ${since}) AS unlinked_lines,
+            WHERE o.shop_id = ${shop} AND l.variant_id IS NULL AND o.status NOT IN ('cancelled', 'returned') AND o.ordered_at >= ${since}) AS unlinked_lines,
           (SELECT COUNT(*) FROM variants v JOIN products p ON p.id = v.product_id AND p.status = 'active'
-            WHERE NOT EXISTS (SELECT 1 FROM external_refs r WHERE r.provider = 'pancake' AND r.entity_type = 'variant' AND r.entity_id = v.id)) AS not_on_pancake,
-          (SELECT COUNT(*) FROM channel_listing_variants WHERE variant_id IS NULL) AS listing_unlinked,
-          (SELECT COUNT(*) FROM channel_listing_variants WHERE linked_by = 'unresolved') AS listing_unresolved,
-          (SELECT COUNT(*) FROM products p WHERE p.status = 'active'
+            WHERE v.shop_id = ${shop} AND NOT EXISTS (SELECT 1 FROM external_refs r WHERE r.provider = 'pancake' AND r.entity_type = 'variant' AND r.entity_id = v.id)) AS not_on_pancake,
+          (SELECT COUNT(*) FROM channel_listing_variants cv JOIN channel_listings cl ON cl.id = cv.listing_id
+            WHERE cl.shop_id = ${shop} AND cv.variant_id IS NULL) AS listing_unlinked,
+          (SELECT COUNT(*) FROM channel_listing_variants cv JOIN channel_listings cl ON cl.id = cv.listing_id
+            WHERE cl.shop_id = ${shop} AND cv.linked_by = 'unresolved') AS listing_unresolved,
+          (SELECT COUNT(*) FROM products p WHERE p.shop_id = ${shop} AND p.status = 'active'
             AND NOT EXISTS (SELECT 1 FROM product_media m WHERE m.product_id = p.id)) AS no_image,
           (SELECT COUNT(*) FROM (SELECT v.id FROM variants v JOIN products p ON p.id = v.product_id AND p.status = 'active'
-            LEFT JOIN stock_levels sl ON sl.variant_id = v.id WHERE v.cost_avg = 0 GROUP BY v.id HAVING COALESCE(SUM(sl.on_hand), 0) > 0) c) AS zero_cost`,
+            LEFT JOIN stock_levels sl ON sl.variant_id = v.id WHERE v.shop_id = ${shop} AND v.cost_avg = 0 GROUP BY v.id HAVING COALESCE(SUM(sl.on_hand), 0) > 0) c) AS zero_cost`,
       db.syncCursor.findMany({
         where: { key: { in: ['pancake:orders', 'pancake:stock-push:on', 'pancake:stock-push:last'] } },
       }),

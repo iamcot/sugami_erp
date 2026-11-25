@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense, useEffect, useState } from 'react';
 import { api, DATA_CHANGED } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import { DetailProvider } from './detail-drawer';
 import { GlobalSearch } from './global-search';
 import { NotificationBell } from './notification-bell';
@@ -33,14 +34,22 @@ import { PwaBootstrap } from './app-settings';
 import { UserMenu } from './user-menu';
 
 type CountKey = 'chat' | 'waiting' | 'shipping' | 'returnPending' | 'shopee' | 'tiktok' | 'low' | 'negative';
-type NavItem = { href: string; label: string; icon?: LucideIcon; platform?: string; count?: CountKey };
+/** `integrations`: only for a shop connected to Pancake / marketplaces (Sugami). */
+type NavItem = {
+  href: string;
+  label: string;
+  icon?: LucideIcon;
+  platform?: string;
+  count?: CountKey;
+  integrations?: boolean;
+};
 type Counts = Partial<Record<CountKey, number>>;
 
 const navTop: NavItem[] = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/reports', label: 'Báo cáo', icon: BarChart3 },
   { href: '/customers', label: 'Khách hàng', icon: Users },
-  { href: '/chat', label: 'Chat', icon: MessageCircle, count: 'chat' },
+  { href: '/chat', label: 'Chat', icon: MessageCircle, count: 'chat', integrations: true },
 ];
 
 const navSections: { title: string; items: NavItem[] }[] = [
@@ -72,10 +81,22 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: 'Nền tảng',
     items: [
-      { href: '/orders?channel=shopee', label: 'Shopee', platform: 'shopee', count: 'shopee' },
-      { href: '/orders?channel=tiktok', label: 'TikTok Shop', platform: 'tiktok', count: 'tiktok' },
-      { href: '/data/pancake', label: 'Pancake', platform: 'pancake' },
-      { href: '/data/import', label: 'Đồng bộ KiotViet', icon: RefreshCw },
+      {
+        href: '/orders?channel=shopee',
+        label: 'Shopee',
+        platform: 'shopee',
+        count: 'shopee',
+        integrations: true,
+      },
+      {
+        href: '/orders?channel=tiktok',
+        label: 'TikTok Shop',
+        platform: 'tiktok',
+        count: 'tiktok',
+        integrations: true,
+      },
+      { href: '/data/pancake', label: 'Pancake', platform: 'pancake', integrations: true },
+      { href: '/data/import', label: 'Đồng bộ KiotViet', icon: RefreshCw, integrations: true },
     ],
   },
 ];
@@ -129,7 +150,7 @@ const navItemClass = (on: boolean) =>
   );
 
 /** Menu numbers: what still needs hands (orders to pack, parcels back, stock problems). Refreshed every minute. */
-function useNavCounts(pathname: string): Counts {
+function useNavCounts(pathname: string, integrations: boolean): Counts {
   const [c, setC] = useState<Counts>({});
   useEffect(() => {
     const load = () => {
@@ -150,10 +171,11 @@ function useNavCounts(pathname: string): Counts {
           })),
         () => {},
       );
-      api<{ attention: number }>('/chat/counts').then(
-        (r) => setC((p) => ({ ...p, chat: r.attention })),
-        () => {},
-      );
+      if (integrations)
+        api<{ attention: number }>('/chat/counts').then(
+          (r) => setC((p) => ({ ...p, chat: r.attention })),
+          () => {},
+        );
       api<{ total: number; totals: { negative: number } }>('/inventory?view=low&pageSize=1').then(
         (r) => setC((p) => ({ ...p, low: r.total, negative: r.totals.negative })),
         () => {},
@@ -173,7 +195,7 @@ function useNavCounts(pathname: string): Counts {
       clearTimeout(soon);
       window.removeEventListener(DATA_CHANGED, onChanged);
     };
-  }, [pathname]);
+  }, [pathname, integrations]);
   return c;
 }
 
@@ -184,7 +206,11 @@ function SideNav() {
   const pathname = usePathname();
   const params = useSearchParams();
   const active = activeHref(pathname, params);
-  const counts = useNavCounts(pathname);
+  const me = useMe();
+  // until we know the shop, show only what every shop has
+  const integrations = me?.shop.integrations ?? false;
+  const counts = useNavCounts(pathname, integrations);
+  const shown = (items: NavItem[]) => items.filter((i) => !i.integrations || integrations);
   const item = ({ href, label, icon: Icon, platform, count }: NavItem) => (
     <Link key={href} href={href} className={navItemClass(active === href)}>
       {platform ? (
@@ -211,22 +237,26 @@ function SideNav() {
   );
   return (
     <nav className="flex flex-1 flex-col overflow-y-auto pb-2">
-      {navTop.map(item)}
-      {navSections.map((s) => (
-        <div key={s.title}>
-          <div className="hud-label flex items-center gap-2 pb-1 pl-5 pr-4 pt-4 text-slate-500">
-            {s.title}
-            <span className="h-px flex-1 bg-gradient-to-r from-slate-300 to-transparent dark:from-slate-700" />
+      {shown(navTop).map(item)}
+      {navSections
+        .filter((s) => shown(s.items).length)
+        .map((s) => (
+          <div key={s.title}>
+            <div className="hud-label flex items-center gap-2 pb-1 pl-5 pr-4 pt-4 text-slate-500">
+              {s.title}
+              <span className="h-px flex-1 bg-gradient-to-r from-slate-300 to-transparent dark:from-slate-700" />
+            </div>
+            {shown(s.items).map(item)}
           </div>
-          {s.items.map(item)}
-        </div>
-      ))}
+        ))}
     </nav>
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const me = useMe();
+  const integrations = me?.shop.integrations ?? false;
   return (
     <div className="min-h-dvh lg:pl-56">
       <PwaBootstrap />
@@ -262,11 +292,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           {!pathname.startsWith('/pos') && <GlobalSearch />}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          <span className="hidden items-center gap-1.5 px-2 py-1 font-mono text-[11px] text-slate-500 sm:flex">
-            <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.2)]" />{' '}
-            <SyncAge />
-          </span>
-          <ChatButton active={pathname.startsWith('/chat')} />
+          {integrations && (
+            <span className="hidden items-center gap-1.5 px-2 py-1 font-mono text-[11px] text-slate-500 sm:flex">
+              <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.2)]" />{' '}
+              <SyncAge />
+            </span>
+          )}
+          {integrations && <ChatButton active={pathname.startsWith('/chat')} />}
           <NotificationBell />
           <UserMenu />
         </div>

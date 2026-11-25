@@ -71,7 +71,7 @@ describe.skipIf(!process.env.DATABASE_URL)('create and edit products (MySQL)', (
       .set('Cookie', cookie)
       .send({ name: 'Tên mới', brand: `Hãng ${run}` })
       .expect(200);
-    const p = await db.product.findUniqueOrThrow({ where: { code }, include: { brand: true } });
+    const p = await db.product.findFirstOrThrow({ where: { code }, include: { brand: true } });
     expect(p.name).toBe('Tên mới');
     expect(p.brand?.name).toBe(`Hãng ${run}`);
 
@@ -80,7 +80,7 @@ describe.skipIf(!process.env.DATABASE_URL)('create and edit products (MySQL)', (
       .set('Cookie', cookie)
       .send({ price: 199000, barcode: `BC${run}` })
       .expect(200);
-    const v = await db.variant.findUniqueOrThrow({ where: { sku: `${code}-DO-S` } });
+    const v = await db.variant.findFirstOrThrow({ where: { sku: `${code}-DO-S` } });
     expect(Number(v.price)).toBe(199000);
     await http()
       .patch(`/api/variants/${code}-XANH-S`)
