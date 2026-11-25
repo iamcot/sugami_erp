@@ -149,7 +149,7 @@ export default function DocumentPage() {
                     </p>
                     <p className="font-mono text-xs text-slate-500">
                       {l.sku}
-                      {!l.inKiotviet && (
+                      {kv && !l.inKiotviet && (
                         <span className="ml-2 font-sans text-amber-600">chưa có trên KiotViet</span>
                       )}
                     </p>

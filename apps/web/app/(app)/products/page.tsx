@@ -451,7 +451,9 @@ function ProductsList() {
         empty={
           qs.q
             ? `Không tìm thấy "${qs.q}"`
-            : 'Chưa có sản phẩm. Nhập danh sách hàng hóa từ KiotViet để bắt đầu.'
+            : integrations
+              ? 'Chưa có sản phẩm. Nhập danh sách hàng hóa từ KiotViet để bắt đầu.'
+              : 'Chưa có sản phẩm. Bấm Thêm sản phẩm để bắt đầu.'
         }
       />
     </>
