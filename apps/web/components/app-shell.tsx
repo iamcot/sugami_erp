@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Clock,
   LayoutDashboard,
+  Menu,
   type LucideIcon,
   MessageCircle,
   Package,
@@ -19,6 +20,7 @@ import {
   Truck,
   Undo2,
   Users,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -102,12 +104,12 @@ const navSections: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+/** Phone bottom bar: the daily screens; everything else is under "Menu". */
 const mobileNav = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
-  { href: '/pos', label: 'Bán hàng', icon: Receipt },
   { href: '/orders', label: 'Đơn', icon: ClipboardList },
+  { href: '/pos', label: 'Bán hàng', icon: Receipt },
   { href: '/products', label: 'Sản phẩm', icon: Package },
-  { href: '/customers', label: 'Khách', icon: Users },
 ];
 
 const ALL_ITEMS = [...navTop, ...navSections.flatMap((s) => s.items)];
@@ -203,7 +205,7 @@ function useNavCounts(pathname: string, integrations: boolean): Counts {
 /** Urgent counts (things to act on) are filled; informational ones are plain text. */
 const URGENT: CountKey[] = ['chat', 'waiting', 'returnPending', 'negative'];
 
-function SideNav() {
+function SideNav({ onPick }: { onPick?: () => void }) {
   const pathname = usePathname();
   const params = useSearchParams();
   const active = activeHref(pathname, params);
@@ -213,7 +215,7 @@ function SideNav() {
   const counts = useNavCounts(pathname, integrations);
   const shown = (items: NavItem[]) => items.filter((i) => !i.integrations || integrations);
   const item = ({ href, label, icon: Icon, platform, count }: NavItem) => (
-    <Link key={href} href={href} className={navItemClass(active === href)}>
+    <Link key={href} href={href} onClick={onPick} className={navItemClass(active === href)}>
       {platform ? (
         <PlatformDiamond platform={platform} className="-mx-0.5 size-5" />
       ) : (
@@ -326,8 +328,70 @@ export function AppShell({ children }: { children: ReactNode }) {
             {label}
           </Link>
         ))}
+        <MobileMenu />
       </nav>
     </div>
+  );
+}
+
+/** Phones: the full menu (same items as the sidebar, plus Settings) in a panel from the left. */
+function MobileMenu() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const covered = !mobileNav.some((m) => isActive(pathname, m.href));
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+  const close = () => setOpen(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          'flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium',
+          covered ? 'text-brand-700 dark:text-brand-500' : 'text-slate-500',
+        )}
+      >
+        <Menu className="size-5" />
+        Menu
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-30 lg:hidden">
+          <button
+            type="button"
+            aria-label="Đóng menu"
+            onClick={close}
+            className="absolute inset-0 bg-slate-900/30"
+          />
+          <aside className="glass absolute inset-y-0 left-0 flex w-64 max-w-[85vw] flex-col border-y-0 border-l-0 bg-white/90 pt-[env(safe-area-inset-top)] dark:bg-slate-900/90">
+            <div className="flex h-14 shrink-0 items-center justify-between px-4">
+              <img src="/icons/logo.png" alt="SuGaMi" className="h-9 w-auto" />
+              <button type="button" aria-label="Đóng menu" onClick={close} className="p-2 text-slate-500">
+                <X className="size-5" />
+              </button>
+            </div>
+            <Suspense>
+              <SideNav onPick={close} />
+            </Suspense>
+            <Link
+              href="/settings"
+              onClick={close}
+              className={cn(
+                navItemClass(pathname.startsWith('/settings')),
+                'mb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-t-slate-200/70 dark:border-t-slate-800',
+              )}
+            >
+              <Settings className="size-4 text-slate-500" />
+              Cài đặt
+            </Link>
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
 
