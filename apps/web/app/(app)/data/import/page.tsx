@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { KiotVietTabs } from '../../../../components/kiotviet-tabs';
 import { Badge, Button, Card, PageHeader } from '../../../../components/ui';
 import { ApiError, DATA_CHANGED } from '../../../../lib/api';
+import { useMe } from '../../../../lib/me';
 
 interface Issue {
   row: number;
@@ -109,6 +110,8 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 
 export default function ImportPage() {
   const input = useRef<HTMLInputElement>(null);
+  const me = useMe();
+  const integrations = me?.shop.integrations ?? false;
   const [kind, setKind] = useState<Kind>('products');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<Summary | null>(null);
@@ -152,7 +155,7 @@ export default function ImportPage() {
         title="Đồng bộ dữ liệu"
         description="Chạy lại cùng file nhiều lần không bị nhân đôi. Luôn xem trước rồi mới nhập."
       />
-      <KiotVietTabs />
+      {integrations && <KiotVietTabs />}
 
       <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
         {(Object.keys(KINDS) as Kind[]).map((k) => (

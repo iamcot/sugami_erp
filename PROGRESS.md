@@ -127,6 +127,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-23 | Đơn hoàn từ sàn tự cộng lại tồn khi hàng về shop; nút Báo hàng lỗi/mất trong đơn; bỏ nút Tạo đơn ở menu | xem commit `[P4-P2]` |
 | 2026-11-25 | [MULTI-SHOP] Nhiều shop: bảng `shops`, `shop_id` trên mọi bảng nghiệp vụ, mã duy nhất theo shop, API tự lọc theo shop người đăng nhập; tạo shop + tài khoản chủ shop, thêm tài khoản trong shop; shop thành phẩm: sản phẩm Nguyên liệu/Thành phẩm, định mức nguyên liệu, bán tại quầy chọn nguyên liệu, tính giá vốn và lời/lỗ, trừ kho nguyên liệu | xem commit `[MULTI-SHOP]` |
 | 2026-11-26 | [MULTI-SHOP] Sửa shop + chủ shop ở Cài đặt → Các shop; tắt khóa 15 phút khi sai mật khẩu (`LOGIN_LOCKOUT`, mặc định tắt); bán thẳng hàng/nguyên liệu ở shop thành phẩm có test | xem commit `[MULTI-SHOP]` |
+| 2026-11-26 | [MULTI-SHOP] Shop khác (không có tích hợp) vẫn nhập hàng hóa, khách hàng, hóa đơn từ file Excel KiotViet (menu Đồng bộ KiotViet hiện cho mọi shop, không có tab Xuất/Pancake); điện thoại: thanh dưới Tổng quan/Đơn/Bán hàng/Sản phẩm/Menu, Menu mở đủ mục như sidebar + Cài đặt | xem commit `[MULTI-SHOP]` |
 
 ## P0 — Chuẩn bị & xác minh
 
