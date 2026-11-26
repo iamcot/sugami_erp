@@ -4,12 +4,13 @@ Trang giới thiệu là file tĩnh trong `sites/sugami.vn/`, chạy trên **Clo
 
 ## Bật lần đầu (chủ shop làm, khoảng 10 phút)
 
-1. Cloudflare → **Workers & Pages** → **Create** → tab **Pages** → **Connect to Git** → chọn repo `iamcot/sugami_erp`.
+1. Cloudflare → **Workers & Pages** → **Create application**. Màn hình mặc định là tạo **Worker** (có ô *Deploy command*, không có *Build output directory*): đừng dùng. Kéo xuống cuối, bấm **Looking to deploy Pages? Get started** → **Import an existing Git repository** → chọn repo `iamcot/sugami_erp`.
 2. Cấu hình:
    - Production branch: `main`
    - Framework preset: `None`
    - Build command: để trống
    - Build output directory: `sites/sugami.vn`
+   - Nếu không thấy ô này: mở **Root directory (advanced)**, điền `sites/sugami.vn`, phần output để trống.
 3. **Save and Deploy**. Xong sẽ có địa chỉ dạng `sugami-xxx.pages.dev` để xem thử.
 4. Vào project vừa tạo → **Custom domains** → thêm `sugami.vn`, rồi thêm `www.sugami.vn`. Domain đã nằm trên Cloudflare nên nó tự tạo DNS. Nếu báo trùng bản ghi A/CNAME cũ của `sugami.vn` hoặc `www`, xóa bản ghi cũ trong **DNS → Records** rồi thêm lại. Đừng đụng bản ghi MX/TXT của email và các bản ghi `erp`, `hooks` của tunnel.
 5. Để mỗi commit của ERP không làm Pages build lại vô ích: **Settings → Build → Build watch paths**, Include paths: `sites/sugami.vn/*`.
