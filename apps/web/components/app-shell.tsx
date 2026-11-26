@@ -96,7 +96,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
         integrations: true,
       },
       { href: '/data/pancake', label: 'Pancake', platform: 'pancake', integrations: true },
-      { href: '/data/import', label: 'Đồng bộ KiotViet', icon: RefreshCw, integrations: true },
+      // Every shop may bring its customers and orders over from KiotViet (Excel files).
+      { href: '/data/import', label: 'Đồng bộ KiotViet', icon: RefreshCw },
     ],
   },
 ];

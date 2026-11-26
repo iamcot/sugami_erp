@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { KiotVietTabs } from '../../../../components/kiotviet-tabs';
 import { Badge, Button, Card, PageHeader } from '../../../../components/ui';
 import { ApiError, DATA_CHANGED } from '../../../../lib/api';
+import { useMe } from '../../../../lib/me';
 
 interface Issue {
   row: number;
@@ -72,6 +73,9 @@ const KINDS: Record<Kind, { label: string; hint: string; file: string }> = {
     file: 'DanhSachKhachHang_KV….xlsx',
   },
 };
+/** A shop without integrations only brings its customers and orders over from KiotViet. */
+const OTHER_SHOP_KINDS: Kind[] = ['customers', 'invoices'];
+
 const CHANNEL_LABEL: Record<string, string> = {
   shopee: 'Shopee',
   tiktok: 'TikTok Shop',
@@ -109,7 +113,11 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 
 export default function ImportPage() {
   const input = useRef<HTMLInputElement>(null);
-  const [kind, setKind] = useState<Kind>('products');
+  const me = useMe();
+  const integrations = me?.shop.integrations ?? false;
+  const kinds = integrations ? (Object.keys(KINDS) as Kind[]) : OTHER_SHOP_KINDS;
+  const [picked, setKind] = useState<Kind | null>(null);
+  const kind = picked && kinds.includes(picked) ? picked : kinds[0]!;
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<Summary | null>(null);
   const [done, setDone] = useState<Summary | null>(null);
@@ -152,10 +160,10 @@ export default function ImportPage() {
         title="Đồng bộ dữ liệu"
         description="Chạy lại cùng file nhiều lần không bị nhân đôi. Luôn xem trước rồi mới nhập."
       />
-      <KiotVietTabs />
+      {integrations && <KiotVietTabs />}
 
       <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
-        {(Object.keys(KINDS) as Kind[]).map((k) => (
+        {kinds.map((k) => (
           <button
             key={k}
             onClick={() => {

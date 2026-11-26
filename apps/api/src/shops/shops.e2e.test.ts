@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { type INestApplication } from '@nestjs/common';
+import { writeSheet } from '@sugami/channels-kiotviet';
 import { applyMovements, hashPassword, type PrismaClient, runAsShop, withLedgerTx } from '@sugami/db';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -65,6 +66,7 @@ describe.skipIf(!process.env.DATABASE_URL)('shops + assembly sales (MySQL)', () 
     if (db && shopId) {
       await runAsShop(shopId, async () => {
         await db.order.deleteMany({});
+        await db.customer.deleteMany({});
         await db.posDraft.deleteMany({});
         await db.stockMovement.deleteMany({});
         await db.stockLevel.deleteMany({});
@@ -272,5 +274,20 @@ describe.skipIf(!process.env.DATABASE_URL)('shops + assembly sales (MySQL)', () 
     const order = await http().get(`/api/orders/${res.body.code}`).set('Cookie', florist).expect(200);
     expect(order.body.order.lines[0]).toMatchObject({ qty: 2, price: 15000, costSnapshot: 8000 });
     expect(order.body.order.lines[0].components ?? []).toHaveLength(0);
+  });
+
+  it('imports customers from a KiotViet file into its own shop only', async () => {
+    const code = `KH${R}`;
+    const header = ['Mã khách hàng', 'Tên khách hàng', 'Điện thoại', 'Trạng thái'];
+    const buf = await writeSheet('S', header, [[code, 'Khách tiệm hoa', '0907654321', 1]]);
+    await http()
+      .post('/api/imports/kiotviet/customers?dryRun=false')
+      .set('Cookie', florist)
+      .attach('file', buf, 'DanhSachKhachHang_KV.xlsx')
+      .expect(200);
+    const mine = await runAsShop(shopId, () => db.customer.findMany({ where: { kiotvietCode: code } }));
+    expect(mine).toEqual([expect.objectContaining({ name: 'Khách tiệm hoa', phone: '0907654321' })]);
+    // Sugami does not see it
+    expect(await db.customer.count({ where: { kiotvietCode: code } })).toBe(0);
   });
 });
