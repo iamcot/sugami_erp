@@ -18,7 +18,7 @@ Chủ shop đã chốt hướng: ý tưởng 5 (cuộn ngang) kết thúc bằng
 
 Bảng màu lấy từ logo: hồng `#f16185`, hồng phấn `#f1a9b7`, xanh ngọc `#57c9c9`, vàng `#f0e761`, nâu đỏ `#641214`.
 
-Link Shopee/TikTok/Facebook/Zalo và ảnh sản phẩm hiện là tạm. Xem thử: mở file trực tiếp bằng trình duyệt.
+Link kênh bán trong `index.html` là link thật chủ shop gửi (Zalo 0981151720). Ảnh sản phẩm còn tạm. Xem thử: mở file trực tiếp bằng trình duyệt.
 
 ## Ảnh minh họa
 
