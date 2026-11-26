@@ -60,6 +60,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 
 ## Quyết định đã chốt
 
+- 2026-11-26: Chủ shop yêu cầu **tạm tắt khóa tài khoản 15 phút khi sai mật khẩu** (bật lại bằng `LOGIN_LOCKOUT=on` trong `.env`); trang Cài đặt → Các shop cho **sửa shop và tài khoản chủ shop** (tên, loại, tạm khóa, email, đặt lại mật khẩu).
 - 2026-11-25: **Nhiều shop** (D18): mọi dữ liệu gắn `shop_id`, tài khoản thuộc một shop và chỉ thấy/tạo dữ liệu của shop mình. Migration tạo shop **Sugami** (bán lẻ) và gắn toàn bộ dữ liệu, tài khoản cũ vào đó; chủ shop hiện tại là *quản trị hệ thống*, tạo shop mới kèm tài khoản chủ shop ở Cài đặt → Các shop. Loại shop: **bán lẻ** (nhập sao bán vậy) và **thành phẩm từ nguyên liệu** (tiệm hoa): sản phẩm chia Nguyên liệu / Thành phẩm / Hàng hóa, thành phẩm có định mức nguyên liệu; bán tại quầy chọn/sửa nguyên liệu, nhập giá bán, tính giá vốn và lời/lỗ; kho trừ nguyên liệu. Pancake, chat, sàn, KiotViet chỉ dành cho Sugami (shop có `integrations`).
 
 - 2026-11-23: Chat Shopee đọc qua Pancake Pages API bằng **polling theo yêu cầu**, không bật webhook vì webhook tính 2 trang trong gói cước (docs/pancake.md). Ô trả lời đã làm và chủ shop xác nhận gửi được qua Shopee (page token + public_api).
@@ -125,6 +126,7 @@ Mọi thay đổi commit thẳng lên `main` với tiền tố ID task, ví dụ
 | 2026-11-23 | [UI] Trang Đơn hàng kiểu Gmail (thanh công cụ, nút lọc thả xuống, tab kênh, đơn cần xử lý in đậm), số đếm trên menu; đơn hoàn có bước "đã xử lý" (nhập lại kho / không nhập) | xem commit `[UI]` |
 | 2026-11-23 | Đơn hoàn từ sàn tự cộng lại tồn khi hàng về shop; nút Báo hàng lỗi/mất trong đơn; bỏ nút Tạo đơn ở menu | xem commit `[P4-P2]` |
 | 2026-11-25 | [MULTI-SHOP] Nhiều shop: bảng `shops`, `shop_id` trên mọi bảng nghiệp vụ, mã duy nhất theo shop, API tự lọc theo shop người đăng nhập; tạo shop + tài khoản chủ shop, thêm tài khoản trong shop; shop thành phẩm: sản phẩm Nguyên liệu/Thành phẩm, định mức nguyên liệu, bán tại quầy chọn nguyên liệu, tính giá vốn và lời/lỗ, trừ kho nguyên liệu | xem commit `[MULTI-SHOP]` |
+| 2026-11-26 | [MULTI-SHOP] Sửa shop + chủ shop ở Cài đặt → Các shop; tắt khóa 15 phút khi sai mật khẩu (`LOGIN_LOCKOUT`, mặc định tắt); bán thẳng hàng/nguyên liệu ở shop thành phẩm có test | xem commit `[MULTI-SHOP]` |
 
 ## P0 — Chuẩn bị & xác minh
 

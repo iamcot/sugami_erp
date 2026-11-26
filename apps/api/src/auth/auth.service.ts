@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { hashPassword, verifyPassword } from '@sugami/db';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { type AuthUser, LOCK_MS, MAX_FAILED_LOGINS, SESSION_TTL_MS } from './auth.types.js';
+import { type AuthUser, LOCK_MS, lockoutEnabled, MAX_FAILED_LOGINS, SESSION_TTL_MS } from './auth.types.js';
 import { collectPermissions } from './permissions.js';
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -30,7 +30,8 @@ export class AuthService {
       await verifyPassword(password, 'scrypt$AAAAAAAAAAAAAAAAAAAAAA==$AAAA');
       throw new UnauthorizedException(INVALID);
     }
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const lockout = lockoutEnabled();
+    if (lockout && user.lockedUntil && user.lockedUntil > new Date()) {
       throw new HttpException(
         'Tài khoản tạm khóa do đăng nhập sai nhiều lần, thử lại sau 15 phút',
         HttpStatus.LOCKED,
@@ -38,13 +39,14 @@ export class AuthService {
     }
     if (!(await verifyPassword(password, user.passwordHash))) {
       const failed = user.failedLoginCount + 1;
-      await this.db.user.update({
-        where: { id: user.id },
-        data: {
-          failedLoginCount: failed >= MAX_FAILED_LOGINS ? 0 : failed,
-          lockedUntil: failed >= MAX_FAILED_LOGINS ? new Date(Date.now() + LOCK_MS) : user.lockedUntil,
-        },
-      });
+      if (lockout)
+        await this.db.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginCount: failed >= MAX_FAILED_LOGINS ? 0 : failed,
+            lockedUntil: failed >= MAX_FAILED_LOGINS ? new Date(Date.now() + LOCK_MS) : user.lockedUntil,
+          },
+        });
       throw new UnauthorizedException(INVALID);
     }
 

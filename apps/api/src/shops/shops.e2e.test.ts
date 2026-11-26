@@ -103,6 +103,37 @@ describe.skipIf(!process.env.DATABASE_URL)('shops + assembly sales (MySQL)', () 
     await http().get('/api/pancake/sync-status').set('Cookie', florist).expect(403);
   });
 
+  it('edits the shop and its owner account', async () => {
+    const list = await http().get('/api/shops').set('Cookie', admin).expect(200);
+    const row = list.body.data.find((x: { id: string }) => x.id === shopId);
+    expect(row.owners).toEqual([expect.objectContaining({ email: floristEmail })]);
+    const ownerId = row.owners[0].id;
+
+    await http()
+      .patch(`/api/shops/${shopId}`)
+      .set('Cookie', admin)
+      .send({ name: `Tiệm hoa mới ${run}` })
+      .expect(200);
+    await http()
+      .patch(`/api/shops/${shopId}/users/${ownerId}`)
+      .set('Cookie', admin)
+      .send({ name: 'Chủ mới', password: 'fl-pass-456' })
+      .expect(200);
+    // the old session is closed, the old password no longer works, the new one does
+    await http().get('/api/auth/me').set('Cookie', florist).expect(401);
+    await http().post('/api/auth/login').send({ email: floristEmail, password: 'fl-pass-123' }).expect(401);
+    florist = await login(floristEmail, 'fl-pass-456');
+    const me = await http().get('/api/auth/me').set('Cookie', florist).expect(200);
+    expect(me.body.user).toMatchObject({ name: 'Chủ mới', shop: { name: `Tiệm hoa mới ${run}` } });
+    // a shop admin cannot be reached through another shop's id
+    await http()
+      .patch(`/api/shops/00000000-0000-7000-8000-000000000001/users/${ownerId}`)
+      .set('Cookie', admin)
+      .send({ name: 'x' })
+      .expect(404);
+    await http().patch(`/api/shops/${shopId}`).set('Cookie', florist).send({ name: 'x' }).expect(403);
+  });
+
   it("keeps each shop's data apart, codes may repeat across shops", async () => {
     const mk = (body: object) => http().post('/api/products').set('Cookie', florist).send(body);
     await mk({ code: shared, name: 'Hoa hồng đỏ', kind: 'material', unit: 'cành' }).expect(201);
@@ -221,5 +252,25 @@ describe.skipIf(!process.env.DATABASE_URL)('shops + assembly sales (MySQL)', () 
     // not enough paper for 10 more bouquets
     const short = await checkout([{ variantId: bouquet.id, qty: 10, price: 250000 }]).expect(409);
     expect(short.body.message).toContain(`GIAY${R}`);
+  });
+
+  it('still sells a material or plain goods directly, with its own cost and profit', async () => {
+    const rose = await runAsShop(
+      shopId,
+      async () => (await db.variant.findFirstOrThrow({ where: { sku: shared } })).id,
+    );
+    const draft = await http()
+      .post('/api/pos/drafts')
+      .set('Cookie', florist)
+      .send({ mode: 'retail', payload: { lines: [] } })
+      .expect(201);
+    const res = await http()
+      .post(`/api/pos/drafts/${draft.body.id}/checkout`)
+      .set('Cookie', florist)
+      .send({ mode: 'retail', payload: { lines: [{ variantId: rose, qty: 2, price: 15000 }], paid: 0 } })
+      .expect(200);
+    const order = await http().get(`/api/orders/${res.body.code}`).set('Cookie', florist).expect(200);
+    expect(order.body.order.lines[0]).toMatchObject({ qty: 2, price: 15000, costSnapshot: 8000 });
+    expect(order.body.order.lines[0].components ?? []).toHaveLength(0);
   });
 });

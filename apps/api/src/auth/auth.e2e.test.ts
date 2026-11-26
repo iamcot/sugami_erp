@@ -106,10 +106,22 @@ describe.skipIf(!process.env.DATABASE_URL)('auth (MySQL)', () => {
     staff.password = 'staff-pass-456';
   });
 
-  it('locks the account after 5 failed logins', async () => {
+  it('locks the account after 5 failed logins when LOGIN_LOCKOUT=on', async () => {
+    process.env.LOGIN_LOCKOUT = 'on';
     for (let i = 0; i < 5; i++) {
       await http().post('/api/auth/login').send({ email: staff.email, password: 'bad' }).expect(401);
     }
     await http().post('/api/auth/login').send(staff).expect(423);
+    delete process.env.LOGIN_LOCKOUT;
+  });
+
+  it('does not lock the account by default (lockout is off)', async () => {
+    delete process.env.LOGIN_LOCKOUT;
+    const other = await prisma.user.findFirstOrThrow({ where: { email: staff.email } });
+    await prisma.user.update({ where: { id: other.id }, data: { lockedUntil: null, failedLoginCount: 0 } });
+    for (let i = 0; i < 6; i++) {
+      await http().post('/api/auth/login').send({ email: staff.email, password: 'bad' }).expect(401);
+    }
+    await http().post('/api/auth/login').send(staff).expect(200);
   });
 });

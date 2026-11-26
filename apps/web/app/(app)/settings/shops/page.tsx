@@ -16,6 +16,7 @@ interface ShopRow {
   isActive: boolean;
   integrations: boolean;
   users: number;
+  owners: { id: string; name: string; email: string; isActive: boolean }[];
   createdAt: string;
 }
 
@@ -28,6 +29,114 @@ const empty = {
   password: '',
 };
 
+/** Edit one shop and its owner account. */
+function EditShop({ shop, onDone }: { shop: ShopRow; onDone: () => void }) {
+  const owner = shop.owners[0];
+  const [f, setF] = useState({
+    name: shop.name,
+    type: shop.type,
+    isActive: shop.isActive,
+    ownerName: owner?.name ?? '',
+    email: owner?.email ?? '',
+    password: '',
+    ownerActive: owner?.isActive ?? true,
+  });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) =>
+    setF((x) => ({ ...x, [k]: e.target.value }));
+  const save = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await api(`/shops/${shop.id}`, {
+        method: 'PATCH',
+        json: { name: f.name, type: f.type, isActive: f.isActive },
+      });
+      if (owner)
+        await api(`/shops/${shop.id}/users/${owner.id}`, {
+          method: 'PATCH',
+          json: {
+            name: f.ownerName,
+            email: f.email,
+            isActive: f.ownerActive,
+            ...(f.password ? { password: f.password } : {}),
+          },
+        });
+      onDone();
+    } catch (e) {
+      setMsg({ ok: false, text: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card className="mb-4 grid gap-3 p-4 md:grid-cols-2">
+      <h2 className="text-sm font-medium md:col-span-2">
+        Sửa shop <span className="font-mono text-slate-500">{shop.code}</span>
+      </h2>
+      <Field label="Tên shop">
+        <input className={inputCls} value={f.name} onChange={set('name')} />
+      </Field>
+      <Field label="Loại shop">
+        <select className={inputCls} value={f.type} onChange={set('type')}>
+          {(Object.keys(SHOP_TYPE_LABEL) as MeShop['type'][]).map((t) => (
+            <option key={t} value={t}>
+              {SHOP_TYPE_LABEL[t]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <label className="flex items-center gap-2 text-sm md:col-span-2">
+        <input
+          type="checkbox"
+          checked={f.isActive}
+          onChange={(e) => setF((x) => ({ ...x, isActive: e.target.checked }))}
+        />
+        Shop đang hoạt động (bỏ chọn để tạm khóa, mọi tài khoản của shop bị đăng xuất)
+      </label>
+      {owner ? (
+        <>
+          <h3 className="mt-2 text-sm font-medium md:col-span-2">Tài khoản chủ shop</h3>
+          <Field label="Tên chủ shop">
+            <input className={inputCls} value={f.ownerName} onChange={set('ownerName')} />
+          </Field>
+          <Field label="Email đăng nhập">
+            <input className={inputCls} type="email" value={f.email} onChange={set('email')} />
+          </Field>
+          <Field label="Mật khẩu mới" hint="Để trống nếu không đổi; tối thiểu 8 ký tự">
+            <input className={inputCls} type="password" value={f.password} onChange={set('password')} />
+          </Field>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm">
+            <input
+              type="checkbox"
+              checked={f.ownerActive}
+              onChange={(e) => setF((x) => ({ ...x, ownerActive: e.target.checked }))}
+            />
+            Tài khoản đang hoạt động
+          </label>
+        </>
+      ) : (
+        <p className="text-sm text-slate-500 md:col-span-2">Shop chưa có tài khoản chủ shop.</p>
+      )}
+      <div className="flex items-center gap-3 md:col-span-2">
+        <Button
+          disabled={busy || !f.name.trim() || (!!f.password && f.password.length < 8)}
+          onClick={() => void save()}
+        >
+          {busy ? 'Đang lưu…' : 'Lưu'}
+        </Button>
+        <Button variant="ghost" onClick={onDone}>
+          Hủy
+        </Button>
+        {msg && (
+          <span className={`text-sm ${msg.ok ? 'text-emerald-700' : 'text-rose-600'}`}>{msg.text}</span>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 /** Platform admin: list shops and open a new one with its owner account. */
 export default function ShopsPage() {
   const me = useMe();
@@ -36,6 +145,7 @@ export default function ShopsPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [version, setVersion] = useState(0);
+  const [editing, setEditing] = useState<string | null>(null);
 
   useEffect(() => {
     api<{ data: ShopRow[] }>('/shops').then(
@@ -91,7 +201,9 @@ export default function ShopsPage() {
               <th className="px-4 py-2 font-medium">Shop</th>
               <th className="px-4 py-2 font-medium">Loại</th>
               <th className="px-4 py-2 text-right font-medium">Tài khoản</th>
+              <th className="px-4 py-2 font-medium">Chủ shop</th>
               <th className="px-4 py-2 font-medium">Kết nối sàn</th>
+              <th className="px-4 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -104,8 +216,23 @@ export default function ShopsPage() {
                 <td className="px-4 py-2">{SHOP_TYPE_LABEL[s.type]}</td>
                 <td className="px-4 py-2 text-right tabular-nums">{s.users}</td>
                 <td className="px-4 py-2">
+                  {s.owners[0] ? (
+                    <>
+                      <div>{s.owners[0].name}</div>
+                      <div className="text-xs text-slate-500">{s.owners[0].email}</div>
+                    </>
+                  ) : (
+                    '–'
+                  )}
+                </td>
+                <td className="px-4 py-2">
                   {s.integrations ? <Badge tone="success">Pancake</Badge> : <Badge>Không</Badge>}
                   {!s.isActive && <Badge tone="warn">Tạm khóa</Badge>}
+                </td>
+                <td className="px-4 py-2 text-right">
+                  <Button variant="secondary" onClick={() => setEditing(s.id)}>
+                    Sửa
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -113,6 +240,17 @@ export default function ShopsPage() {
         </table>
         {rows === null && <p className="p-4 text-sm text-slate-500">Đang tải…</p>}
       </Card>
+
+      {rows?.find((x) => x.id === editing) && (
+        <EditShop
+          key={editing}
+          shop={rows.find((x) => x.id === editing)!}
+          onDone={() => {
+            setEditing(null);
+            setVersion((v) => v + 1);
+          }}
+        />
+      )}
 
       <Card className="grid gap-3 p-4 md:grid-cols-2">
         <h2 className="text-sm font-medium md:col-span-2">Thêm shop mới</h2>

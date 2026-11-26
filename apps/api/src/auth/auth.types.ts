@@ -26,3 +26,5 @@ export const SESSION_COOKIE = 'sugami_session';
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const MAX_FAILED_LOGINS = 5;
 export const LOCK_MS = 15 * 60 * 1000;
+/** Locking after repeated wrong passwords is switched off for now; set LOGIN_LOCKOUT=on to enable it. */
+export const lockoutEnabled = () => process.env.LOGIN_LOCKOUT === 'on';
