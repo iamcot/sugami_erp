@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { createPortal } from 'react-dom';
 import { type ReactNode, Suspense, useEffect, useState } from 'react';
 import { api, DATA_CHANGED } from '@/lib/api';
 import { useMe } from '@/lib/me';
@@ -359,38 +360,41 @@ function MobileMenu() {
         <Menu className="size-5" />
         Menu
       </button>
-      {open && (
-        <div className="fixed inset-0 z-30 lg:hidden">
-          <button
-            type="button"
-            aria-label="Đóng menu"
-            onClick={close}
-            className="absolute inset-0 bg-slate-900/30"
-          />
-          <aside className="glass absolute inset-y-0 left-0 flex w-64 max-w-[85vw] flex-col border-y-0 border-l-0 bg-white/90 pt-[env(safe-area-inset-top)] dark:bg-slate-900/90">
-            <div className="flex h-14 shrink-0 items-center justify-between px-4">
-              <img src="/icons/logo.png" alt="SuGaMi" className="h-9 w-auto" />
-              <button type="button" aria-label="Đóng menu" onClick={close} className="p-2 text-slate-500">
-                <X className="size-5" />
-              </button>
-            </div>
-            <Suspense>
-              <SideNav onPick={close} />
-            </Suspense>
-            <Link
-              href="/settings"
+      {/* portal: the bar's backdrop-filter would otherwise trap this fixed panel inside the bar */}
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <button
+              type="button"
+              aria-label="Đóng menu"
               onClick={close}
-              className={cn(
-                navItemClass(pathname.startsWith('/settings')),
-                'mb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-t-slate-200/70 dark:border-t-slate-800',
-              )}
-            >
-              <Settings className="size-4 text-slate-500" />
-              Cài đặt
-            </Link>
-          </aside>
-        </div>
-      )}
+              className="absolute inset-0 bg-slate-900/30"
+            />
+            <aside className="glass absolute inset-y-0 left-0 flex w-64 max-w-[85vw] flex-col border-y-0 border-l-0 bg-white/90 pt-[env(safe-area-inset-top)] dark:bg-slate-900/90">
+              <div className="flex h-14 shrink-0 items-center justify-between px-4">
+                <img src="/icons/logo.png" alt="SuGaMi" className="h-9 w-auto" />
+                <button type="button" aria-label="Đóng menu" onClick={close} className="p-2 text-slate-500">
+                  <X className="size-5" />
+                </button>
+              </div>
+              <Suspense>
+                <SideNav onPick={close} />
+              </Suspense>
+              <Link
+                href="/settings"
+                onClick={close}
+                className={cn(
+                  navItemClass(pathname.startsWith('/settings')),
+                  'mb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-t-slate-200/70 dark:border-t-slate-800',
+                )}
+              >
+                <Settings className="size-4 text-slate-500" />
+                Cài đặt
+              </Link>
+            </aside>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
