@@ -4,7 +4,7 @@ Trang giới thiệu là file tĩnh trong `sites/sugami.vn/`, chạy trên **Clo
 
 ## Bật lần đầu (chủ shop làm, khoảng 10 phút)
 
-1. Cloudflare → **Workers & Pages** → **Create application**. Màn hình mặc định là tạo **Worker** (có ô *Deploy command*, không có *Build output directory*): đừng dùng. Kéo xuống cuối, bấm **Looking to deploy Pages? Get started** → **Import an existing Git repository** → chọn repo `iamcot/sugami_erp`.
+1. Cloudflare → **Workers & Pages** → **Create application**. Màn hình mặc định là tạo **Worker** (có ô *Deploy command*, không có *Build output directory*): đừng dùng. Bấm dòng nhỏ ở cuối: **Need to use the legacy Pages workflow? Continue to Pages** → **Import an existing Git repository** → chọn repo `iamcot/sugami_erp`.
 2. Cấu hình:
    - Production branch: `main`
    - Framework preset: `None`
