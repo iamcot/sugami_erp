@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sugami | Ý tưởng 2: Bàn làm việc</title>
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --rose: #f16185; --rose-deep: #d9466c; --blush: #f1a9b7;
+    --teal: #57c9c9; --teal-soft: #87d1d6; --teal-deep: #168f97;
+    --sun: #f0e761; --maroon: #641214;
+    --ink: #1d1720; --ink-2: #4a4150; --muted: #7a7080; --line: rgba(29,23,32,.08);
+    --glass: rgba(255,255,255,.58); --glass-line: rgba(255,255,255,.9);
+    --shadow: 0 1px 2px rgba(29,23,32,.05), 0 24px 60px -22px rgba(60,20,40,.32);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "Be Vietnam Pro", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; overflow: hidden;
+    background:
+      radial-gradient(900px 600px at 12% 18%, rgba(135,209,214,.75), transparent 60%),
+      radial-gradient(800px 600px at 88% 28%, rgba(241,169,183,.8), transparent 60%),
+      radial-gradient(700px 500px at 55% 100%, rgba(240,231,97,.45), transparent 60%),
+      #f7f2f5;
+  }
+  body::before { content: ""; position: fixed; inset: 0; background-image: radial-gradient(rgba(29,23,32,.1) 1px, transparent 1px); background-size: 22px 22px; pointer-events: none; }
+  a { color: inherit; text-decoration: none; }
+  .glass { background: var(--glass); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%); border: 1px solid var(--glass-line); box-shadow: var(--shadow); }
+
+  /* Menu bar */
+  .menubar { position: fixed; z-index: 1000; top: 0; left: 0; right: 0; height: 40px; display: flex; align-items: center; gap: 4px; padding: 0 14px; font-size: 13.5px; background: rgba(255,255,255,.45); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,.7); }
+  .menubar img { height: 24px; margin-right: 6px; }
+  .menubar b { margin-right: 14px; font-weight: 800; }
+  .menubar button { font: inherit; background: none; border: 0; padding: 5px 10px; border-radius: 7px; cursor: pointer; color: var(--ink-2); font-weight: 500; }
+  .menubar button:hover { background: rgba(29,23,32,.07); color: var(--ink); }
+  .menubar .right { margin-left: auto; display: flex; align-items: center; gap: 16px; color: var(--ink-2); font-weight: 500; }
+  .live { display: flex; align-items: center; gap: 7px; }
+  .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #2fbf71; box-shadow: 0 0 0 0 rgba(47,191,113,.6); animation: ping 2s infinite; }
+  @keyframes ping { 70% { box-shadow: 0 0 0 7px rgba(47,191,113,0); } 100% { box-shadow: 0 0 0 0 rgba(47,191,113,0); } }
+
+  /* Desk */
+  .desk { position: fixed; inset: 40px 0 0 0; }
+  .win { position: absolute; border-radius: 18px; overflow: hidden; animation: pop .8s cubic-bezier(.2,.9,.25,1.2) both; animation-delay: var(--d, 0s); }
+  @keyframes pop { from { opacity: 0; transform: translateY(30px) scale(.92); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+  .win.front { box-shadow: 0 1px 2px rgba(29,23,32,.05), 0 36px 80px -24px rgba(60,20,40,.45); }
+  .tb { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; cursor: grab; user-select: none; border-bottom: 1px solid rgba(29,23,32,.06); background: rgba(255,255,255,.35); }
+  .tb:active { cursor: grabbing; }
+  .tb i { width: 11px; height: 11px; border-radius: 50%; }
+  .tb i:nth-child(1) { background: var(--rose); } .tb i:nth-child(2) { background: var(--sun); } .tb i:nth-child(3) { background: var(--teal); }
+  .tb span { flex: 1; text-align: center; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-right: 44px; }
+  .wb { padding: 26px 28px 28px; }
+
+  #w-about { left: 4%; top: 7%; width: 500px; }
+  #w-about h1 { font-size: 44px; line-height: 1.02; letter-spacing: -.04em; margin: 0 0 14px; font-weight: 900; }
+  .grad { background: linear-gradient(100deg, var(--rose-deep), var(--rose) 40%, var(--teal-deep)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #w-about p { margin: 0; color: var(--ink-2); line-height: 1.65; font-size: 15.5px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .tag { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; background: rgba(255,255,255,.75); border: 1px solid var(--line); }
+  .tag i { width: 8px; height: 8px; border-radius: 3px; }
+  .legal { margin-top: 18px; font-size: 12.5px; color: var(--muted); }
+
+  .note { position: absolute; left: 41.5%; top: 11%; width: 270px; padding: 26px 24px 24px; border-radius: 6px 6px 22px 6px; background: linear-gradient(160deg, #fbf3a6, #f3e771); color: #4b3b07; box-shadow: 0 22px 44px -20px rgba(120,100,10,.55); transform: rotate(3deg); cursor: grab; user-select: none; animation: pop .8s cubic-bezier(.2,.9,.25,1.2) both; animation-delay: .25s; }
+  .note::before { content: ""; position: absolute; top: -12px; left: 50%; width: 90px; height: 26px; margin-left: -45px; background: rgba(255,255,255,.55); backdrop-filter: blur(4px); transform: rotate(-4deg); border-radius: 3px; }
+  .note small { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 800; opacity: .7; }
+  .note p { margin: 10px 0 0; font-size: 17px; line-height: 1.45; font-weight: 700; letter-spacing: -.01em; }
+
+  #w-shop { right: 3%; top: 4%; width: 410px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .prod { border-radius: 14px; overflow: hidden; background: rgba(255,255,255,.7); border: 1px solid var(--line); transition: transform .25s; }
+  .prod:hover { transform: translateY(-3px); }
+  .prod .ph { aspect-ratio: 1; display: grid; place-items: center; }
+  .prod .ph svg { width: 36px; height: 36px; color: rgba(29,23,32,.55); }
+  .prod b { display: block; font-size: 11.5px; padding: 7px 8px 8px; line-height: 1.3; }
+  .p1 { background: linear-gradient(135deg, #fde3e9, #f6c2ce); } .p2 { background: linear-gradient(135deg, #dcf3f4, #b2e2e6); }
+  .p3 { background: linear-gradient(135deg, #fbf7d0, #f1e686); } .p4 { background: linear-gradient(135deg, #ece5fb, #d3c5f4); }
+  .p5 { background: linear-gradient(135deg, #e2f4ee, #bfe6d7); } .p6 { background: linear-gradient(135deg, #fde8dc, #f6c8ae); }
+  .shop-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .shop-foot a { font-weight: 700; color: var(--rose-deep); }
+
+  #w-learn { left: 33%; top: 52%; width: 430px; }
+  .addr { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 7px 12px; border-radius: 10px; background: rgba(255,255,255,.75); border: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2); }
+  .addr svg { width: 13px; height: 13px; color: #2fbf71; }
+  .learn { border-radius: 14px; padding: 20px; background: linear-gradient(135deg, #2a1d30, #1a1220); color: #fff; position: relative; overflow: hidden; }
+  .learn h3 { margin: 0 0 6px; font-size: 20px; letter-spacing: -.02em; }
+  .learn p { margin: 0; color: rgba(255,255,255,.7); font-size: 13.5px; line-height: 1.55; max-width: 250px; }
+  .learn .go { display: inline-block; margin-top: 14px; padding: 9px 14px; border-radius: 10px; background: linear-gradient(135deg, #f6ec85, var(--sun)); color: var(--maroon); font-weight: 700; font-size: 13px; }
+  .shapes { position: absolute; right: 14px; top: 14px; bottom: 14px; width: 120px; }
+  .shapes span { position: absolute; border-radius: 10px; animation: bob 4s ease-in-out infinite; }
+  .shapes span:nth-child(1) { width: 46px; height: 46px; background: var(--rose); right: 60px; top: 6px; }
+  .shapes span:nth-child(2) { width: 38px; height: 38px; background: var(--teal); border-radius: 50%; right: 8px; top: 34px; animation-delay: -1.3s; }
+  .shapes span:nth-child(3) { width: 0; height: 0; border-radius: 0; border-left: 26px solid transparent; border-right: 26px solid transparent; border-bottom: 44px solid var(--sun); right: 44px; bottom: 6px; animation-delay: -2.6s; }
+  @keyframes bob { 50% { transform: translateY(-8px) rotate(8deg); } }
+
+  .widget { position: absolute; right: 3%; bottom: 12%; width: 290px; padding: 20px; border-radius: 22px; animation: pop .8s cubic-bezier(.2,.9,.25,1.2) both; animation-delay: .55s; cursor: grab; user-select: none; }
+  .widget small { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 800; color: var(--teal-deep); }
+  .widget h4 { margin: 8px 0 6px; font-size: 18px; letter-spacing: -.02em; }
+  .widget p { margin: 0 0 14px; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+  .widget a { display: inline-block; padding: 9px 14px; border-radius: 11px; background: var(--ink); color: #fff; font-weight: 600; font-size: 13px; }
+
+  .toast { position: absolute; left: 4%; bottom: 14%; padding: 12px 16px; border-radius: 14px; font-size: 13px; color: var(--ink-2); display: flex; gap: 10px; align-items: center; animation: pop .8s both; animation-delay: 1.2s; max-width: 300px; }
+  .toast svg { width: 18px; height: 18px; color: var(--rose-deep); flex: none; }
+
+  /* Dock */
+  .dock { position: fixed; z-index: 999; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 10px; padding: 10px 12px; border-radius: 24px; animation: rise .9s cubic-bezier(.2,.9,.25,1.1) both .4s; }
+  @keyframes rise { from { opacity: 0; transform: translate(-50%, 40px); } }
+  .dock a { position: relative; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; color: #fff; transition: width .2s, height .2s, transform .2s; box-shadow: 0 10px 22px -10px rgba(29,23,32,.5), inset 0 1px 0 rgba(255,255,255,.3); }
+  .dock a svg { width: 28px; height: 28px; }
+  .dock a::after { content: attr(data-label); position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%) translateY(4px); padding: 5px 10px; border-radius: 8px; background: rgba(29,23,32,.85); color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: .2s; }
+  .dock a:hover::after { opacity: 1; transform: translateX(-50%); }
+  .dock .sep { width: 1px; height: 44px; background: rgba(29,23,32,.12); margin: 0 4px 6px; }
+  .shopee { background: linear-gradient(135deg, #ff7a45, #ee4d2d); }
+  .tiktok { background: linear-gradient(135deg, #2b2b2b, #000); }
+  .facebook { background: linear-gradient(135deg, #3b8cff, #1668e3); }
+  .zalo { background: linear-gradient(135deg, #3896ff, #0068ff); }
+  .lrn { background: linear-gradient(135deg, #f6ec85, var(--rose)); color: var(--maroon) !important; }
+  .home { background: #fff; } .home img { width: 44px; }
+
+  @media (max-width: 1100px) {
+    #w-about { width: 460px; } #w-about h1 { font-size: 38px; }
+    .note { left: auto; right: 4%; top: auto; bottom: 30%; }
+    #w-learn { left: 5%; top: auto; bottom: 14%; width: 400px; }
+    .widget, .toast { display: none; }
+  }
+  /* Phones: the desk becomes a scrolling stack, the dock stays. */
+  @media (max-width: 760px) {
+    body { overflow: auto; height: auto; }
+    .menubar button, .menubar .clock { display: none; }
+    .desk { position: static; padding: 56px 14px 110px; display: grid; gap: 16px; }
+    .win, .note, .widget, .toast { position: relative !important; left: auto !important; right: auto !important; top: auto !important; bottom: auto !important; width: auto !important; transform: none !important; display: block; }
+    .note { transform: rotate(-1.5deg) !important; margin: 6px 8px; }
+    .tb { cursor: default; }
+    .wb { padding: 20px; }
+    #w-about h1 { font-size: 34px; }
+    .toast { display: none; }
+    .dock { gap: 6px; padding: 8px; bottom: 12px; }
+    .dock a { width: 46px; height: 46px; border-radius: 13px; }
+    .dock a svg { width: 22px; height: 22px; }
+    .home img { width: 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<header class="menubar">
+  <img src="../assets/logo.png" alt="Sugami"><b>Sugami</b>
+  <button data-open="w-about">Giới thiệu</button>
+  <button data-open="note">Sứ mệnh</button>
+  <button data-open="w-shop">Sản phẩm</button>
+  <button data-open="w-learn">Sugami Learn</button>
+  <button data-open="widget">Doanh nghiệp</button>
+  <div class="right"><span class="live">Đang nhận đơn</span><span class="clock" id="clock"></span></div>
+</header>
+
+<main class="desk" id="desk">
+  <section class="win glass" id="w-about" style="--d:.05s">
+    <div class="tb"><i></i><i></i><i></i><span>Giới thiệu</span></div>
+    <div class="wb">
+      <h1>Xin chào,<br>chúng tôi là <span class="grad">Sugami.</span></h1>
+      <p>Doanh nghiệp thương mại và dịch vụ trẻ, chuyên bán sỉ, bán lẻ đồ chơi trẻ em, quà tặng, dịch vụ và dụng cụ văn phòng. Kho hàng, đơn hàng và chăm sóc khách đều chạy trên hệ thống riêng, nên mỗi đơn đều nhanh và minh bạch.</p>
+      <div class="tags">
+        <span class="tag"><i style="background:var(--rose)"></i>Đồ chơi trẻ em</span>
+        <span class="tag"><i style="background:var(--teal)"></i>Quà tặng doanh nghiệp</span>
+        <span class="tag"><i style="background:var(--sun)"></i>Văn phòng phẩm</span>
+      </div>
+      <div class="legal">Công ty TNHH Thương mại và Dịch vụ Sugami</div>
+    </div>
+  </section>
+
+  <aside class="note" id="note">
+    <small>Sứ mệnh</small>
+    <p>Ba mẹ khỏi vất vả tìm đồ chơi và quà cho con. Doanh nghiệp khỏi đau đầu chuẩn bị quà cho nhân viên. Phần chọn lựa, để Sugami lo.</p>
+  </aside>
+
+  <section class="win glass" id="w-shop" style="--d:.15s">
+    <div class="tb"><i></i><i></i><i></i><span>Sản phẩm nổi bật</span></div>
+    <div class="wb">
+      <div class="grid">
+        <a class="prod" href="#"><div class="ph p1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="12" r="7"/><path d="M10.5 14.5c.8.7 2.2.7 3 0"/></svg></div><b>Gấu bông bác sĩ</b></a>
+        <a class="prod" href="#"><div class="ph p2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/><rect x="8" y="5" width="8" height="8" rx="1"/></svg></div><b>Xếp hình sáng tạo</b></a>
+        <a class="prod" href="#"><div class="ph p3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2-5h11l3 5v3H3z"/><circle cx="7" cy="18" r="2"/><circle cx="16" cy="18" r="2"/></svg></div><b>Xe điều khiển</b></a>
+        <a class="prod" href="#"><div class="ph p4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v3a6 6 0 01-6 6h-2a6 6 0 01-6-6v-3z"/><path d="M19 12h2M9 7c0-1.5 1-1.5 1-3M13 7c0-1.5 1-1.5 1-3"/></svg></div><b>Bộ nấu ăn</b></a>
+        <a class="prod" href="#"><div class="ph p5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 100 18c1.4 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 004-4c0-4.4-4-8-9-8z"/></svg></div><b>Bộ tô màu</b></a>
+        <a class="prod" href="#"><div class="ph p6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13"/></svg></div><b>Hộp quà nhân viên</b></a>
+      </div>
+      <div class="shop-foot"><span>Chọn sẵn theo độ tuổi</span><a href="https://shopee.vn/sugami" target="_blank" rel="noopener">Xem tất cả →</a></div>
+    </div>
+  </section>
+
+  <section class="win glass" id="w-learn" style="--d:.35s">
+    <div class="tb"><i></i><i></i><i></i><span>Sugami Learn</span></div>
+    <div class="wb">
+      <div class="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>learn.sugami.vn</div>
+      <div class="learn">
+        <div class="shapes"><span></span><span></span><span></span></div>
+        <h3>Vừa chơi vừa học</h3>
+        <p>Trò chơi ngắn giúp bé bổ sung kiến thức và rèn kỹ năng sống cùng Sugami.</p>
+        <a class="go" href="https://learn.sugami.vn" target="_blank" rel="noopener">Cho bé khám phá</a>
+      </div>
+    </div>
+  </section>
+
+  <aside class="widget glass" id="widget">
+    <small>Doanh nghiệp &amp; đại lý</small>
+    <h4>Quà cho nhân viên, giá sỉ cho đại lý</h4>
+    <p>Gửi số lượng và ngân sách, nhận phương án trong ngày làm việc.</p>
+    <a href="https://zalo.me/" target="_blank" rel="noopener">Nhận báo giá qua Zalo</a>
+  </aside>
+
+  <div class="toast glass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5a2 2 0 014 0v6M13 10V8a2 2 0 014 0v4a7 7 0 01-7 7h-1a6 6 0 01-5-3l-2-3a1.5 1.5 0 012.5-1.5L6 13V8"/></svg>Kéo các cửa sổ để sắp xếp bàn làm việc của Sugami theo ý bạn.</div>
+</main>
+
+<nav class="dock glass" id="dock" aria-label="Kênh mua sắm">
+  <a class="home" data-label="Sugami" href="#" data-open="w-about"><img src="../assets/logo.png" alt=""></a>
+  <span class="sep"></span>
+  <a class="shopee" data-label="Shopee" href="https://shopee.vn/sugami" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8a3 3 0 016 0"/></svg></a>
+  <a class="tiktok" data-label="TikTok Shop" href="https://www.tiktok.com/@sugami.vn" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.5a3.5 3.5 0 11-3.5-3.5"/><path d="M14 4c.5 2.5 2.3 4 5 4.2"/></svg></a>
+  <a class="facebook" data-label="Facebook" href="https://www.facebook.com/sugami.vn" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.3H8v3h2.5V21h3z"/></svg></a>
+  <a class="zalo" data-label="Zalo" href="https://zalo.me/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4c4.97 0 9 3.36 9 7.5S16.97 19 12 19c-.9 0-1.8-.1-2.6-.3L5 20.5l1.2-3.4C4.2 15.8 3 13.8 3 11.5 3 7.36 7.03 4 12 4z"/></svg></a>
+  <span class="sep"></span>
+  <a class="lrn" data-label="learn.sugami.vn" href="https://learn.sugami.vn" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2 8 12.7 4 8.8 9.5 8z"/></svg></a>
+</nav>
+
+<script>
+  // Clock in Vietnam time.
+  var days = ['CN', 'Th 2', 'Th 3', 'Th 4', 'Th 5', 'Th 6', 'Th 7'];
+  function tick() {
+    var d = new Date(Date.now() + (new Date().getTimezoneOffset() + 420) * 60000);
+    document.getElementById('clock').textContent = days[d.getDay()] + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  tick(); setInterval(tick, 15000);
+
+  var z = 10, desktop = matchMedia('(min-width: 761px)');
+  var items = [].slice.call(document.querySelectorAll('.win, .note, .widget'));
+  function front(el) {
+    items.forEach(function (w) { w.classList.remove('front'); });
+    el.style.zIndex = ++z; el.classList.add('front');
+  }
+  items.forEach(function (el) {
+    var handle = el.querySelector('.tb') || el;
+    el.addEventListener('pointerdown', function () { front(el); });
+    handle.addEventListener('pointerdown', function (e) {
+      if (!desktop.matches || e.target.closest('a')) return;
+      var r = el.getBoundingClientRect(), dr = document.getElementById('desk').getBoundingClientRect();
+      var ox = e.clientX - r.left, oy = e.clientY - r.top;
+      el.style.animation = 'none';
+      el.style.left = (r.left - dr.left) + 'px'; el.style.top = (r.top - dr.top) + 'px'; el.style.right = 'auto'; el.style.bottom = 'auto';
+      handle.setPointerCapture(e.pointerId);
+      function move(ev) {
+        var x = Math.max(-r.width + 80, Math.min(innerWidth - 80, ev.clientX - ox - dr.left));
+        var y = Math.max(0, Math.min(dr.height - 60, ev.clientY - oy - dr.top));
+        el.style.left = x + 'px'; el.style.top = y + 'px';
+      }
+      function up() { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); }
+      handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up);
+    });
+  });
+
+  // Menu items bring a window to the front with a small nudge.
+  document.querySelectorAll('[data-open]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      var el = document.getElementById(b.dataset.open); if (!el) return;
+      e.preventDefault(); front(el);
+      if (!desktop.matches) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      el.animate([{ transform: el.classList.contains('note') ? 'rotate(3deg)' : 'none' }, { transform: 'translateY(-10px) scale(1.02)' }, { transform: el.classList.contains('note') ? 'rotate(3deg)' : 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.25,1.2)' });
+    });
+  });
+
+  // Dock magnification.
+  var dock = document.getElementById('dock'), icons = [].slice.call(dock.querySelectorAll('a'));
+  dock.addEventListener('pointermove', function (e) {
+    if (!desktop.matches) return;
+    icons.forEach(function (a) {
+      var r = a.getBoundingClientRect(), d = Math.abs(e.clientX - (r.left + r.width / 2));
+      var s = 1 + Math.max(0, 1 - d / 140) * .45;
+      a.style.transform = 'translateY(' + (-(s - 1) * 22) + 'px) scale(' + s + ')';
+    });
+  });
+  dock.addEventListener('pointerleave', function () { icons.forEach(function (a) { a.style.transform = ''; }); });
+</script>
+</body>
+</html>
