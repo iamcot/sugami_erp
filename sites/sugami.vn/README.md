@@ -22,4 +22,4 @@ Link kênh bán trong `index.html` là link thật chủ shop gửi (Zalo 098115
 
 ## Ảnh minh họa
 
-`assets/img/*.jpg` là ảnh dựng 3D (quà tặng, đồ chơi, văn phòng, learn), tạo bằng `tools/render-scenes.html` với three.js 0.160.0. Muốn dựng lại: giải nén gói `three@0.160.0` vào `tools/three/`, chạy `python3 -m http.server` trong `tools/`, mở `render-scenes.html?s=A` (A, B, C, D) rồi lưu canvas. Khi có ảnh sản phẩm thật, thay trực tiếp các file trong `assets/img/`.
+Ảnh đầu trang (`qua-tang.jpg`, `do-choi.jpg`, `van-phong.jpg` = quà công ty) là ảnh AI chủ shop tạo, chữ SuGaMi trên bình, sổ, hộp bút được ghép thêm. `learn.jpg` lấy từ repo hoc-vui. `tools/render-scenes.html` là bản dựng 3D cũ bằng three.js 0.160.0, giữ để tham khảo.
