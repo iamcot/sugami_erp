@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sugami | Ý tưởng 8: Quỹ đạo</title>
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Palette sampled from the Sugami logo (approved by the owner). */
+  :root {
+    --rose: #f16185; --rose-deep: #d9466c; --blush: #f1a9b7;
+    --teal: #57c9c9; --teal-deep: #168f97; --sun: #f0e761; --maroon: #641214;
+    --lav: #a98be8; --coral: #ff9471;
+    --ink: #1d1720; --ink-2: #4a4150; --muted: #7a7080; --line: rgba(29,23,32,.09);
+    --bg: #fbf8fa; --glass: rgba(255,255,255,.6); --glass-line: rgba(255,255,255,.9);
+    --shadow: 0 1px 2px rgba(29,23,32,.04), 0 22px 60px -24px rgba(80,20,40,.32);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Be Vietnam Pro", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .glass { background: var(--glass); backdrop-filter: blur(20px) saturate(170%); -webkit-backdrop-filter: blur(20px) saturate(170%); border: 1px solid var(--glass-line); box-shadow: var(--shadow); }
+  .grad { background: linear-gradient(100deg, var(--rose-deep), var(--rose) 40%, var(--teal-deep)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .kick { font-size: 12.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--rose-deep); }
+  .pc { border-radius: 18px; padding: 8px; transition: transform .3s; display: block; }
+  .pc:hover { transform: translateY(-5px); }
+  .pc .ph { aspect-ratio: 1.1; border-radius: 12px; display: grid; place-items: center; }
+  .pc .ph svg { width: 40px; height: 40px; color: rgba(29,23,32,.55); }
+  .pc b { display: block; font-size: 13px; margin: 9px 4px 2px; line-height: 1.3; }
+  .pc small { display: block; font-size: 12px; color: var(--muted); margin: 0 4px 4px; }
+  .p1 { background: linear-gradient(135deg, #fde3e9, #f6c2ce); } .p2 { background: linear-gradient(135deg, #dcf3f4, #b2e2e6); }
+  .p3 { background: linear-gradient(135deg, #fbf7d0, #f1e686); } .p4 { background: linear-gradient(135deg, #ece5fb, #d3c5f4); }
+  .p5 { background: linear-gradient(135deg, #e2f4ee, #bfe6d7); } .p6 { background: linear-gradient(135deg, #fde8dc, #f6c8ae); }
+  .chg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .chg a { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; font-weight: 700; font-size: 15px; transition: transform .25s; }
+  .chg a:hover { transform: translateY(-3px); }
+  .chg a > span { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; color: #fff; flex: none; }
+  .chg svg { width: 22px; height: 22px; }
+  .chg small { display: block; font-weight: 500; font-size: 12.5px; color: var(--muted); }
+  .shopee { background: linear-gradient(135deg, #ff7a45, #ee4d2d); } .tiktok { background: linear-gradient(135deg, #2b2b2b, #000); }
+  .facebook { background: linear-gradient(135deg, #3b8cff, #1668e3); } .zalo { background: linear-gradient(135deg, #3896ff, #0068ff); }
+  .lrn { background: linear-gradient(135deg, #f6ec85, var(--rose)); color: var(--maroon); }
+  .night { color: #fff; background: radial-gradient(420px 280px at 100% 0%, rgba(87,201,201,.4), transparent 70%), radial-gradient(380px 280px at 0% 100%, rgba(241,97,133,.4), transparent 70%), linear-gradient(135deg, #2a1d30, #1a1220); }
+  .night p { color: rgba(255,255,255,.74); }
+  .btn-sun { display: inline-block; padding: 12px 18px; border-radius: 13px; background: linear-gradient(135deg, #f6ec85, var(--sun)); color: var(--maroon); font-weight: 700; font-size: 14px; }
+  .btn-rose { display: inline-block; padding: 12px 18px; border-radius: 13px; background: linear-gradient(135deg, var(--rose), var(--rose-deep)); color: #fff; font-weight: 700; font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  html, body { height: 100%; }
+  body { overflow: hidden; }
+  .space { position: fixed; inset: 0; background:
+    radial-gradient(500px 400px at 30% 50%, rgba(241,169,183,.55), transparent 70%),
+    radial-gradient(500px 400px at 20% 90%, rgba(135,209,214,.5), transparent 70%),
+    radial-gradient(400px 300px at 50% 0%, rgba(240,231,97,.3), transparent 70%), var(--bg); }
+  header { position: fixed; z-index: 10; top: 20px; left: 24px; right: 24px; display: flex; justify-content: space-between; align-items: center; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; }
+  .brand img { height: 40px; }
+  .brand small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
+  .hint { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .stage { position: fixed; left: 0; top: 0; bottom: 0; width: 58%; }
+  .orbit-ring { position: absolute; left: 50%; top: 60%; border-radius: 50%; border: 1.5px dashed rgba(29,23,32,.12); transform: translate(-50%, -50%); pointer-events: none; }
+  .r1 { width: var(--rx2); height: var(--ry2); }
+  .r2 { width: calc(var(--rx2) * .55); height: calc(var(--ry2) * .55); border-style: solid; border-color: rgba(241,97,133,.15); }
+  .core { position: absolute; left: 50%; top: 60%; width: 210px; height: 210px; margin: -105px 0 0 -105px; border-radius: 50%; display: grid; place-items: center; text-align: center; z-index: 3; }
+  .core img { width: 128px; }
+  .core::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; background: conic-gradient(var(--rose), var(--sun), var(--teal), var(--lav), var(--rose)); z-index: -1; filter: blur(16px); opacity: .45; animation: spin 14s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .title { position: absolute; left: 24px; top: 92px; max-width: 520px; }
+  .title h1 { font-size: clamp(28px, 2.8vw, 42px); line-height: 1.02; letter-spacing: -.045em; margin: 10px 0 0; font-weight: 900; text-wrap: balance; }
+  .planet { position: absolute; left: 50%; top: 60%; z-index: 4; display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 999px; font: 700 14px/1 "Be Vietnam Pro", sans-serif; color: var(--ink); cursor: pointer; white-space: nowrap; transition: box-shadow .3s, background .3s; will-change: transform; }
+  .planet span { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--c); }
+  .planet span svg { width: 19px; height: 19px; }
+  .planet:hover, .planet.on { background: rgba(255,255,255,.92); box-shadow: 0 0 0 3px var(--c), var(--shadow); }
+  .planet:focus-visible { outline: 3px solid var(--teal-deep); outline-offset: 3px; }
+  .panel { position: fixed; z-index: 5; right: 20px; top: 84px; bottom: 20px; width: calc(42% - 30px); border-radius: 30px; overflow-y: auto; padding: 40px; }
+  .pane { animation: fade .5s cubic-bezier(.2,.8,.2,1); }
+  @keyframes fade { from { opacity: 0; transform: translateX(20px); } }
+  .pane h2 { font-size: clamp(28px, 2.8vw, 42px); line-height: 1.05; letter-spacing: -.04em; margin: 14px 0 16px; font-weight: 900; text-wrap: balance; }
+  .pane p { margin: 0; color: var(--ink-2); font-size: 16px; line-height: 1.65; }
+  .pane blockquote { margin: 16px 0 18px; font-size: clamp(24px, 2.4vw, 34px); line-height: 1.22; font-weight: 800; letter-spacing: -.03em; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .pills span { padding: 8px 13px; border-radius: 999px; background: rgba(255,255,255,.8); border: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+  .prods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .pc { background: rgba(255,255,255,.75); border: 1px solid var(--glass-line); }
+  .chg a { background: rgba(255,255,255,.8); border: 1px solid var(--glass-line); }
+  .inner-night { margin: -16px; padding: 28px; border-radius: 22px; }
+  .legal { position: fixed; left: 24px; bottom: 16px; font-size: 12px; color: var(--muted); z-index: 2; }
+  @media (max-width: 900px) {
+    body { overflow: auto; }
+    .space { position: fixed; }
+    header { position: absolute; }
+    .hint { display: none; }
+    body { overflow-x: hidden; }
+    .stage { position: relative; width: 100%; height: 470px; overflow: hidden; }
+    .title { display: none; }
+    .core { width: 130px; height: 130px; margin: -65px 0 0 -65px; } .core img { width: 82px; }
+    .planet { font-size: 12.5px; padding: 6px 12px 6px 6px; gap: 7px; } .planet span { width: 30px; height: 30px; } .planet span svg { width: 15px; height: 15px; }
+    .panel { position: relative; right: auto; top: auto; bottom: auto; width: auto; margin: 0 12px 16px; padding: 24px 20px; }
+    .legal { position: static; display: block; text-align: center; padding: 0 0 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="space"></div>
+<header><a class="brand" href="#"><img src="../assets/logo.png" alt="Sugami"><span>Sugami<small>Công ty TNHH Thương mại và Dịch vụ</small></span></a><span class="hint">Chọn một hành tinh để xem</span></header>
+<div class="stage" id="stage">
+  <div class="orbit-ring r1"></div><div class="orbit-ring r2"></div>
+  <div class="core glass"><img src="../assets/logo.png" alt=""></div>
+<button class="planet glass" data-k="about" style="--c:var(--rose)"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.6-7 10-7 10z"/></svg></span>Chúng tôi là ai</button><button class="planet glass" data-k="mission" style="--c:var(--teal)"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg></span>Sứ mệnh</button><button class="planet glass" data-k="products" style="--c:#d8c62c"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13"/><path d="M12 7c-1.5-3-5-3-5-1s3 1 5 1zM12 7c1.5-3 5-3 5-1s-3 1-5 1z"/></svg></span>Sản phẩm</button><button class="planet glass" data-k="channels" style="--c:var(--lav)"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8a3 3 0 016 0"/></svg></span>Mua sắm</button><button class="planet glass" data-k="learn" style="--c:var(--coral)"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2 8 12.7 4 8.8 9.5 8z"/></svg></span>Sugami Learn</button>
+  <div class="title"><div class="kick">Đồ chơi · Quà tặng · Văn phòng</div><h1>Mọi thứ xoay quanh <span class="grad">một món quà đúng ý.</span></h1></div>
+</div>
+<aside class="panel glass" id="panel" aria-live="polite"><article class="pane" data-k="about" ><div class="kick">Chúng tôi là ai</div><h2>Một đầu mối cho đồ chơi, quà tặng và văn phòng.</h2><p>Sugami là Công ty TNHH Thương mại và Dịch vụ chuyên bán sỉ, bán lẻ đồ chơi trẻ em, quà tặng, dịch vụ và dụng cụ văn phòng. Kho hàng và đơn hàng chạy trên hệ thống riêng, nên mỗi đơn đều nhanh, đúng và minh bạch.</p>
+   <div class="pills"><span>Bán sỉ</span><span>Bán lẻ</span><span>Quà doanh nghiệp</span><span>Văn phòng phẩm</span><span>Hóa đơn VAT</span></div></article><article class="pane" data-k="mission" hidden><div class="kick" style="color:var(--teal-deep)">Sứ mệnh</div><blockquote>Giúp ba mẹ khỏi vất vả tìm đồ chơi và quà cho con. Giúp doanh nghiệp, văn phòng nhẹ nhàng chuẩn bị quà cho nhân viên.</blockquote><p>Phần chọn lựa, gói quà và giao hàng, để Sugami lo.</p></article><article class="pane" data-k="products" hidden><div class="kick" style="color:#9a8a10">Sản phẩm nổi bật</div><h2>Được chọn sẵn theo độ tuổi.</h2><div class="prods"><a class="pc glass" href="#"><div class="ph p1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="12" r="7"/><path d="M10.5 14.5c.8.7 2.2.7 3 0"/></svg></div><b>Gấu bông bác sĩ</b><small>Bé 3+</small></a><a class="pc glass" href="#"><div class="ph p2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/><rect x="8" y="5" width="8" height="8" rx="1"/></svg></div><b>Bộ xếp hình sáng tạo</b><small>Bé 4+</small></a><a class="pc glass" href="#"><div class="ph p3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2-5h11l3 5v3H3z"/><circle cx="7" cy="18" r="2"/><circle cx="16" cy="18" r="2"/></svg></div><b>Xe điều khiển</b><small>Bé 6+</small></a><a class="pc glass" href="#"><div class="ph p4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v3a6 6 0 01-6 6h-2a6 6 0 01-6-6v-3z"/><path d="M19 12h2M9 7c0-1.5 1-1.5 1-3M13 7c0-1.5 1-1.5 1-3"/></svg></div><b>Bộ đồ chơi nấu ăn</b><small>Bé 3+</small></a><a class="pc glass" href="#"><div class="ph p5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 100 18c1.4 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 004-4c0-4.4-4-8-9-8z"/></svg></div><b>Bộ tô màu</b><small>Bé 3+</small></a><a class="pc glass" href="#"><div class="ph p6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13"/><path d="M12 7c-1.5-3-5-3-5-1s3 1 5 1zM12 7c1.5-3 5-3 5-1s-3 1-5 1z"/></svg></div><b>Hộp quà nhân viên</b><small>Doanh nghiệp</small></a></div></article><article class="pane" data-k="channels" hidden><div class="kick" style="color:#7b5fd6">Mua sắm</div><h2>Nơi nào bạn quen, Sugami ở đó.</h2><div class="chg"><a class="glass" href="https://shopee.vn/sugami" target="_blank" rel="noopener"><span class="shopee"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8a3 3 0 016 0"/></svg></span><span style="all:unset">Shopee<small>Gian hàng chính thức</small></span></a><a class="glass" href="https://www.tiktok.com/@sugami.vn" target="_blank" rel="noopener"><span class="tiktok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.5a3.5 3.5 0 11-3.5-3.5"/><path d="M14 4c.5 2.5 2.3 4 5 4.2"/></svg></span><span style="all:unset">TikTok Shop<small>Video, livestream</small></span></a><a class="glass" href="https://www.facebook.com/sugami.vn" target="_blank" rel="noopener"><span class="facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.3H8v3h2.5V21h3z"/></svg></span><span style="all:unset">Facebook<small>Hàng mới, tư vấn</small></span></a><a class="glass" href="https://zalo.me/" target="_blank" rel="noopener"><span class="zalo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4c4.97 0 9 3.36 9 7.5S16.97 19 12 19c-.9 0-1.8-.1-2.6-.3L5 20.5l1.2-3.4C4.2 15.8 3 13.8 3 11.5 3 7.36 7.03 4 12 4z"/></svg></span><span style="all:unset">Zalo<small>Đặt nhanh, báo giá sỉ</small></span></a></div><p style="margin-top:14px">Doanh nghiệp cần quà cho nhân viên: nhắn Zalo, nhận báo giá trong ngày.</p></article><article class="pane" data-k="learn" hidden><div class="night inner-night"><div class="kick" style="color:var(--sun)">Sugami Learn</div><h2 style="color:#fff">Vừa chơi vừa học.</h2><p>learn.sugami.vn là sân chơi trực tuyến nơi các bé vừa chơi vừa bổ sung kiến thức và học kỹ năng sống cùng Sugami. Nội dung chọn lọc, không quảng cáo.</p><p style="margin-top:18px"><a class="btn-sun" href="https://learn.sugami.vn" target="_blank" rel="noopener">Vào learn.sugami.vn</a></p></div></article></aside>
+<div class="legal">© 2026 Công ty TNHH Thương mại và Dịch vụ Sugami</div>
+<script>
+(function () {
+  var stage = document.getElementById('stage'), planets = [].slice.call(document.querySelectorAll('.planet'));
+  var panes = [].slice.call(document.querySelectorAll('.pane'));
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, t = 0, hover = false, last = performance.now();
+  function sizes() {
+    var w = stage.clientWidth, h = stage.clientHeight;
+    var rx = Math.min(w * (w < 600 ? .3 : .38), 330), ry = Math.min(h * .27, 220);
+    stage.style.setProperty('--rx2', rx * 2 + 'px'); stage.style.setProperty('--ry2', ry * 2 + 'px');
+    return [rx, ry];
+  }
+  var R = sizes(); addEventListener('resize', function () { R = sizes(); });
+  // Planets travel an ellipse; the one in front is bigger and sits above the core.
+  function frame(now) {
+    var dt = now - last; last = now;
+    if (!reduce && !hover) t += dt * .00006;
+    planets.forEach(function (p, i) {
+      var a = t * Math.PI * 2 + i / planets.length * Math.PI * 2;
+      var x = Math.cos(a) * R[0], y = Math.sin(a) * R[1], depth = (Math.sin(a) + 1) / 2;
+      var s = .82 + depth * .26;
+      p.style.transform = 'translate(-50%, -50%) translate(' + x + 'px,' + y + 'px) scale(' + s + ')';
+      p.style.zIndex = depth > .5 ? 6 : 2; p.style.opacity = .7 + depth * .3;
+    });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  stage.addEventListener('pointerenter', function () { hover = true; });
+  stage.addEventListener('pointerleave', function () { hover = false; });
+  function show(k) {
+    planets.forEach(function (p) { p.classList.toggle('on', p.dataset.k === k); });
+    panes.forEach(function (p) { p.hidden = p.dataset.k !== k; });
+    if (innerWidth <= 900) document.getElementById('panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  planets.forEach(function (p) { p.addEventListener('click', function () { show(p.dataset.k); }); });
+  planets[0].classList.add('on');
+})();
+</script>
+</body>
+</html>

@@ -10,6 +10,11 @@ Trang giới thiệu công ty (HTML/CSS/JS thuần, không build), tách khỏi 
   4. `4-tro-chuyen.html`: trang là một cuộc chat, khách chọn câu hỏi.
   5. `5-hanh-trinh.html`: cuộn ngang qua 4 chặng Chọn, Gói, Giao, Lớn lên.
   6. `6-chu-lon.html`: các dòng chữ khổng lồ, bấm để mở nội dung.
+  7. `7-xap-the.html`: cuộn thì các thẻ lớn chồng lên nhau như xấp hồ sơ.
+  8. `8-quy-dao.html`: các phần xoay quanh logo, bấm để mở bảng nội dung.
+  9. `9-luoi-o.html`: lưới ô, bấm một ô để bung ra thành trang đầy đủ.
+
+Chủ shop đã bình chọn 1 phiếu cho ý tưởng 5 (cuộn ngang).
 
 Bảng màu lấy từ logo: hồng `#f16185`, hồng phấn `#f1a9b7`, xanh ngọc `#57c9c9`, vàng `#f0e761`, nâu đỏ `#641214`.
 

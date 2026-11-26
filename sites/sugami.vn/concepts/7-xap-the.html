@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sugami | Ý tưởng 7: Xấp thẻ</title>
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Palette sampled from the Sugami logo (approved by the owner). */
+  :root {
+    --rose: #f16185; --rose-deep: #d9466c; --blush: #f1a9b7;
+    --teal: #57c9c9; --teal-deep: #168f97; --sun: #f0e761; --maroon: #641214;
+    --lav: #a98be8; --coral: #ff9471;
+    --ink: #1d1720; --ink-2: #4a4150; --muted: #7a7080; --line: rgba(29,23,32,.09);
+    --bg: #fbf8fa; --glass: rgba(255,255,255,.6); --glass-line: rgba(255,255,255,.9);
+    --shadow: 0 1px 2px rgba(29,23,32,.04), 0 22px 60px -24px rgba(80,20,40,.32);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Be Vietnam Pro", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .glass { background: var(--glass); backdrop-filter: blur(20px) saturate(170%); -webkit-backdrop-filter: blur(20px) saturate(170%); border: 1px solid var(--glass-line); box-shadow: var(--shadow); }
+  .grad { background: linear-gradient(100deg, var(--rose-deep), var(--rose) 40%, var(--teal-deep)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .kick { font-size: 12.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--rose-deep); }
+  .pc { border-radius: 18px; padding: 8px; transition: transform .3s; display: block; }
+  .pc:hover { transform: translateY(-5px); }
+  .pc .ph { aspect-ratio: 1.1; border-radius: 12px; display: grid; place-items: center; }
+  .pc .ph svg { width: 40px; height: 40px; color: rgba(29,23,32,.55); }
+  .pc b { display: block; font-size: 13px; margin: 9px 4px 2px; line-height: 1.3; }
+  .pc small { display: block; font-size: 12px; color: var(--muted); margin: 0 4px 4px; }
+  .p1 { background: linear-gradient(135deg, #fde3e9, #f6c2ce); } .p2 { background: linear-gradient(135deg, #dcf3f4, #b2e2e6); }
+  .p3 { background: linear-gradient(135deg, #fbf7d0, #f1e686); } .p4 { background: linear-gradient(135deg, #ece5fb, #d3c5f4); }
+  .p5 { background: linear-gradient(135deg, #e2f4ee, #bfe6d7); } .p6 { background: linear-gradient(135deg, #fde8dc, #f6c8ae); }
+  .chg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .chg a { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; font-weight: 700; font-size: 15px; transition: transform .25s; }
+  .chg a:hover { transform: translateY(-3px); }
+  .chg a > span { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; color: #fff; flex: none; }
+  .chg svg { width: 22px; height: 22px; }
+  .chg small { display: block; font-weight: 500; font-size: 12.5px; color: var(--muted); }
+  .shopee { background: linear-gradient(135deg, #ff7a45, #ee4d2d); } .tiktok { background: linear-gradient(135deg, #2b2b2b, #000); }
+  .facebook { background: linear-gradient(135deg, #3b8cff, #1668e3); } .zalo { background: linear-gradient(135deg, #3896ff, #0068ff); }
+  .lrn { background: linear-gradient(135deg, #f6ec85, var(--rose)); color: var(--maroon); }
+  .night { color: #fff; background: radial-gradient(420px 280px at 100% 0%, rgba(87,201,201,.4), transparent 70%), radial-gradient(380px 280px at 0% 100%, rgba(241,97,133,.4), transparent 70%), linear-gradient(135deg, #2a1d30, #1a1220); }
+  .night p { color: rgba(255,255,255,.74); }
+  .btn-sun { display: inline-block; padding: 12px 18px; border-radius: 13px; background: linear-gradient(135deg, #f6ec85, var(--sun)); color: var(--maroon); font-weight: 700; font-size: 14px; }
+  .btn-rose { display: inline-block; padding: 12px 18px; border-radius: 13px; background: linear-gradient(135deg, var(--rose), var(--rose-deep)); color: #fff; font-weight: 700; font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  .ambient { position: fixed; inset: 0; z-index: -1; background: radial-gradient(700px 500px at 100% 0%, rgba(241,169,183,.5), transparent 65%), radial-gradient(600px 500px at 0% 70%, rgba(135,209,214,.45), transparent 65%), radial-gradient(500px 400px at 60% 100%, rgba(240,231,97,.28), transparent 65%); }
+  header { position: fixed; z-index: 50; top: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+  header > * { pointer-events: auto; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 16px; font-weight: 800; }
+  .brand img { height: 34px; }
+  .count { padding: 10px 14px; border-radius: 14px; font-weight: 700; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .deck { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 84px 0 12vh; }
+  .card { position: sticky; top: calc(76px + var(--i) * 30px); height: calc(100vh - 110px - 5 * 30px); min-height: 440px; margin-bottom: 14vh; border-radius: 32px; transform-origin: 50% 0; will-change: transform; }
+  .card:last-child { margin-bottom: 0; }
+  .tab { position: absolute; top: -1px; left: calc(28px + var(--i) * 150px); transform: translateY(-100%); padding: 7px 16px; border-radius: 14px 14px 0 0; font-size: 12.5px; font-weight: 700; background: inherit; border: inherit; border-bottom: 0; color: var(--ink-2); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); white-space: nowrap; }
+  .night .tab { color: rgba(255,255,255,.85); background: #2a1d30; }
+  .cb { height: 100%; padding: clamp(28px, 4vw, 56px); display: flex; align-items: center; overflow: hidden; border-radius: inherit; }
+  .cb > * { width: 100%; }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+  .split.wide { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  h1 { font-size: clamp(38px, 5vw, 76px); line-height: 1; letter-spacing: -.05em; margin: 16px 0 18px; font-weight: 900; text-wrap: balance; }
+  h2 { font-size: clamp(30px, 3.6vw, 54px); line-height: 1.04; letter-spacing: -.04em; margin: 14px 0 16px; font-weight: 900; text-wrap: balance; }
+  .lead { margin: 0; font-size: 16.5px; line-height: 1.65; color: var(--ink-2); max-width: 520px; }
+  .logo-card { justify-self: center; width: min(340px, 80%); aspect-ratio: 1; border-radius: 40px; display: grid; place-items: center; padding: 14%; animation: bob 6s ease-in-out infinite; }
+  .logo-card img { width: 100%; }
+  @keyframes bob { 50% { transform: translateY(-10px) rotate(-1.5deg); } }
+  .svc { display: grid; gap: 12px; }
+  .svc div { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; padding: 16px 18px; border-radius: 20px; }
+  .svc .ic { grid-row: span 2; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: #fff; }
+  .svc .ic svg { width: 22px; height: 22px; }
+  .svc b { font-size: 16px; } .svc small { font-size: 13.5px; color: var(--muted); }
+  .mission { text-align: center; max-width: 900px; margin: 0 auto; display: grid; justify-items: center; gap: 18px; }
+  .mission blockquote { margin: 0; font-size: clamp(28px, 3.6vw, 52px); line-height: 1.18; font-weight: 800; letter-spacing: -.035em; text-wrap: balance; }
+  .prods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tiles div { padding: 20px; border-radius: 20px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.13); display: grid; gap: 12px; }
+  .tiles span { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; }
+  .tiles svg { width: 20px; height: 20px; }
+  footer { text-align: center; padding: 30px 16px 40px; color: var(--muted); font-size: 13.5px; }
+  @media (max-width: 860px) {
+    .deck { padding-top: 76px; }
+    .card { top: calc(70px + var(--i) * 22px); height: auto; min-height: calc(100vh - 96px - 5 * 22px); margin-bottom: 8vh; }
+    .tab { left: calc(16px + var(--i) * 56px); font-size: 11px; padding: 5px 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+    .tab { visibility: hidden; } .card .tab.show { visibility: visible; }
+    .split, .split.wide { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+    .logo-card { width: 150px; border-radius: 28px; justify-self: start; order: -1; }
+    .prods { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .pc b { font-size: 11.5px; } .pc small { display: none; } .pc .ph svg { width: 28px; height: 28px; }
+    .chg { grid-template-columns: minmax(0, 1fr); } .chg a { padding: 10px; }
+    .svc div { padding: 12px; }
+    .lead { font-size: 15px; }
+    .cb { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="ambient"></div>
+<header><a class="brand glass" href="#"><img src="../assets/logo.png" alt="Sugami">Sugami</a><span class="count glass" id="count">1 / 6</span></header>
+<main class="deck" id="deck">
+<section class="card glass" style="--i:0;background:rgba(255,255,255,.94);" data-i="0"><div class="tab">Sugami</div><div class="cb">
+   <div class="split">
+     <div><div class="kick">Công ty TNHH Thương mại và Dịch vụ</div>
+     <h1>Mỗi phần quà là <span class="grad">một tấm thẻ</span> Sugami gửi bạn.</h1>
+     <p class="lead">Đồ chơi trẻ em, quà tặng, dịch vụ và dụng cụ văn phòng. Cuộn xuống, từng tấm thẻ sẽ lần lượt mở ra.</p></div>
+     <div class="logo-card glass"><img src="../assets/logo.png" alt="Sugami"></div>
+   </div></div></section>
+<section class="card glass" style="--i:1;background:rgba(253,227,233,.94);" data-i="1"><div class="tab">Chúng tôi là ai</div><div class="cb">
+   <div class="split">
+     <div><div class="kick">Chúng tôi là ai</div><h2>Một đầu mối cho ba nhu cầu.</h2><p class="lead">Sugami là Công ty TNHH Thương mại và Dịch vụ chuyên bán sỉ, bán lẻ đồ chơi trẻ em, quà tặng, dịch vụ và dụng cụ văn phòng. Kho hàng và đơn hàng chạy trên hệ thống riêng, nên mỗi đơn đều nhanh, đúng và minh bạch.</p></div>
+     <div class="svc">
+       <div class="glass"><span class="ic" style="background:linear-gradient(135deg,var(--rose),var(--rose-deep))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="3"/><path d="M8 14h3M9.5 12.5v3M12 8V5"/></svg></span><b>Đồ chơi trẻ em</b><small>Bán sỉ cho cửa hàng, bán lẻ cho gia đình</small></div>
+       <div class="glass"><span class="ic" style="background:linear-gradient(135deg,var(--teal),var(--teal-deep))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13"/><path d="M12 7c-1.5-3-5-3-5-1s3 1 5 1zM12 7c1.5-3 5-3 5-1s-3 1-5 1z"/></svg></span><b>Quà tặng</b><small>Cho con, gia đình và nhân viên</small></div>
+       <div class="glass"><span class="ic" style="background:linear-gradient(135deg,#f6ec85,#d8c62c);color:var(--maroon)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L19 8a2.1 2.1 0 00-3-3L5 16l-1 4z"/></svg></span><b>Văn phòng</b><small>Dịch vụ và văn phòng phẩm định kỳ</small></div>
+     </div>
+   </div></div></section>
+<section class="card glass" style="--i:2;background:rgba(220,243,244,.94);" data-i="2"><div class="tab">Sứ mệnh</div><div class="cb">
+   <div class="mission"><div class="kick" style="color:var(--teal-deep)">Sứ mệnh</div><blockquote>Giúp ba mẹ khỏi vất vả tìm đồ chơi và quà cho con. Giúp doanh nghiệp, văn phòng nhẹ nhàng chuẩn bị quà cho nhân viên.</blockquote>
+   <p class="lead">Phần chọn lựa, gói quà và giao hàng, để Sugami lo.</p></div></div></section>
+<section class="card glass" style="--i:3;background:rgba(251,247,208,.94);" data-i="3"><div class="tab">Sản phẩm nổi bật</div><div class="cb">
+   <div class="split wide"><div><div class="kick" style="color:#9a8a10">Sản phẩm nổi bật</div><h2>Được chọn sẵn theo từng độ tuổi.</h2><p class="lead">Vài món tiêu biểu. Bấm vào để xem và đặt trên gian hàng chính thức.</p></div>
+   <div class="prods"><a class="pc glass" href="#"><div class="ph p1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="12" r="7"/><path d="M10.5 14.5c.8.7 2.2.7 3 0"/></svg></div><b>Gấu bông bác sĩ</b><small>Bé 3+</small></a><a class="pc glass" href="#"><div class="ph p2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/><rect x="8" y="5" width="8" height="8" rx="1"/></svg></div><b>Bộ xếp hình sáng tạo</b><small>Bé 4+</small></a><a class="pc glass" href="#"><div class="ph p3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2-5h11l3 5v3H3z"/><circle cx="7" cy="18" r="2"/><circle cx="16" cy="18" r="2"/></svg></div><b>Xe điều khiển</b><small>Bé 6+</small></a><a class="pc glass" href="#"><div class="ph p4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v3a6 6 0 01-6 6h-2a6 6 0 01-6-6v-3z"/><path d="M19 12h2M9 7c0-1.5 1-1.5 1-3M13 7c0-1.5 1-1.5 1-3"/></svg></div><b>Bộ đồ chơi nấu ăn</b><small>Bé 3+</small></a><a class="pc glass" href="#"><div class="ph p5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 100 18c1.4 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 004-4c0-4.4-4-8-9-8z"/></svg></div><b>Bộ tô màu</b><small>Bé 3+</small></a><a class="pc glass" href="#"><div class="ph p6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13"/><path d="M12 7c-1.5-3-5-3-5-1s3 1 5 1zM12 7c1.5-3 5-3 5-1s-3 1-5 1z"/></svg></div><b>Hộp quà nhân viên</b><small>Doanh nghiệp</small></a></div></div></div></section>
+<section class="card glass" style="--i:4;background:rgba(236,229,251,.94);" data-i="4"><div class="tab">Mua sắm</div><div class="cb">
+   <div class="split"><div><div class="kick" style="color:#7b5fd6">Mua sắm</div><h2>Nơi nào bạn quen, Sugami ở đó.</h2><p class="lead">Một kho hàng, nhiều kênh bán. Doanh nghiệp cần quà cho nhân viên, nhắn Zalo để nhận báo giá trong ngày.</p></div>
+   <div class="chg"><a class="glass" href="https://shopee.vn/sugami" target="_blank" rel="noopener"><span class="shopee"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8a3 3 0 016 0"/></svg></span><span style="all:unset">Shopee<small>Gian hàng chính thức</small></span></a><a class="glass" href="https://www.tiktok.com/@sugami.vn" target="_blank" rel="noopener"><span class="tiktok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.5a3.5 3.5 0 11-3.5-3.5"/><path d="M14 4c.5 2.5 2.3 4 5 4.2"/></svg></span><span style="all:unset">TikTok Shop<small>Video, livestream</small></span></a><a class="glass" href="https://www.facebook.com/sugami.vn" target="_blank" rel="noopener"><span class="facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.3H8v3h2.5V21h3z"/></svg></span><span style="all:unset">Facebook<small>Hàng mới, tư vấn</small></span></a><a class="glass" href="https://zalo.me/" target="_blank" rel="noopener"><span class="zalo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4c4.97 0 9 3.36 9 7.5S16.97 19 12 19c-.9 0-1.8-.1-2.6-.3L5 20.5l1.2-3.4C4.2 15.8 3 13.8 3 11.5 3 7.36 7.03 4 12 4z"/></svg></span><span style="all:unset">Zalo<small>Đặt nhanh, báo giá sỉ</small></span></a></div></div></div></section>
+<section class="card night" style="--i:5;" data-i="5"><div class="tab">Sugami Learn</div><div class="cb">
+   <div class="split"><div><div class="kick" style="color:var(--sun)">Sugami Learn</div><h2 style="color:#fff">Vừa chơi vừa học, mỗi ngày.</h2><p class="lead">learn.sugami.vn là sân chơi trực tuyến nơi các bé vừa chơi vừa bổ sung kiến thức và học kỹ năng sống cùng Sugami. Nội dung chọn lọc, không quảng cáo.</p><p style="margin-top:22px"><a class="btn-sun" href="https://learn.sugami.vn" target="_blank" rel="noopener">Vào learn.sugami.vn</a></p></div>
+   <div class="tiles"><div><span style="background:var(--rose)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2 8 12.7 4 8.8 9.5 8z"/></svg></span><b>Kỹ năng sống</b></div><div><span style="background:var(--teal)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/><rect x="8" y="5" width="8" height="8" rx="1"/></svg></span><b>Toán tư duy</b></div><div><span style="background:#d8c62c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg></span><b>Khám phá</b></div><div><span style="background:var(--lav)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L19 8a2.1 2.1 0 00-3-3L5 16l-1 4z"/></svg></span><b>Từ vựng</b></div></div></div></div></section>
+</main>
+<footer>© 2026 Công ty TNHH Thương mại và Dịch vụ Sugami · sugami.vn · learn.sugami.vn</footer>
+<script>
+(function () {
+  // Each card shrinks and dims a little as the next card slides over it.
+  var cards = [].slice.call(document.querySelectorAll('.card')), count = document.getElementById('count');
+  var small = matchMedia('(max-width: 860px)');
+  function frame() {
+    var cur = 0;
+    cards.forEach(function (c, i) {
+      var next = cards[i + 1], depth = 0;
+      if (next) {
+        var a = c.getBoundingClientRect(), b = next.getBoundingClientRect();
+        depth = Math.max(0, Math.min(1, 1 - (b.top - a.top) / (a.height * .9)));
+      }
+      c.style.transform = 'scale(' + (1 - depth * .05) + ')';
+      c.style.filter = depth > 0 ? 'brightness(' + (1 - depth * .06) + ')' : '';
+      if (c.getBoundingClientRect().top < innerHeight * .5) cur = i;
+      var tab = c.querySelector('.tab'); if (small.matches) tab.classList.toggle('show', depth < .6);
+    });
+    count.textContent = (cur + 1) + ' / ' + cards.length + ' · ' + cards[cur].querySelector('.tab').textContent;
+  }
+  addEventListener('scroll', function () { requestAnimationFrame(frame); }, { passive: true });
+  addEventListener('resize', frame); frame();
+})();
+</script>
+</body>
+</html>
