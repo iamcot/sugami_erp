@@ -1,6 +1,6 @@
 # Dev infrastructure. MySQL runs natively on the iMac (see docs/ops/dev-setup.md);
 # the `mysql` profile below is only for machines/CI without a native MySQL:
-#   docker compose up -d                    # redis + homepage (sugami.vn)
+#   docker compose up -d                    # redis
 #   docker compose --profile mysql up -d    # + mysql
 name: sugami
 
@@ -16,16 +16,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-
-  homepage:
-    # Static homepage (sites/sugami.vn). Cloudflare Tunnel maps sugami.vn and
-    # www.sugami.vn to http://localhost:8080. `git pull` updates it live.
-    image: nginx:1.27-alpine
-    ports: ['127.0.0.1:8080:80']
-    volumes:
-      - ./sites/sugami.vn:/usr/share/nginx/html:ro
-      - ./sites/sugami.vn/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    restart: unless-stopped
 
   mysql:
     profiles: [mysql]

@@ -59,5 +59,5 @@ Script tự làm: `git pull`, cài gói, build, chạy migration DB, nạp lại
 
 - Web báo lỗi gọi API: `pm2 logs sugami-api`, thường do `.env` thiếu hoặc MySQL/Redis chưa chạy (`brew services list`).
 - Đổi `.env`: `pm2 restart all --update-env`.
-- Địa chỉ ngoài (`erp.sugami.vn`, `hooks.sugami.vn`) do Cloudflare Tunnel trỏ về cổng 3000 (web) và 4000 (API, webhook); `sugami.vn` trỏ về cổng 8080 (trang chủ, xem [trang-chu.md](trang-chu.md)).
+- Địa chỉ ngoài (`erp.sugami.vn`, `hooks.sugami.vn`) do Cloudflare Tunnel trỏ về cổng 3000 (web) và 4000 (API, webhook). Trang chủ `sugami.vn` chạy trên Cloudflare Pages, không qua iMac (xem [trang-chu.md](trang-chu.md)).
 - Muốn thử code mới mà không ảnh hưởng bản đang chạy: dùng `pnpm dev` trên cổng khác, hoặc `pm2 stop all` trước rồi mới `pnpm dev`.
