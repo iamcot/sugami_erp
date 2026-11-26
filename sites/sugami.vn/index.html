@@ -45,7 +45,7 @@
   .panel p { margin: 0; font-size: 17px; line-height: 1.65; color: var(--ink-2); max-width: 520px; }
   .hint { margin-top: 26px; display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); font-weight: 600; }
   .hint svg { width: 20px; height: 20px; animation: nudge 1.6s ease-in-out infinite; }
-  @keyframes nudge { 50% { transform: translateX(6px); } }
+  @keyframes nudge { 50% { transform: translateY(5px); } }
 
   /* The ribbon the gift travels along */
   .ribbon { position: absolute; left: 0; bottom: 4vh; width: calc(var(--panels) * 100vw); height: 18vh; pointer-events: none; }
@@ -56,6 +56,36 @@
   .gift img { width: 44px; }
 
   /* Panel bits */
+
+  /* Hero collage: three rendered scenes in glass frames, with the logo as a badge. */
+  .collage { position: relative; justify-self: center; width: min(560px, 42vw); aspect-ratio: 1.05; --mx: 0; --my: 0; }
+  .shot { position: absolute; margin: 0; padding: 10px; border-radius: 28px; overflow: hidden; transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+  .shot img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 20px; }
+  .shot figcaption { position: absolute; left: 22px; bottom: 22px; padding: 7px 12px; border-radius: 11px; font-size: 12.5px; font-weight: 700; background: rgba(255,255,255,.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .s1 { width: 58%; aspect-ratio: 1; left: 21%; top: 14%; z-index: 3; transform: translate(calc(var(--mx) * 10px), calc(var(--my) * 10px)) rotate(-2deg); animation: f1 7s ease-in-out infinite; }
+  .s2 { width: 44%; aspect-ratio: 1; left: 0; top: 0; z-index: 2; transform: translate(calc(var(--mx) * -16px), calc(var(--my) * -12px)) rotate(-9deg); }
+  .s3 { width: 44%; aspect-ratio: 1; right: 0; bottom: 0; z-index: 2; transform: translate(calc(var(--mx) * -18px), calc(var(--my) * -14px)) rotate(8deg); }
+  @keyframes f1 { 50% { translate: 0 -10px; } }
+  .badge { position: absolute; z-index: 4; right: 8%; top: 4%; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border-radius: 18px; font-weight: 800; font-size: 14px; animation: f1 6s ease-in-out infinite reverse; }
+  .badge img { width: 44px; }
+  .badge small { display: block; font-weight: 500; font-size: 11.5px; color: var(--muted); }
+  .learn-img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 18px; margin-bottom: 20px; }
+  /* Scroll cue: the page moves sideways, but the visitor scrolls down. */
+  .cue { position: fixed; z-index: 30; left: calc(20px + env(safe-area-inset-left, 0px)); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 10px; padding: 9px 16px 9px 10px; border-radius: 999px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); transition: opacity .4s, transform .4s; cursor: pointer; border: 0; font-family: inherit; }
+  .cue.gone { opacity: 0; transform: translateY(20px); pointer-events: none; }
+  .cue .ring { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--rose), var(--rose-deep)); animation: hop 1.3s cubic-bezier(.3,0,.3,1) infinite; box-shadow: 0 8px 16px -6px rgba(217,70,108,.6); }
+  .cue .ring svg { width: 18px; height: 18px; }
+  @keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(7px); } 60% { transform: translateY(-2px); } }
+  .cue .m { display: none; }
+  @media (max-width: 860px) {
+    .collage { width: min(250px, 62vw); order: -1; justify-self: center; margin-top: 8px; }
+    .badge { display: none !important; }
+    .hint { display: none; }
+    .badge { font-size: 12.5px; } .badge img { width: 34px; } .badge small { display: none; }
+    .shot { padding: 6px; border-radius: 20px; } .shot img { border-radius: 15px; } .shot figcaption { display: none; }
+    .learn-img { display: none; }
+    .cue .d { display: none; } .cue .m { display: inline; }
+  }
   .hero-logo { justify-self: center; width: min(360px, 32vw); aspect-ratio: 1; border-radius: 44px; display: grid; place-items: center; padding: 14%; animation: bob 6s ease-in-out infinite; }
   .hero-logo img { width: 100%; }
   @keyframes bob { 50% { transform: translateY(-12px) rotate(-1.5deg); } }
@@ -220,6 +250,7 @@
   </nav>
 </header>
 
+<button class="cue glass" id="cue" type="button"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span><span class="d">Cuộn xuống để đi tiếp</span><span class="m">Vuốt lên</span></button>
 <section class="journey" id="journey">
   <div class="view">
     <div class="sky"></div>
@@ -235,9 +266,14 @@
           <div class="num">Công ty TNHH Thương mại và Dịch vụ Sugami</div>
           <h2>Hành trình của <span class="grad">một món quà.</span></h2>
           <p>Từ lúc chọn một món đồ chơi, gói một phần quà, đến khi nó đến tay bé hay tay nhân viên của bạn. Đó là việc Sugami làm mỗi ngày.</p>
-          <div class="hint">Cuộn để đi cùng Sugami <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+          <div class="hint">Cứ cuộn xuống như bình thường, trang sẽ tự trượt ngang <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
         </div>
-        <div class="hero-logo glass"><img src="assets/logo.png" alt=""></div>
+        <div class="collage" id="collage" aria-hidden="true">
+          <figure class="shot glass s2"><img src="assets/img/do-choi.jpg" alt=""><figcaption>Đồ chơi</figcaption></figure>
+          <figure class="shot glass s3"><img src="assets/img/van-phong.jpg" alt=""><figcaption>Văn phòng</figcaption></figure>
+          <figure class="shot glass s1"><img src="assets/img/qua-tang.jpg" alt=""><figcaption>Quà tặng</figcaption></figure>
+          <div class="badge glass"><img src="assets/logo.png" alt="">Sugami<small>Thương mại &amp; Dịch vụ</small></div>
+        </div>
       </article>
 
       <article class="panel">
@@ -293,7 +329,7 @@
           <p>Món quà không dừng ở hộp giấy. Ở learn.sugami.vn, các bé tiếp tục vừa chơi vừa học kiến thức và kỹ năng sống cùng Sugami.</p>
           <div class="down">Cuộn tiếp để xem tất cả về Sugami <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
         </div>
-        <div class="learn">
+        <div class="learn"><img class="learn-img" src="assets/img/learn.jpg" alt="Máy tính bảng với trò chơi nhận biết hình khối của learn.sugami.vn">
           <small>Sugami Learn</small>
           <b>learn.sugami.vn</b>
           <p>Trò chơi ngắn, sinh động, phù hợp từng độ tuổi. Nội dung chọn lọc, không quảng cáo.</p>
@@ -438,6 +474,20 @@
   addEventListener('scroll', function () { requestAnimationFrame(mark); }, { passive: true }); mark();
 })();
 document.getElementById('toAll').addEventListener('click', function (e) { e.preventDefault(); document.getElementById('tat-ca').scrollIntoView({ behavior: 'smooth' }); });
+
+(function () {
+  var cue = document.getElementById('cue'), j = document.getElementById('journey'), col = document.getElementById('collage');
+  function upd() { cue.classList.toggle('gone', j.getBoundingClientRect().bottom < innerHeight * 1.05); }
+  addEventListener('scroll', function () { requestAnimationFrame(upd); }, { passive: true }); upd();
+  // One tap moves to the next stop.
+  cue.addEventListener('click', function () {
+    var max = j.offsetHeight - innerHeight, p = (scrollY - j.offsetTop) / max, next = Math.min(4, Math.floor(p * 4 + .001) + 1);
+    scrollTo({ top: j.offsetTop + max * next / 4 + (next === 4 && p >= .999 ? innerHeight : 0), behavior: 'smooth' });
+  });
+  addEventListener('pointermove', function (e) {
+    col.style.setProperty('--mx', (e.clientX / innerWidth - .5) * 2); col.style.setProperty('--my', (e.clientY / innerHeight - .5) * 2);
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>

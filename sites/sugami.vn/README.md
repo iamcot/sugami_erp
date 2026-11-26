@@ -19,3 +19,7 @@ Chủ shop đã chốt hướng: ý tưởng 5 (cuộn ngang) kết thúc bằng
 Bảng màu lấy từ logo: hồng `#f16185`, hồng phấn `#f1a9b7`, xanh ngọc `#57c9c9`, vàng `#f0e761`, nâu đỏ `#641214`.
 
 Link Shopee/TikTok/Facebook/Zalo và ảnh sản phẩm hiện là tạm. Xem thử: mở file trực tiếp bằng trình duyệt.
+
+## Ảnh minh họa
+
+`assets/img/*.jpg` là ảnh dựng 3D (quà tặng, đồ chơi, văn phòng, learn), tạo bằng `tools/render-scenes.html` với three.js 0.160.0. Muốn dựng lại: giải nén gói `three@0.160.0` vào `tools/three/`, chạy `python3 -m http.server` trong `tools/`, mở `render-scenes.html?s=A` (A, B, C, D) rồi lưu canvas. Khi có ảnh sản phẩm thật, thay trực tiếp các file trong `assets/img/`.
