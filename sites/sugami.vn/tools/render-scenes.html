@@ -64,9 +64,9 @@ if (S === 'A') { // gifts
   confetti(16, 3.4, [C.rose, C.teal, C.sun, C.lav]);
   cam.position.set(5.6, 5.4, 8.2); cam.lookAt(0, .75, .9);
 }
-if (S === 'B') { // toy blocks spelling SUGAMI + car
+if (S === 'B') { // toy blocks spelling SuGaMi + car
   const cols = [C.rose, C.teal, C.sun, C.lav, C.coral, C.teal];
-  'SUGAMI'.split('').forEach((ch, i) => block(ch, cols[i], (i - 2.5) * 1.12, .5, i % 2 ? .25 : -.15, (i - 2.5) * -.06));
+  'SuGaMi'.split('').forEach((ch, i) => block(ch, cols[i], (i - 2.5) * 1.12, .5, i % 2 ? .25 : -.15, (i - 2.5) * -.06));
   block('★', C.blush, -.55, 1.5, .05, .12); block('♥', C.tealSoft, .6, 1.5, 0, -.1);
   const car = new THREE.Group(); car.position.set(2.2, 0, 2.3); car.rotation.y = -.7; scene.add(car);
   const body = new THREE.Mesh(new RoundedBoxGeometry(1.5, .5, .85, 5, .18), mat(C.rose)); body.position.y = .45; body.castShadow = true; car.add(body);
@@ -76,26 +76,39 @@ if (S === 'B') { // toy blocks spelling SUGAMI + car
   const ring = mesh(new THREE.TorusGeometry(.35, .13, 24, 48), mat(C.lav), -1.4, .13, 2.6); ring.rotation.x = Math.PI / 2;
   cam.position.set(3.2, 5.2, 12.5); cam.lookAt(.1, .6, .9);
 }
-if (S === 'C') { // office desk
-  const nb = rbox(3.0, .22, 2.1, C.teal, -.5, .11, 0, .06); nb.rotation.y = .25;
-  const pcv = document.createElement('canvas'); pcv.width = 1024; pcv.height = 720; const pgc = pcv.getContext('2d');
-  pgc.fillStyle = '#fffaf2'; pgc.fillRect(0, 0, 1024, 720); pgc.strokeStyle = '#bfe3e5'; pgc.lineWidth = 4;
-  for (let y = 120; y < 700; y += 60) { pgc.beginPath(); pgc.moveTo(60, y); pgc.lineTo(980, y); pgc.stroke(); }
-  pgc.strokeStyle = '#f4a3b5'; pgc.beginPath(); pgc.moveTo(140, 0); pgc.lineTo(140, 720); pgc.stroke();
-  pgc.fillStyle = '#d9466c'; pgc.font = '700 54px Arial'; pgc.fillText('Quà Tết 2027', 180, 100);
-  pgc.fillStyle = '#4a4150'; pgc.font = '500 38px Arial'; ['✓ 120 hộp quà nhân viên', '✓ Thiệp in logo công ty', '✓ Giao trước 20/1'].forEach((t, i) => pgc.fillText(t, 180, 222 + i * 120));
-  const ptex = new THREE.CanvasTexture(pcv); ptex.colorSpace = THREE.SRGBColorSpace;
-  const pg = rbox(2.8, .06, 1.95, C.white, -.42, .25, .02, .02, { map: ptex, clearcoat: .1, roughness: .7 }); pg.rotation.y = .25;
-  const cup = mesh(new THREE.CylinderGeometry(.55, .5, 1.4, 48, 1, true), mat(C.rose, { side: THREE.DoubleSide }), 1.9, .7, -.6);
-  mesh(new THREE.CylinderGeometry(.5, .5, .05, 48), mat(C.rose), 1.9, .03, -.6);
-  [[C.sun, .1, .0], [C.lav, -.18, .15], [C.teal, .15, -.2], [C.coral, -.05, -.15]].forEach(([c, dx, dz], i) => {
-    const pen = mesh(new THREE.CylinderGeometry(.07, .07, 2.0, 6), mat(c), 1.9 + dx, 1.3, -.6 + dz); pen.rotation.z = dx * 1.2; pen.rotation.x = dz * 1.2;
-  });
-  [[C.sun, 2.0, 1.4, .3], [C.blush, 2.35, 1.1, -.2], [C.tealSoft, 1.55, 1.8, .6]].forEach(([c, x, z, ry], i) => { const n = rbox(.9, .04 + i * .04, .9, c, x, .02 + i * .04, z, .015); n.rotation.y = ry; });
-  const pencil = mesh(new THREE.CylinderGeometry(.08, .08, 2.2, 6), mat(C.sun), -.3, .35, 1.6); pencil.rotation.z = Math.PI / 2; pencil.rotation.y = .3;
-  const clip = mesh(new THREE.TorusGeometry(.2, .035, 12, 40), mat(0xd0d0d8, { metalness: .9, roughness: .2 }), -2.3, .04, 1.4); clip.rotation.x = Math.PI / 2; clip.scale.set(1, 1.8, 1);
-  gift(.9, .7, .9, C.white, C.rose, -2.4, -1.2, .4);
-  cam.position.set(4.2, 6.2, 6.6); cam.lookAt(0, .4, .2);
+if (S === 'C') { // company gifts and school rewards
+  // stack of branded hampers
+  gift(1.9, 1.1, 1.9, C.teal, C.sun, -1.6, -.6, .35, false);
+  gift(1.5, .95, 1.5, C.white, C.rose, -1.6 + .05, -.6, .55, false).position.y = 1.1;
+  gift(1.0, .8, 1.0, C.rose, C.white, -1.55, -.6, .2).position.y = 2.05;
+  gift(1.3, 1.0, 1.3, C.lav, C.white, .3, -1.5, -.3);
+  // standing thank-you card with brand
+  const cv = document.createElement('canvas'); cv.width = 800; cv.height = 1000; const g = cv.getContext('2d');
+  g.fillStyle = '#fffaf4'; g.fillRect(0, 0, 800, 1000);
+  g.fillStyle = '#f16185'; g.fillRect(0, 0, 800, 22); g.fillStyle = '#57c9c9'; g.fillRect(0, 978, 800, 22);
+  g.textAlign = 'center';
+  const brand = [['S', '#f16185'], ['u', '#57c9c9'], ['G', '#e0c93a'], ['a', '#f16185'], ['M', '#57c9c9'], ['i', '#b7a0ee']];
+  g.font = '900 120px Arial Black, Arial'; let bx = 400 - 200; brand.forEach(([ch, c]) => { g.fillStyle = c; const w = g.measureText(ch).width; g.fillText(ch, bx + w / 2, 230); bx += w; });
+  g.fillStyle = '#2a1d30'; g.font = '800 70px Arial'; g.fillText('Cảm ơn', 400, 470); g.fillText('đội ngũ!', 400, 560);
+  g.fillStyle = '#7a6d80'; g.font = '500 42px Arial'; g.fillText('Quà Tết 2027', 400, 720); g.fillText('120 phần quà nhân viên', 400, 790);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const card = rbox(1.6, 2.0, .05, C.white, 1.1, 1.02, .9, .02, { map: tex, roughness: .7 }); card.rotation.set(-.12, -.35, 0);
+  // gold medal on ribbon (school reward)
+  const gold = mat(0xf7cf4a, { metalness: .35, roughness: .3, clearcoat: .6 });
+  const med = mesh(new THREE.CylinderGeometry(.5, .5, .1, 48), gold, 1.2, .05, 2.5);
+  const st = new THREE.Shape(); for (let k = 0; k < 10; k++) { const ang = k / 10 * Math.PI * 2 - Math.PI / 2, rr = k % 2 ? .13 : .3; k ? st.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr) : st.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
+  const star = mesh(new THREE.ExtrudeGeometry(st, { depth: .04, bevelEnabled: false }), mat(C.rose), 1.2, .11, 2.5); star.rotation.x = -Math.PI / 2;
+  const rb1 = rbox(.32, .02, 1.3, C.teal, 1.02, .02, 1.55, .01); rb1.rotation.y = .35;
+  const rb2 = rbox(.32, .02, 1.3, C.rose, 1.4, .02, 1.55, .01); rb2.rotation.y = -.35;
+  // small trophy
+  const tg = new THREE.Group(); tg.position.set(2.1, 0, -1.9); scene.add(tg);
+  const addT = (geo, m, y) => { const o = new THREE.Mesh(geo, m); o.position.y = y; o.castShadow = true; tg.add(o); return o; };
+  addT(new RoundedBoxGeometry(.9, .3, .9, 4, .05), mat(C.ink, { roughness: .5 }), .15);
+  addT(new THREE.CylinderGeometry(.08, .12, .5, 24), gold, .55);
+  addT(new THREE.CylinderGeometry(.48, .18, .8, 48), gold, 1.2);
+  [-1, 1].forEach(sx => { const h = addT(new THREE.TorusGeometry(.2, .05, 12, 32), gold, 1.3); h.position.x = sx * .5; h.rotation.y = Math.PI / 2; });
+  confetti(14, 3.6, [C.rose, C.teal, C.sun, C.lav]);
+  cam.position.set(5.6, 6.4, 9.6); cam.lookAt(.5, .9, .5);
 }
 if (S === 'D') { // tablet with learning game
   const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 720; const g = cv.getContext('2d');
